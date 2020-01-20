@@ -22,7 +22,7 @@ extern "C" {
 void call_summy(double *a, double *b, double *c, int s_x, int s_y) {
   dim3 threadsPerBlock(1, 1);
   dim3 numBlocks(s_x, s_y, 1);
-  summy<<<numBlocks, threadsPerBlock>>>(a, b, c, s_x, s_y);
+  summy<<<threadsPerBlock, numBlocks>>>(a, b, c, s_x, s_y);
 
   cudaDeviceSynchronize();
 }
