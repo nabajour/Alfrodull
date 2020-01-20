@@ -13,8 +13,8 @@ from cffi import FFI
 import ctypes
 
 # CUDA test
-a = np.ones((4, 4), dtype=np.float64)
-b = np.ones((4, 4), dtype=np.float64)*2
+a = np.ones((4, 4), dtype=np.float64)*1.5
+b = np.arange(16, dtype=np.float64).reshape(4, 4)
 
 c = np.zeros((4, 4), dtype=np.float64)
 
@@ -46,7 +46,7 @@ ffibuilder.cdef("""
 ffibuilder.set_source("_summy",
                       """
                # include "summy.h"
-               """, libraries=["summy"], library_dirs=["./"])
+               """, libraries=["summy"], library_dirs=["./"], extra_link_args=['-Wl,-rpath=./'])
 
 ffibuilder.compile(verbose=True)
 
