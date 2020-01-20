@@ -1,4 +1,5 @@
 
+import bindtest as lib
 import numpy as np
 
 # CUDA
@@ -9,8 +10,10 @@ import pycuda.driver as drv
 from pycuda.compiler import SourceModule
 
 # CFFI
-from cffi import FFI
+
 import ctypes
+
+# pybind11 version
 
 # CUDA test
 a = np.ones((4, 4), dtype=np.float64)*1.5
@@ -33,26 +36,6 @@ mod = SourceModule("""
 #
 # print(c)
 
-# CFFI test
-ffibuilder = FFI()
-ffibuilder.cdef("""
-                   void print_hello();
-
-                   int add_test(int a, int b);
-
-                   void call_summy(double *a, double *b, double *c, int s_x, int s_y);
-
-""")
-ffibuilder.set_source("_summy",
-                      """
-               # include "summy.h"
-               """, libraries=["summy"], library_dirs=["./"], extra_link_args=['-Wl,-rpath=./'])
-
-ffibuilder.compile(verbose=True)
-
-print("Import wrapped lib")
-
-from _summy import ffi, lib  # noqa
 
 print("printing test")
 lib.print_hello()
@@ -66,9 +49,20 @@ a_gpu = gpuarray.to_gpu(a)
 b_gpu = gpuarray.to_gpu(b)
 c_gpu = gpuarray.to_gpu(c)
 
-lib.call_summy(ffi.cast("double *", a_gpu.ptr),
-               ffi.cast("double *", b_gpu.ptr),
-               ffi.cast("double *", c_gpu.ptr),
+# lib.call_summy(ffi.cast("double *", a_gpu.ptr),
+#               ffi.cast("double *", b_gpu.ptr),
+#               ffi.cast("double *", c_gpu.ptr),
+#               4, 4)
+
+print(f"a_gpu pointer: {a_gpu.ptr:x}")
+print(f"b_gpu pointer: {b_gpu.ptr:x}")
+print(f"c_gpu pointer: {c_gpu.ptr:x}")
+
+lib.call_summy(a_gpu.ptr,
+               b_gpu.ptr,
+               c_gpu.ptr,
                4, 4)
+
+
 c_res = c_gpu.get()
 print(c_res)
