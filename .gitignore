@@ -1,3 +1,9 @@
+# temp files
+*~
+
+# CMake build directory
+build/*
+
 # Prerequisites
 *.d
 
