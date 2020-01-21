@@ -23,7 +23,7 @@ set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 # Find CUDA
-find_package(CUDA REQUIRED)
+#find_package(CUDA REQUIRED)
 #if (CUDA_FOUND AND SM MATCHES "0")
 #  CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS Auto)
 #else()
@@ -31,14 +31,14 @@ find_package(CUDA REQUIRED)
 #  set(ARCH_FLAGS "-arch=sm_${SM}")
 #endif()
 
-SET(CUDA_SEPARABLE_COMPILATION ON)
+#SET(CUDA_SEPARABLE_COMPILATION ON)
 
 # build flags
-LIST(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
-LIST(APPEND CUDA_NVCC_FLAGS ${COMPILE_FLAGS})
-LIST(APPEND CUDA_NVCC_FLAGS "-std c++11")
+#LIST(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
+#LIST(APPEND CUDA_NVCC_FLAGS ${COMPILE_FLAGS})
+#LIST(APPEND CUDA_NVCC_FLAGS "-std c++11")
 
-string (APPEND CMAKE_CUDA_FLAGS " -dc -cudart shared -rdc=true -lcudart -lcudadevrt -lcuda" )
+#string (APPEND CMAKE_CUDA_FLAGS " -dc -cudart shared -rdc=true -lcudart -lcudadevrt -lcuda" )
 
 find_package(pybind11 REQUIRED)
 #find_package(PythonLibs REQUIRED)
@@ -62,18 +62,35 @@ include_directories(pylfrodull/src/inc)
 #OPTIONS -DBUILD_LEVEL="release" -DDEVICE_SM=${SM})
 
 ##pybind11 sets -fvisibility=hidden in INTERFACE_COMPILE_OPTIONS on it's module target
-get_target_property(modifacecopts pybind11::module INTERFACE_COMPILE_OPTIONS)
-list(REMOVE_ITEM modifacecopts "-fvisibility=hidden")
-set_target_properties(pybind11::module PROPERTIES INTERFACE_COMPILE_OPTIONS "${modifacecopts}")
+#get_target_property(modifacecopts pybind11::module INTERFACE_COMPILE_OPTIONS)
+#list(REMOVE_ITEM modifacecopts "-fvisibility=hidden")
+#set_target_properties(pybind11::module PROPERTIES INTERFACE_COMPILE_OPTIONS "${modifacecopts}")
 
-add_library(pylfrodull SHARED ${SRC_PYMODULE} ${SRC_ALFRODULLIB})
+
+add_library(alfrodull STATIC ${SRC_ALFRODULLIB})
+set_target_properties(alfrodull PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_VISIBILITY_PRESET "hidden"
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+
+add_library(pylfrodull SHARED ${SRC_PYMODULE})
 #target_link_libraries (pylfrodull alfrodullib)
 
-target_link_libraries(pylfrodull PRIVATE pybind11::module ${CUDA_LIBRARIES})
+set_target_properties(pylfrodull PROPERTIES 
+				     CXX_VISIBILITY_PRESET "hidden"
+				         INTERPROCEDURAL_OPTIMIZATION TRUE
+					     PREFIX "${PYTHON_MODULE_PREFIX}"
+					         SUFFIX "${PYTHON_MODULE_EXTENSION}"
+)
+
+target_link_libraries(pylfrodull PRIVATE alfrodull)
+target_link_libraries(pylfrodull PRIVATE pybind11::module )
 #target_link_libraries(pylfrodull PRIVATE ${PYTHON_LIBRARIES} ${CUDA_LIBRARIES})
-set_target_properties(pylfrodull PROPERTIES
-				 POSITION_INDEPENDENT_CODE ON
-				 CUDA_VISIBILITY_PRESET "hidden"
-				 CXX_VISIBILITY_PRESET "hidden"
-				 PREFIX "${PYTHON_MODULE_PREFIX}"
-                                 SUFFIX "${PYTHON_MODULE_EXTENSION}")
+# set_target_properties(pylfrodull PROPERTIES
+# 				 POSITION_INDEPENDENT_CODE ON
+# #				 CUDA_VISIBILITY_PRESET "hidden"
+# 				 CXX_VISIBILITY_PRESET "hidden"
+# 				 PREFIX "${PYTHON_MODULE_PREFIX}"
+#                                  SUFFIX "${PYTHON_MODULE_EXTENSION}")
