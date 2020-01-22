@@ -1,4 +1,8 @@
-#include "interpolate_value.h"
+#include "interpolate_values.h"
+
+#include "physics_constants.h"
+
+
 
 // temperature interpolation for the non-isothermal layers
 __global__ void interpolate_temperature(

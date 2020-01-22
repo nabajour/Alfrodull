@@ -2,6 +2,7 @@
 
 #include "physics_constants.h"
 
+#include "math_helpers.h"
 
 // calculates the planck function for given surface temperature
 __global__ void calc_surface_planck(

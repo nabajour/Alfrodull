@@ -36,6 +36,8 @@ bool wrap_prepare_compute_flux(
 			  const int & npress, // io, mmm, mmmi
 			  const int & ntemp, // io, mmm, mmmi
 			  const int & ny, // io
+			  const int & entr_npress, // kii, kil
+			  const int & entr_ntemp, // kii, kil	  
 			  const double & fake_opac, // io
 			  const double & T_surf, // csp, cse, pil
 			  const double & surf_albedo, // cse

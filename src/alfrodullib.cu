@@ -1,9 +1,12 @@
+#include "alfrodullib.h"
+
 #include "integrate_flux.h"
 
 #include "interpolate_values.h"
 
 #include "surface_planck.h"
 
+#include "correct_surface_emission.h"
 
 #include <cstdio>
 
@@ -104,7 +107,7 @@ bool wrap_prepare_compute_flux(
 				  iso, // pii
 				  correct_surface_emissions,
 				  interp_and_calc_flux_step
-		  )
+				  );
     return ret;
 }
 
@@ -144,11 +147,13 @@ bool prepare_compute_flux(
 		  const int & npress, // io, mmm, mmmi
 		  const int & ntemp, // io, mmm, mmmi
 		  const int & ny, // io
+		  const int & entr_npress, // kii, kil
+		  const int & entr_ntemp, // kii, kil		  
 		  const double & fake_opac, // io
 		  const double & T_surf, // csp, cse, pil
 		  const double & surf_albedo, // cse
-		  const int & dim, // pil, pii
-		  const int & step, // pil, pii
+		  const int & plancktable_dim, // pil, pii
+		  const int & plancktable_step, // pil, pii
 		  const bool & use_kappa_manual, // ki
 		  const double & kappa_manual_value, // ki	     
 		  const bool & iso, // pii
@@ -179,13 +184,13 @@ bool prepare_compute_flux(
      correct_surface_emission<<<corr_surf_emiss_grid,
        corr_surf_emiss_block>>>(dev_F_down_tot,
 				dev_opac_deltawave,
-				dev_plankband_lay,
+				dev_planckband_lay,
 				surf_albedo,
 				T_surf,
 				nbin,
 				nlayer,
 				iter_value
-				)
+				);
 
        cudaDeviceSynchronize();
    }
@@ -211,7 +216,7 @@ bool prepare_compute_flux(
                          nbin,
 			 T_surf,
 			 plancktable_dim,
-			 plancktable_step,
+			 plancktable_step
                         );
    cudaDeviceSynchronize();
 
@@ -260,7 +265,7 @@ bool prepare_compute_flux(
 	   dim3 ioi_grid(int((nbin+15)/16), int((ninterface+15)/16), 1);
 	   dim3 ioi_block(16,16,1);
 	   
-	   interpolate_opacities<<<io_grid, io_block>>>(dev_T_int,
+	   interpolate_opacities<<<ioi_grid, ioi_block>>>(dev_T_int,
 							dev_ktemp,
 							dev_p_int,
 							dev_kpress,
@@ -282,7 +287,7 @@ bool prepare_compute_flux(
        dim3 mmm_block(16,1,1);
        dim3 mmm_grid(int((nlayer + 15)/16), 1, 1);
        
-       mmm_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,
+       meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,
 					     dev_ktemp,
 					     dev_meanmolmass_lay,
 					     dev_opac_meanmass,
@@ -301,7 +306,7 @@ bool prepare_compute_flux(
 	   dim3 mmmi_block(16,1,1);
 	   dim3 mmmi_grid(int((ninterface + 15)/16), 1, 1);
 	   
-	   mmm_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,
+	   meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,
 						   dev_ktemp,
 						   dev_meanmolmass_int,
 						   dev_opac_meanmass,

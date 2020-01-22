@@ -9,4 +9,4 @@ __global__ void calc_surface_planck(
 				    int 	nwave,
 				    int     numlayers,
 				    double 	T_surf
-)
+				    );
