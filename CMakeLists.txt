@@ -49,6 +49,10 @@ set(SRC_PYMODULE
 
 set(SRC_ALFRODULLIB
 	src/alfrodullib.cu
+	src/kernels/math_helpers.cu
+	src/kernels/interpolate_values.cu
+	src/kernels/surface_planck.cu
+	src/kernels/correct_surface_emission.cu
 	src/kernels/atomic_add.cu
 	src/kernels/integrate_flux.cu)
 	
