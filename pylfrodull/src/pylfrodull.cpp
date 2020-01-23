@@ -115,5 +115,6 @@ PYBIND11_MODULE(pylfrodull, m) {
 
     m.def("integrate_flux", &wrap_integrate_flux, "Integrate the flux");
     m.def("pyprepare_compute_flux", &wrap_prepare_compute_flux, "prepare computation of fluxes");
-    
+    m.def("pycompute_transmission_iso", &pycompute_transmission_iso, "compute transmission iso");
+    m.def("pycompute_transmission_noniso", &pycompute_transmission_noniso, "compute transmission noniso");
 }

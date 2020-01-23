@@ -270,13 +270,6 @@ __host__ bool prepare_compute_flux(
    return true;
 }
 
-bool calculate_transmission()
-{
-
-  return true;
-}
-
-
 void wrap_integrate_flux(long deltalambda_, // double*
 			 long F_down_tot_, // double *
 			 long F_up_tot_, // double *
@@ -331,3 +324,292 @@ void wrap_integrate_flux(long deltalambda_, // double*
 							numinterfaces, 
 							ny);
 }
+
+__host__ bool calculate_transmission_iso(
+				      double* 	trans_wg,
+        double* 	delta_tau_wg,
+        double* 	M_term,
+        double* 	N_term,
+        double* 	P_term,
+        double* 	G_plus,
+        double* 	G_minus,
+        double* 	delta_colmass,
+        double* 	opac_wg_lay,
+        double* cloud_opac_lay,
+        double* 	meanmolmass_lay,
+        double* 	scat_cross_lay,
+        double* 	cloud_scat_cross_lay,
+        double*  w_0,
+        double* 	g_0_tot_lay,
+        double   g_0,
+        double 	epsi,
+        double 	mu_star,
+        int 	scat,
+        int 	nbin,
+        int 	ny,
+        int 	nlayer,
+        int 	clouds,
+        int 	scat_corr
+					 )
+{
+  dim3 grid(int((nbin + 15)/16), int((ny+3)/4), int((nlayer + 3)/4));
+  dim3 block(16, 4, 4);
+  trans_iso<<<grid, block>>>(
+			     trans_wg,
+			     delta_tau_wg,
+			     M_term,
+			     N_term,
+			     P_term,
+			     G_plus,
+			     G_minus,
+			     delta_colmass,
+			     opac_wg_lay,
+			     cloud_opac_lay,
+			     meanmolmass_lay,
+			     scat_cross_lay,
+			     cloud_scat_cross_lay,
+			     w_0,
+			     g_0_tot_lay,
+			     g_0,
+			     epsi,
+			     mu_star,
+			     scat,
+			     nbin,
+			     ny,
+			     nlayer,
+			     clouds,
+			     scat_corr
+			     );
+
+  	   cudaDeviceSynchronize();
+  return true;
+}
+
+__host__ bool wrap_calculate_transmission_iso(
+				      long 	trans_wg,
+        long 	delta_tau_wg,
+        long 	M_term,
+        long 	N_term,
+        long 	P_term,
+        long 	G_plus,
+        long 	G_minus,
+        long 	delta_colmass,
+        long 	opac_wg_lay,
+        long cloud_opac_lay,
+        long 	meanmolmass_lay,
+        long 	scat_cross_lay,
+        long 	cloud_scat_cross_lay,
+        long  w_0,
+        long 	g_0_tot_lay,
+        double   g_0,
+        double 	epsi,
+        double 	mu_star,
+        int 	scat,
+        int 	nbin,
+        int 	ny,
+        int 	nlayer,
+        int 	clouds,
+        int 	scat_corr
+					 )
+{
+  return calculate_transmission_iso(
+				    (double*) 	trans_wg,
+        (double*) 	delta_tau_wg,
+        (double*) 	M_term,
+        (double*) 	N_term,
+        (double*) 	P_term,
+        (double*) 	G_plus,
+        (double*) 	G_minus,
+        (double*) 	delta_colmass,
+        (double*) 	opac_wg_lay,
+        (double*) cloud_opac_lay,
+        (double*) 	meanmolmass_lay,
+        (double*) 	scat_cross_lay,
+        (double*) 	cloud_scat_cross_lay,
+        (double*)  w_0,
+        (double*) 	g_0_tot_lay,
+        double   g_0,
+        double 	epsi,
+        double 	mu_star,
+        int 	scat,
+        int 	nbin,
+        int 	ny,
+        int 	nlayer,
+        int 	clouds,
+        int 	scat_corr
+				    );
+}
+
+__host__ bool calculate_transmission_noniso(
+        double* trans_wg_upper,
+        double* trans_wg_lower,
+        double* delta_tau_wg_upper,
+        double* delta_tau_wg_lower,
+        double* M_upper,
+        double* M_lower,
+        double* N_upper,
+        double* N_lower,
+        double* P_upper,
+        double* P_lower,
+        double* G_plus_upper,
+        double* G_plus_lower,
+        double* G_minus_upper,
+        double* G_minus_lower,
+        double* delta_col_upper,
+        double* delta_col_lower,
+        double* opac_wg_lay,
+        double* opac_wg_int,
+        double* cloud_opac_lay,
+        double* cloud_opac_int,		
+        double* meanmolmass_lay,
+        double* meanmolmass_int,
+        double* scat_cross_lay,
+        double* scat_cross_int,
+        double* cloud_scat_cross_lay,
+        double* cloud_scat_cross_int,		
+        double* w_0_upper,
+        double* w_0_lower,
+        double* 	g_0_tot_lay,
+        double* 	g_0_tot_int,
+        double	g_0,
+        double 	epsi,
+        double 	mu_star,
+        int 	scat,
+        int 	nbin,
+        int 	ny,
+        int 	nlayer,
+        int 	clouds,
+        int 	scat_corr
+					 )
+{
+dim3 grid(int((nbin + 15)/16), int((ny+3)/4), int((nlayer + 3)/4));
+  dim3 block(16, 4, 4);
+
+  trans_noniso<<<grid, block>>>(trans_wg_upper,
+				trans_wg_lower,
+				delta_tau_wg_upper,
+				delta_tau_wg_lower,
+				M_upper,
+				M_lower,
+				N_upper,
+				N_lower,
+				P_upper,
+				P_lower,
+				G_plus_upper,
+				G_plus_lower,
+				G_minus_upper,
+				G_minus_lower,
+				delta_col_upper,
+				delta_col_lower,
+				opac_wg_lay,
+				opac_wg_int,
+				cloud_opac_lay,
+				cloud_opac_int,		
+				meanmolmass_lay,
+				meanmolmass_int,
+				scat_cross_lay,
+				scat_cross_int,
+				cloud_scat_cross_lay,
+				cloud_scat_cross_int,		
+				w_0_upper,
+				w_0_lower,
+				g_0_tot_lay,
+				g_0_tot_int,
+				g_0,
+				epsi,
+				mu_star,
+				scat,
+				nbin,
+				ny,
+				nlayer,
+				clouds,
+				scat_corr
+				);
+  cudaDeviceSynchronize();
+  return true;
+}
+
+ bool wrap_calculate_transmission_noniso(
+        long trans_wg_upper,
+        long trans_wg_lower,
+        long delta_tau_wg_upper,
+        long delta_tau_wg_lower,
+        long M_upper,
+        long M_lower,
+        long N_upper,
+        long N_lower,
+        long P_upper,
+        long P_lower,
+        long G_plus_upper,
+        long G_plus_lower,
+        long G_minus_upper,
+        long G_minus_lower,
+        long delta_col_upper,
+        long delta_col_lower,
+        long opac_wg_lay,
+        long opac_wg_int,
+        long cloud_opac_lay,
+        long cloud_opac_int,		
+        long meanmolmass_lay,
+        long meanmolmass_int,
+        long scat_cross_lay,
+        long scat_cross_int,
+        long cloud_scat_cross_lay,
+        long cloud_scat_cross_int,		
+        long w_0_upper,
+        long w_0_lower,
+        long 	g_0_tot_lay,
+        long 	g_0_tot_int,
+        double	g_0,
+        double 	epsi,
+        double 	mu_star,
+        int 	scat,
+        int 	nbin,
+        int 	ny,
+        int 	nlayer,
+        int 	clouds,
+        int 	scat_corr
+					 )
+ {
+   return calculate_transmission_noniso(
+					(double*) trans_wg_upper,
+					(double*) trans_wg_lower,
+					(double*) delta_tau_wg_upper,
+					(double*) delta_tau_wg_lower,
+					(double*) M_upper,
+					(double*) M_lower,
+					(double*) N_upper,
+					(double*) N_lower,
+					(double*) P_upper,
+					(double*) P_lower,
+					(double*) G_plus_upper,
+					(double*) G_plus_lower,
+					(double*) G_minus_upper,
+					(double*) G_minus_lower,
+					(double*) delta_col_upper,
+					(double*) delta_col_lower,
+					(double*) opac_wg_lay,
+					(double*) opac_wg_int,
+					(double*) cloud_opac_lay,
+					(double*) cloud_opac_int,		
+					(double*) meanmolmass_lay,
+					(double*) meanmolmass_int,
+					(double*) scat_cross_lay,
+					(double*) scat_cross_int,
+					(double*) cloud_scat_cross_lay,
+					(double*) cloud_scat_cross_int,		
+					(double*) w_0_upper,
+					(double*) w_0_lower,
+					(double*) 	g_0_tot_lay,
+					(double*)  	g_0_tot_int,
+					double	g_0,
+					double 	epsi,
+					double 	mu_star,
+					int 	scat,
+					int 	nbin,
+					int 	ny,
+					int 	nlayer,
+					int 	clouds,
+					int 	scat_corr
+					);
+ }
