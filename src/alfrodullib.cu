@@ -8,6 +8,9 @@
 
 #include "correct_surface_emission.h"
 
+#include "calculate_physics.h"
+
+
 #include <cstdio>
 
 
@@ -385,7 +388,7 @@ __host__ bool calculate_transmission_iso(
   return true;
 }
 
-__host__ bool wrap_calculate_transmission_iso(
+bool wrap_calculate_transmission_iso(
 				      long 	trans_wg,
         long 	delta_tau_wg,
         long 	M_term,
@@ -428,15 +431,15 @@ __host__ bool wrap_calculate_transmission_iso(
         (double*) 	cloud_scat_cross_lay,
         (double*)  w_0,
         (double*) 	g_0_tot_lay,
-        double   g_0,
-        double 	epsi,
-        double 	mu_star,
-        int 	scat,
-        int 	nbin,
-        int 	ny,
-        int 	nlayer,
-        int 	clouds,
-        int 	scat_corr
+           g_0,
+         	epsi,
+         	mu_star,
+         	scat,
+         	nbin,
+         	ny,
+         	nlayer,
+         	clouds,
+         	scat_corr
 				    );
 }
 
@@ -602,14 +605,14 @@ dim3 grid(int((nbin + 15)/16), int((ny+3)/4), int((nlayer + 3)/4));
 					(double*) w_0_lower,
 					(double*) 	g_0_tot_lay,
 					(double*)  	g_0_tot_int,
-					double	g_0,
-					double 	epsi,
-					double 	mu_star,
-					int 	scat,
-					int 	nbin,
-					int 	ny,
-					int 	nlayer,
-					int 	clouds,
-					int 	scat_corr
+						g_0,
+					 	epsi,
+					 	mu_star,
+					 	scat,
+					 	nbin,
+					 	ny,
+					 	nlayer,
+					 	clouds,
+					 	scat_corr
 					);
  }
