@@ -16,6 +16,9 @@ set ( COMPILE_FLAGS --compiler-options;-Wall)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(THOR_BASE_FOLDER "../")
+
+
 include(CheckLanguage)
 check_language(CUDA)
 
@@ -59,6 +62,8 @@ set(SRC_ALFRODULLIB
 	
 include_directories(src/inc)
 include_directories(pylfrodull/src/inc)
+
+include_directories(${THOR_BASE_FOLDER/src/headers/ }
 #include_directories(${PYTHON_INCLUDE_DIRS})
 # generate python submodule
 # add_subdirectory(pylfrodull/src)
