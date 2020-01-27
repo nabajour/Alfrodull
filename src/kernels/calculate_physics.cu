@@ -166,7 +166,7 @@ __device__ double zeta_plus(
 // calculation of transmission, w0, zeta-functions, and capital letters for the layer centers in the isothermal case
 // TODO: check ny meaning
 // kernel runs per wavelength bin, per wavelength sampling (?) and per layer
-__global__ void calc_trans_iso(
+__global__ void trans_iso(
         double* 	trans_wg,
         double* 	delta_tau_wg,
         double* 	M_term,
@@ -240,7 +240,7 @@ __global__ void calc_trans_iso(
 }
 
 // calculation of transmission, w0, zeta-functions, and capital letters for the non-isothermal case
-__global__ void calc_trans_noniso(
+__global__ void trans_noniso(
         double* trans_wg_upper,
         double* trans_wg_lower,
         double* delta_tau_wg_upper,

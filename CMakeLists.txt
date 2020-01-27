@@ -49,6 +49,7 @@ set(SRC_PYMODULE
 
 set(SRC_ALFRODULLIB
 	src/alfrodullib.cu
+	src/kernels/calculate_physics.cu
 	src/kernels/math_helpers.cu
 	src/kernels/interpolate_values.cu
 	src/kernels/surface_planck.cu

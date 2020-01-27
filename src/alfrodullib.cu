@@ -8,6 +8,9 @@
 
 #include "correct_surface_emission.h"
 
+#include "calculate_physics.h"
+
+
 #include <cstdio>
 
 
@@ -385,7 +388,7 @@ __host__ bool calculate_transmission_iso(
   return true;
 }
 
-__host__ bool wrap_calculate_transmission_iso(
+bool wrap_calculate_transmission_iso(
 				      long 	trans_wg,
         long 	delta_tau_wg,
         long 	M_term,
@@ -428,15 +431,15 @@ __host__ bool wrap_calculate_transmission_iso(
         (double*) 	cloud_scat_cross_lay,
         (double*)  w_0,
         (double*) 	g_0_tot_lay,
-        double   g_0,
-        double 	epsi,
-        double 	mu_star,
-        int 	scat,
-        int 	nbin,
-        int 	ny,
-        int 	nlayer,
-        int 	clouds,
-        int 	scat_corr
+           g_0,
+         	epsi,
+         	mu_star,
+         	scat,
+         	nbin,
+         	ny,
+         	nlayer,
+         	clouds,
+         	scat_corr
 				    );
 }
 
@@ -529,7 +532,7 @@ dim3 grid(int((nbin + 15)/16), int((ny+3)/4), int((nlayer + 3)/4));
   return true;
 }
 
- bool wrap_calculate_transmission_noniso(
+bool wrap_calculate_transmission_noniso(
         long trans_wg_upper,
         long trans_wg_lower,
         long delta_tau_wg_upper,
@@ -602,14 +605,432 @@ dim3 grid(int((nbin + 15)/16), int((ny+3)/4), int((nlayer + 3)/4));
 					(double*) w_0_lower,
 					(double*) 	g_0_tot_lay,
 					(double*)  	g_0_tot_int,
-					double	g_0,
-					double 	epsi,
-					double 	mu_star,
-					int 	scat,
-					int 	nbin,
-					int 	ny,
-					int 	nlayer,
-					int 	clouds,
-					int 	scat_corr
+						g_0,
+					 	epsi,
+					 	mu_star,
+					 	scat,
+					 	nbin,
+					 	ny,
+					 	nlayer,
+					 	clouds,
+					 	scat_corr
 					);
  }
+
+
+bool direct_beam_flux(double* 	F_dir_wg,
+		      double* 	Fc_dir_wg,
+		      double* 	planckband_lay,
+		      double* 	delta_tau_wg,
+		      double* 	delta_tau_wg_upper,
+		      double* 	delta_tau_wg_lower,
+		      double* 	z_lay,
+		      double 	mu_star,
+		      double	R_planet,
+		      double 	R_star, 
+		      double 	a,
+		      int		dir_beam,
+		      int		geom_zenith_corr,
+		      int 	ninterface,
+		      int 	nbin,
+		      int 	ny,
+		      bool iso
+		      )
+{
+  if (iso)
+    {
+      dim3 block(4, 32, 4);
+      dim3 grid(int((ninterface + 3)/4), int((nbin + 31)/32), int((ny + 3) / 4));
+      fdir_iso<<<grid, block>>>(
+				 F_dir_wg,
+				 planckband_lay,
+				 delta_tau_wg,
+				 z_lay,
+				 mu_star,
+				 R_planet,
+				 R_star, 
+				 a,
+				 dir_beam,
+				 geom_zenith_corr,
+				 ninterface,
+				 nbin,
+				 ny);
+
+      cudaDeviceSynchronize();
+    }
+  else
+    {
+      dim3 block(4, 32, 4);
+      dim3 grid(int((ninterface + 3)/4), int((nbin + 31)/32), int((ny + 3) / 4));
+
+      fdir_noniso<<<grid, block>>>(
+				    F_dir_wg,
+				    Fc_dir_wg,
+				    planckband_lay,
+				    delta_tau_wg_upper,
+				    delta_tau_wg_lower,
+				    z_lay,
+				    mu_star,
+				    R_planet,
+				    R_star, 
+				    a,
+				    dir_beam,
+				    geom_zenith_corr,
+				    ninterface,
+				    nbin,
+				    ny
+				    );
+
+      cudaDeviceSynchronize();
+    }
+  
+  return true;
+}
+
+bool wrap_direct_beam_flux(long 	F_dir_wg,
+			   long 	Fc_dir_wg,
+			   long 	planckband_lay,
+			   long 	delta_tau_wg,
+			   long 	delta_tau_wg_upper,
+			   long 	delta_tau_wg_lower,
+			   long 	z_lay,
+			   double 	mu_star,
+			   double	R_planet,
+			   double 	R_star, 
+			   double 	a,
+			   int		dir_beam,
+			   int		geom_zenith_corr,
+			   int 	ninterface,
+			   int 	nbin,
+			   int 	ny,
+			   bool iso
+			   )
+{
+  return direct_beam_flux((double*) 	F_dir_wg,
+			  (double*) 	Fc_dir_wg,
+			  (double*) 	planckband_lay,
+			  (double*) 	delta_tau_wg,
+			  (double*) 	delta_tau_wg_upper,
+			  (double*) 	delta_tau_wg_lower,
+			  (double*) 	z_lay,
+			  mu_star,
+			  R_planet,
+			  R_star, 
+			  a,
+			  dir_beam,
+			  geom_zenith_corr,
+			  ninterface,
+			  nbin,
+			  ny,
+			  iso
+			  );
+}
+
+
+bool populate_spectral_flux_iso(
+double* F_down_wg, 
+        double* F_up_wg, 
+        double* F_dir_wg, 
+        double* planckband_lay,
+        double* w_0,
+        double* delta_tau_wg,
+        double* M_term,
+        double* N_term,
+        double* P_term,
+        double* G_plus,
+        double* G_minus,
+        double* g_0_tot_lay,
+        double 	g_0,
+        int 	singlewalk, 
+        double 	Rstar, 
+        double 	a, 
+        int 	numinterfaces, 
+        int 	nbin, 
+        double 	f_factor, 
+        double 	mu_star,
+        int 	ny, 
+        double 	epsi,
+        double 	w_0_limit,
+        int 	dir_beam,
+        int 	clouds,
+        double   albedo
+				)
+{
+  dim3 block(16,16,1);
+  dim3 grid(int((nbin+15)/16), int((ny+16)/16), 1);
+  fband_iso_notabu<<<grid,block>>>(
+				   F_down_wg, 
+          F_up_wg, 
+          F_dir_wg, 
+          planckband_lay,
+          w_0,
+          delta_tau_wg,
+          M_term,
+          N_term,
+          P_term,
+          G_plus,
+          G_minus,
+          g_0_tot_lay,
+        	g_0,
+         	singlewalk, 
+        	Rstar, 
+        	a, 
+       	numinterfaces, 
+        	nbin, 
+     	f_factor, 
+       	mu_star,
+      	ny, 
+       	epsi,
+       	w_0_limit,
+       	dir_beam,
+       	clouds,
+         albedo
+				 );
+  
+  return true;
+  
+}
+
+bool wrap_populate_spectral_flux_iso(
+				     long F_down_wg, 
+        long F_up_wg, 
+        long F_dir_wg, 
+        long planckband_lay,
+        long w_0,
+        long delta_tau_wg,
+        long M_term,
+        long N_term,
+        long P_term,
+        long G_plus,
+        long G_minus,
+        long g_0_tot_lay,
+        double 	g_0,
+        int 	singlewalk, 
+        double 	Rstar, 
+        double 	a, 
+        int 	numinterfaces, 
+        int 	nbin, 
+        double 	f_factor, 
+        double 	mu_star,
+        int 	ny, 
+        double 	epsi,
+        double 	w_0_limit,
+        int 	dir_beam,
+        int 	clouds,
+        double   albedo
+				)
+{
+ return populate_spectral_flux_iso(
+				(double*) F_down_wg, 
+				(double*) F_up_wg, 
+				(double*) F_dir_wg, 
+				(double*) planckband_lay,
+				(double*) w_0,
+				(double*) delta_tau_wg,
+				(double*) M_term,
+				(double*) N_term,
+				(double*) P_term,
+				(double*) G_plus,
+				(double*) G_minus,
+				(double*) g_0_tot_lay,
+				g_0,
+				singlewalk, 
+				Rstar, 
+				a, 
+				numinterfaces,
+				nbin, 
+				f_factor, 
+				mu_star,
+				ny, 
+				epsi,
+				w_0_limit,
+				dir_beam,
+				clouds,
+				   albedo
+				);
+}
+
+
+// calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
+__host__ bool populate_spectral_flux_noniso(
+					      double* F_down_wg, 
+					      double* F_up_wg, 
+					      double* Fc_down_wg, 
+					      double* Fc_up_wg,
+					      double* F_dir_wg,
+					      double* Fc_dir_wg,
+					      double* planckband_lay, 
+					      double* planckband_int,
+					      double* w_0_upper,
+					      double* w_0_lower,
+					      double* delta_tau_wg_upper,
+					      double* delta_tau_wg_lower,
+					      double* M_upper,
+					      double* M_lower,
+					      double* N_upper,
+					      double* N_lower,
+					      double* P_upper,
+					      double* P_lower,
+					      double* G_plus_upper,
+					      double* G_plus_lower,
+					      double* G_minus_upper,
+					      double* G_minus_lower,
+					      double* g_0_tot_lay,
+					      double* g_0_tot_int,
+					      double 	g_0,
+					      int 	singlewalk, 
+					      double 	Rstar, 
+					      double 	a, 
+					      int 	numinterfaces,
+					      int 	nbin, 
+					      double 	f_factor,
+					      double 	mu_star,
+					      int 	ny,
+					      double 	epsi,
+					      double 	w_0_limit,
+					      double 	delta_tau_limit,
+					      int 	dir_beam,
+					      int 	clouds,
+					      double   albedo,
+					      double*	trans_wg_upper,
+					      double* trans_wg_lower
+					      )
+{
+  dim3 block(16,16,1);
+  dim3 grid(int((nbin+15)/16), int((ny+16)/16), 1);
+  // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
+  fband_noniso_notabu<<<grid,block>>>(
+				        F_down_wg, 
+					F_up_wg, 
+					Fc_down_wg, 
+					Fc_up_wg,
+					F_dir_wg,
+					Fc_dir_wg,
+					planckband_lay, 
+					planckband_int,
+					w_0_upper,
+					w_0_lower,
+					delta_tau_wg_upper,
+					delta_tau_wg_lower,
+					M_upper,
+					M_lower,
+					N_upper,
+					N_lower,
+					P_upper,
+					P_lower,
+					G_plus_upper,
+					G_plus_lower,
+					G_minus_upper,
+					G_minus_lower,
+					g_0_tot_lay,
+					g_0_tot_int,
+					g_0,
+					singlewalk, 
+					Rstar, 
+					a, 
+					numinterfaces,
+					nbin, 
+					f_factor,
+					mu_star,
+					ny,
+					epsi,
+					w_0_limit,
+					delta_tau_limit,
+					dir_beam,
+					clouds,
+					albedo,
+					trans_wg_upper,
+					trans_wg_lower
+				      );
+
+  return true;
+    }
+
+bool wrap_populate_spectral_flux_noniso(
+					      long F_down_wg, 
+					      long F_up_wg, 
+					      long Fc_down_wg, 
+					      long Fc_up_wg,
+					      long F_dir_wg,
+					      long Fc_dir_wg,
+					      long planckband_lay, 
+					      long planckband_int,
+					      long w_0_upper,
+					      long w_0_lower,
+					      long delta_tau_wg_upper,
+					      long delta_tau_wg_lower,
+					      long M_upper,
+					      long M_lower,
+					      long N_upper,
+					      long N_lower,
+					      long P_upper,
+					      long P_lower,
+					      long G_plus_upper,
+					      long G_plus_lower,
+					      long G_minus_upper,
+					      long G_minus_lower,
+					      long g_0_tot_lay,
+					      long g_0_tot_int,
+					      double 	g_0,
+					      int 	singlewalk, 
+					      double 	Rstar, 
+					      double 	a, 
+					      int 	numinterfaces,
+					      int 	nbin, 
+					      double 	f_factor,
+					      double 	mu_star,
+					      int 	ny,
+					      double 	epsi,
+					      double 	w_0_limit,
+					      double 	delta_tau_limit,
+					      int 	dir_beam,
+					      int 	clouds,
+					      double   albedo,
+					      long	trans_wg_upper,
+					      long trans_wg_lower
+					      )
+{
+return populate_spectral_flux_noniso(
+					      (double*) F_down_wg, 
+					      (double*) F_up_wg, 
+					      (double*) Fc_down_wg, 
+					      (double*) Fc_up_wg,
+					      (double*) F_dir_wg,
+					      (double*) Fc_dir_wg,
+					      (double*) planckband_lay, 
+					      (double*) planckband_int,
+					      (double*) w_0_upper,
+					      (double*) w_0_lower,
+					      (double*) delta_tau_wg_upper,
+					      (double*) delta_tau_wg_lower,
+					      (double*) M_upper,
+					      (double*) M_lower,
+					      (double*) N_upper,
+					      (double*) N_lower,
+					      (double*) P_upper,
+					      (double*) P_lower,
+					      (double*) G_plus_upper,
+					      (double*) G_plus_lower,
+					      (double*) G_minus_upper,
+					      (double*) G_minus_lower,
+					      (double*) g_0_tot_lay,
+					      (double*) g_0_tot_int,
+					       	g_0,
+					       	singlewalk, 
+					       	Rstar, 
+					       	a, 
+					       	numinterfaces,
+					       	nbin, 
+					      	f_factor,
+					      	mu_star,
+					      	ny,
+					      	epsi,
+					       	w_0_limit,
+					       	delta_tau_limit,
+					       	dir_beam,
+					       	clouds,
+					         albedo,
+					      (double*)	trans_wg_upper,
+					      (double*) trans_wg_lower
+				     );
+}
