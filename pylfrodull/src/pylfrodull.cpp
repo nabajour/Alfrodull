@@ -121,4 +121,5 @@ PYBIND11_MODULE(pylfrodull, m) {
     m.def("pypopulate_spectral_flux_iso", &wrap_populate_spectral_flux_iso, "populate spectral flux iso");
     m.def("pypopulate_spectral_flux_noniso", &wrap_populate_spectral_flux_noniso, "populate spectral flux noniso");
     m.def("init_alfrodull", &init_alfrodull, "initialise Alfrodull Engine");
+    m.def("deinit_alfrodull", &deinit_alfrodull, "deinitialise Alfrodull Engine");
 }

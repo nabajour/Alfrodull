@@ -13,8 +13,9 @@
 #include "alfrodull_engine.h"
 
 #include <cstdio>
+#include <memory>
 
-alfrodull_engine Alf;
+std::unique_ptr<alfrodull_engine> Alf_ptr = nullptr;
 
 __host__ bool prepare_compute_flux(
 		  double * dev_planckband_lay,  // csp, cse
@@ -1039,5 +1040,22 @@ return populate_spectral_flux_noniso(
 
 void init_alfrodull()
 {
-  Alf.init();
+  printf("Create Alfrodull Engine\n");
+  
+  Alf_ptr = std::make_unique<alfrodull_engine>();
+  
+  Alf_ptr->init();
+}
+
+void deinit_alfrodull()
+{
+  cudaError_t err = cudaGetLastError();
+
+  // Check device query
+  if (err != cudaSuccess) {
+    printf("deinit_alfrodull: cuda error: %s\n", cudaGetErrorString(err));
+  }
+  
+  printf("Clean up Alfrodull Engine\n");
+  Alf_ptr = nullptr;
 }

@@ -259,3 +259,4 @@ bool wrap_populate_spectral_flux_iso(
 				     );
 
 void init_alfrodull();
+void deinit_alfrodull();

@@ -10,6 +10,6 @@ public:
   void load_opacities(const string & filename);
   
 private:
-  opacity_table opacity;
+  opacity_table opacities;
   
 };
