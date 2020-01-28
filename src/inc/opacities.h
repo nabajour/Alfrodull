@@ -17,16 +17,16 @@ public:
     opacity_table();
 
   bool load_opacity_table(const string & filename);
-private:
+  //private:
     string opacity_filename;
 
 
     // device tables
     cuda_device_memory<double> dev_kpoints;
 
-    cuda_device_memory<double> dev_opac_temperatures;
+    cuda_device_memory<double> dev_temperatures;
     int                        n_temp = 0;
-    cuda_device_memory<double> dev_opac_pressures;
+    cuda_device_memory<double> dev_pressures;
     int                        n_pressures = 0;
 
     // wieghted Rayeigh c
@@ -34,7 +34,7 @@ private:
 
     // Mean molecular mass
     // TODO: needs to be in AMU
-    cuda_device_memory<double> dev_mean_mol_mass;
+    cuda_device_memory<double> dev_meanmolmass;
 
     cuda_device_memory<double> dev_opac_wave;
     int                        nbin = 0;
@@ -45,8 +45,6 @@ private:
     cuda_device_memory<double> dev_opac_interwave;
 
     cuda_device_memory<double> dev_opac_deltawave;
-
-    cuda_device_memory<double> dev_ktemp;
 
     // needed for interpolate_opacities
     // dev_T_lay

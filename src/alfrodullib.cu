@@ -148,12 +148,12 @@ __host__ bool prepare_compute_flux(
        dim3 io_block(16,16,1);
 
        interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,
-						    dev_ktemp,
+						    *(Alf_ptr->opacities.dev_temperatures),
 						    dev_p_lay,
-						    dev_kpress,
+						    *(Alf_ptr->opacities.dev_pressures),
 						    dev_opac_k,
 						    dev_opac_wg_lay,
-						    dev_opac_scat_cross,
+						    *(Alf_ptr->opacities.dev_scat_cross_sections),
 						    dev_scat_cross_lay,
 						    npress,
 						    ntemp,
