@@ -257,3 +257,5 @@ bool wrap_populate_spectral_flux_iso(
         int 	clouds,
         double   albedo
 				     );
+
+void init_alfrodull();

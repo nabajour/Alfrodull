@@ -10,10 +10,11 @@
 
 #include "calculate_physics.h"
 
+#include "alfrodull_engine.h"
 
 #include <cstdio>
 
-
+alfrodull_engine Alf;
 
 __host__ bool prepare_compute_flux(
 		  double * dev_planckband_lay,  // csp, cse
@@ -1033,4 +1034,10 @@ return populate_spectral_flux_noniso(
 					      (double*)	trans_wg_upper,
 					      (double*) trans_wg_lower
 				     );
+}
+
+
+void init_alfrodull()
+{
+  Alf.init();
 }

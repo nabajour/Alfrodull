@@ -49,13 +49,14 @@ find_package(pybind11 REQUIRED)
 
 ######################################################################
 # FIND HDF5
-find_package(HDF5 COMPONENTS CXX)
+find_package(HDF5 REQUIRED COMPONENTS CXX)
 if(HDF5_FOUND)
         include_directories(${HDF5_INCLUDE_DIR})
 	set(HDF5_LIBS hdf5 hdf5_cpp)
 endif()
 
-message(STATUS "HDF5 C++libraries " ${HDF5_LIBRARIES})
+message(STATUS "HDF5 include dir: " ${HDF5_INCLUDE_DIR})
+message(STATUS "HDF5 C++libraries: " ${HDF5_LIBRARIES})
 ######################################################################
 
 set(SRC_PYMODULE
@@ -63,6 +64,8 @@ set(SRC_PYMODULE
 
 set(SRC_ALFRODULLIB
 	src/alfrodullib.cu
+	src/alfrodull_engine.cu
+	src/opacities/opacities.cu
 	src/kernels/calculate_physics.cu
 	src/kernels/math_helpers.cu
 	src/kernels/interpolate_values.cu
@@ -100,8 +103,9 @@ set_target_properties(pylfrodull PROPERTIES
 					         SUFFIX "${PYTHON_MODULE_EXTENSION}"
 )
 
-target_link_libraries(pylfrodull PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 target_link_libraries(pylfrodull PRIVATE alfrodull)
+target_link_libraries(pylfrodull PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
+
 target_link_libraries(pylfrodull PRIVATE pybind11::module )
 #target_link_libraries(pylfrodull PRIVATE ${PYTHON_LIBRARIES} ${CUDA_LIBRARIES})
 # set_target_properties(pylfrodull PROPERTIES

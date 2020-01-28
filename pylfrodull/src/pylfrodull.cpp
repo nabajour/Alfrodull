@@ -120,4 +120,5 @@ PYBIND11_MODULE(pylfrodull, m) {
     m.def("pycompute_direct_beam_flux", &wrap_direct_beam_flux, "compute direct beam flux");
     m.def("pypopulate_spectral_flux_iso", &wrap_populate_spectral_flux_iso, "populate spectral flux iso");
     m.def("pypopulate_spectral_flux_noniso", &wrap_populate_spectral_flux_noniso, "populate spectral flux noniso");
+    m.def("init_alfrodull", &init_alfrodull, "initialise Alfrodull Engine");
 }
