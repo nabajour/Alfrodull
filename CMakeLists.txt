@@ -47,6 +47,17 @@ find_package(pybind11 REQUIRED)
 #find_package(PythonLibs REQUIRED)
 
 
+######################################################################
+# FIND HDF5
+find_package(HDF5 COMPONENTS CXX)
+if(HDF5_FOUND)
+        include_directories(${HDF5_INCLUDE_DIR})
+	set(HDF5_LIBS hdf5 hdf5_cpp)
+endif()
+
+message(STATUS "HDF5 C++libraries " ${HDF5_LIBRARIES})
+######################################################################
+
 set(SRC_PYMODULE
 	pylfrodull/src/pylfrodull.cpp)
 
@@ -59,25 +70,19 @@ set(SRC_ALFRODULLIB
 	src/kernels/correct_surface_emission.cu
 	src/kernels/atomic_add.cu
 	src/kernels/integrate_flux.cu)
+
+set(SRC_THOR_UTILS
+	${THOR_BASE_FOLDER}/src/utils/storage.cpp)
 	
 include_directories(src/inc)
 include_directories(pylfrodull/src/inc)
 
-include_directories(${THOR_BASE_FOLDER/src/headers/ }
-#include_directories(${PYTHON_INCLUDE_DIRS})
-# generate python submodule
-# add_subdirectory(pylfrodull/src)
-
-#add_library(alfrodullib SHARED ${SRC_ALFRODULLIB})
-#OPTIONS -DBUILD_LEVEL="release" -DDEVICE_SM=${SM})
-
-##pybind11 sets -fvisibility=hidden in INTERFACE_COMPILE_OPTIONS on it's module target
-#get_target_property(modifacecopts pybind11::module INTERFACE_COMPILE_OPTIONS)
-#list(REMOVE_ITEM modifacecopts "-fvisibility=hidden")
-#set_target_properties(pybind11::module PROPERTIES INTERFACE_COMPILE_OPTIONS "${modifacecopts}")
+include_directories(${THOR_BASE_FOLDER}/src/headers/ )
 
 
-add_library(alfrodull STATIC ${SRC_ALFRODULLIB})
+######################################################################
+# build and link binaries
+add_library(alfrodull STATIC ${SRC_ALFRODULLIB} ${SRC_THOR_UTILS})
 set_target_properties(alfrodull PROPERTIES 
     POSITION_INDEPENDENT_CODE ON
     CUDA_VISIBILITY_PRESET "hidden"
@@ -95,6 +100,7 @@ set_target_properties(pylfrodull PROPERTIES
 					         SUFFIX "${PYTHON_MODULE_EXTENSION}"
 )
 
+target_link_libraries(pylfrodull PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 target_link_libraries(pylfrodull PRIVATE alfrodull)
 target_link_libraries(pylfrodull PRIVATE pybind11::module )
 #target_link_libraries(pylfrodull PRIVATE ${PYTHON_LIBRARIES} ${CUDA_LIBRARIES})
