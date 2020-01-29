@@ -37,8 +37,6 @@ __host__ bool prepare_compute_flux(
     double*       dev_p_int,           // ioi, mmmi, kii
     double*       dev_opac_wg_lay,     // io
     double*       dev_opac_wg_int,     // ioi
-    double*       dev_scat_cross_lay,  // io
-    double*       dev_scat_cross_int,  // ioi
     double*       dev_meanmolmass_lay, // mmm
     double*       dev_meanmolmass_int, // mmmi
     double*       dev_opac_kappa,      // kil, kii

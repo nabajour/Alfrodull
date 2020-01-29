@@ -13,8 +13,6 @@ bool wrap_prepare_compute_flux(
 			  long dev_p_int, // ioi, mmmi, kii
 			  long dev_opac_wg_lay, // io
 			  long dev_opac_wg_int, // ioi
-			  long dev_scat_cross_lay, // io
-			  long dev_scat_cross_int, // ioi
 			  long dev_meanmolmass_lay, // mmm
 			  long dev_meanmolmass_int, // mmmi
 			  long dev_opac_kappa, // kil, kii

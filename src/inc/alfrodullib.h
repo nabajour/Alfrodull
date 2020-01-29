@@ -14,8 +14,6 @@ bool prepare_compute_flux(
 		  double * dev_p_int, // ioi, mmmi, kii
 		  double * dev_opac_wg_lay, // io
 		  double * dev_opac_wg_int, // ioi
-		  double * dev_scat_cross_lay, // io
-		  double * dev_scat_cross_int, // ioi
 		  double * dev_meanmolmass_lay, // mmm
 		  double * dev_meanmolmass_int, // mmmi
 		  double * dev_opac_kappa, // kil, kii
@@ -96,7 +94,6 @@ bool wrap_calculate_transmission_iso(
         long 	opac_wg_lay,
         long cloud_opac_lay,
         long 	meanmolmass_lay,
-        long 	scat_cross_lay,
         long 	cloud_scat_cross_lay,
         long  w_0,
         long 	g_0_tot_lay,
@@ -134,8 +131,6 @@ bool wrap_calculate_transmission_iso(
         long cloud_opac_int,		
         long meanmolmass_lay,
         long meanmolmass_int,
-        long scat_cross_lay,
-        long scat_cross_int,
         long cloud_scat_cross_lay,
         long cloud_scat_cross_int,		
         long w_0_upper,
