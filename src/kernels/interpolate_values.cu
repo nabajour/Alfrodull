@@ -104,6 +104,7 @@ __global__ void planck_interpol_interface(double* temp,
 
 
 // interpolate layer and interface opacities from opacity table
+// Note - US: this doesn't care about geometry, only pressure and temperature. works on a list of T and P for each wavelength bin - can be abstracted.
 __global__ void interpolate_opacities(
     double* temp,        // in, layer temperature
     double* opactemp,    // in, opac reference table temperatures

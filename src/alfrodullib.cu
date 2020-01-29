@@ -18,55 +18,51 @@
 std::unique_ptr<alfrodull_engine> Alf_ptr = nullptr;
 
 __host__ bool prepare_compute_flux(
+    // TODO: planck value tabulated and then interpolated
     double* dev_planckband_lay,  // csp, cse
     double* dev_planckband_grid, // pil, pii
     double* dev_planckband_int,  // pii
-    double* dev_starflux,        // pil
-    double* dev_opac_interwave,  // csp
-    double* dev_opac_deltawave,  // csp, cse
-    double* dev_F_down_tot,      // cse
-    double* dev_T_lay,           // it, pil, io, mmm, kil
-    double* dev_T_int,           // it, pii, ioi, mmmi, kii
-    //		  double * dev_ktemp, // io, mmm, mmmi
-    double* dev_p_lay, // io, mmm, kil
-    double* dev_p_int, // ioi, mmmi, kii
-    //		  double * dev_kpress, // io, mmm, mmmi
-    //		  double * dev_opac_k, // io
-    double* dev_opac_wg_lay, // io
-    double* dev_opac_wg_int, // ioi
-    //		  double * dev_opac_scat_cross, // io
-    double* dev_scat_cross_lay,  // io
-    double* dev_scat_cross_int,  // ioi
-    double* dev_meanmolmass_lay, // mmm
-    double* dev_meanmolmass_int, // mmmi
-    //		  double * dev_opac_meanmass, // mmm, mmmi
-    double*    dev_opac_kappa, // kil, kii
-    double*    dev_entr_temp,  // kil, kii
-    double*    dev_entr_press, // kil, kii
-    double*    dev_kappa_lay,  // kil
-    double*    dev_kappa_int,  // kii
-    const int& ninterface,     // it, pii, mmmi, kii
-    const int& nbin,           // csp, cse, pil, pii, io
-    const int& nlayer,         // csp, cse, pil, io, mmm, kil
-    const int& iter_value,     // cse // TODO: check what this is for. Should maybe be external
-    const int& real_star,      // pil
-    //		  const int & npress, // io, mmm, mmmi
-    //		  const int & ntemp, // io, mmm, mmmi
-    //		  const int & ny, // io
-    const int&    entr_npress,        // kii, kil
-    const int&    entr_ntemp,         // kii, kil
-    const double& fake_opac,          // io
-    const double& T_surf,             // csp, cse, pil
-    const double& surf_albedo,        // cse
-    const int&    plancktable_dim,    // pil, pii
-    const int&    plancktable_step,   // pil, pii
-    const bool&   use_kappa_manual,   // ki
+
+    double* dev_starflux, // pil
+    // TODO: from opacity tables
+    double* dev_opac_interwave, // csp
+    double* dev_opac_deltawave, // csp, cse
+    // TODO: this seems to be unused here
+    double* dev_F_down_tot, // cse
+    // state variables
+    // TODO: check which ones can be internal only
+    double*       dev_T_lay,           // it, pil, io, mmm, kil
+    double*       dev_T_int,           // it, pii, ioi, mmmi, kii
+    double*       dev_p_lay,           // io, mmm, kil
+    double*       dev_p_int,           // ioi, mmmi, kii
+    double*       dev_opac_wg_lay,     // io
+    double*       dev_opac_wg_int,     // ioi
+    double*       dev_scat_cross_lay,  // io
+    double*       dev_scat_cross_int,  // ioi
+    double*       dev_meanmolmass_lay, // mmm
+    double*       dev_meanmolmass_int, // mmmi
+    double*       dev_opac_kappa,      // kil, kii
+    double*       dev_entr_temp,       // kil, kii
+    double*       dev_entr_press,      // kil, kii
+    double*       dev_kappa_lay,       // kil
+    double*       dev_kappa_int,       // kii
+    const int&    ninterface,          // it, pii, mmmi, kii
+    const int&    nbin,                // csp, cse, pil, pii, io
+    const int&    nlayer,              // csp, cse, pil, io, mmm, kil
+    const int&    iter_value,       // cse // TODO: check what this is for. Should maybe be external
+    const int&    real_star,        // pil
+    const int&    entr_npress,      // kii, kil
+    const int&    entr_ntemp,       // kii, kil
+    const double& fake_opac,        // io
+    const double& T_surf,           // csp, cse, pil
+    const double& surf_albedo,      // cse
+    const int&    plancktable_dim,  // pil, pii
+    const int&    plancktable_step, // pil, pii
+    const bool&   use_kappa_manual, // ki
     const double& kappa_manual_value, // ki
     const bool&   iso,                // pii
     const bool&   correct_surface_emissions,
-    const bool&   interp_and_calc_flux_step
-
-) {
+    const bool&   interp_and_calc_flux_step) {
     dim3 calc_surf_grid(int((nbin + 15) / 16), 1, 1);
     dim3 calc_surf_blocks(16, 1, 1);
     // csp
@@ -132,7 +128,7 @@ __host__ bool prepare_compute_flux(
         // io
         dim3 io_grid(int((nbin + 15) / 16), int((nlayer + 15) / 16), 1);
         dim3 io_block(16, 16, 1);
-
+        // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
         interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,
                                                      *(Alf_ptr->opacities.dev_temperatures),
                                                      dev_p_lay,
@@ -140,7 +136,7 @@ __host__ bool prepare_compute_flux(
                                                      *(Alf_ptr->opacities.dev_kpoints),
                                                      dev_opac_wg_lay,
                                                      *(Alf_ptr->opacities.dev_scat_cross_sections),
-                                                     dev_scat_cross_lay,
+                                                     *(Alf_ptr->scatter_cross_section_lay),
                                                      Alf_ptr->opacities.n_pressures,
                                                      Alf_ptr->opacities.n_temperatures,
                                                      Alf_ptr->opacities.ny,
@@ -164,7 +160,7 @@ __host__ bool prepare_compute_flux(
                 *(Alf_ptr->opacities.dev_kpoints),
                 dev_opac_wg_int,
                 *(Alf_ptr->opacities.dev_scat_cross_sections),
-                dev_scat_cross_int,
+		*(Alf_ptr->scatter_cross_section_int),
                 Alf_ptr->opacities.n_pressures,
                 Alf_ptr->opacities.n_temperatures,
                 Alf_ptr->opacities.ny,
@@ -321,7 +317,6 @@ __host__ bool calculate_transmission_iso(double* trans_wg,
                                          double* opac_wg_lay,
                                          double* cloud_opac_lay,
                                          double* meanmolmass_lay,
-                                         double* scat_cross_lay,
                                          double* cloud_scat_cross_lay,
                                          double* w_0,
                                          double* g_0_tot_lay,
@@ -347,7 +342,7 @@ __host__ bool calculate_transmission_iso(double* trans_wg,
                                opac_wg_lay,
                                cloud_opac_lay,
                                meanmolmass_lay,
-                               scat_cross_lay,
+			       *(Alf_ptr->scatter_cross_section_lay),
                                cloud_scat_cross_lay,
                                w_0,
                                g_0_tot_lay,
@@ -376,7 +371,6 @@ bool wrap_calculate_transmission_iso(long   trans_wg,
                                      long   opac_wg_lay,
                                      long   cloud_opac_lay,
                                      long   meanmolmass_lay,
-                                     long   scat_cross_lay,
                                      long   cloud_scat_cross_lay,
                                      long   w_0,
                                      long   g_0_tot_lay,
@@ -400,7 +394,6 @@ bool wrap_calculate_transmission_iso(long   trans_wg,
                                       (double*)opac_wg_lay,
                                       (double*)cloud_opac_lay,
                                       (double*)meanmolmass_lay,
-                                      (double*)scat_cross_lay,
                                       (double*)cloud_scat_cross_lay,
                                       (double*)w_0,
                                       (double*)g_0_tot_lay,
@@ -437,8 +430,6 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                             double* cloud_opac_int,
                                             double* meanmolmass_lay,
                                             double* meanmolmass_int,
-                                            double* scat_cross_lay,
-                                            double* scat_cross_int,
                                             double* cloud_scat_cross_lay,
                                             double* cloud_scat_cross_int,
                                             double* w_0_upper,
@@ -479,8 +470,8 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                   cloud_opac_int,
                                   meanmolmass_lay,
                                   meanmolmass_int,
-                                  scat_cross_lay,
-                                  scat_cross_int,
+				  *(Alf_ptr->scatter_cross_section_lay),
+				  *(Alf_ptr->scatter_cross_section_inter),
                                   cloud_scat_cross_lay,
                                   cloud_scat_cross_int,
                                   w_0_upper,
@@ -522,8 +513,6 @@ bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
                                         long   cloud_opac_int,
                                         long   meanmolmass_lay,
                                         long   meanmolmass_int,
-                                        long   scat_cross_lay,
-                                        long   scat_cross_int,
                                         long   cloud_scat_cross_lay,
                                         long   cloud_scat_cross_int,
                                         long   w_0_upper,
@@ -561,8 +550,6 @@ bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
                                          (double*)cloud_opac_int,
                                          (double*)meanmolmass_lay,
                                          (double*)meanmolmass_int,
-                                         (double*)scat_cross_lay,
-                                         (double*)scat_cross_int,
                                          (double*)cloud_scat_cross_lay,
                                          (double*)cloud_scat_cross_int,
                                          (double*)w_0_upper,
@@ -986,4 +973,54 @@ void deinit_alfrodull() {
 
     printf("Clean up Alfrodull Engine\n");
     Alf_ptr = nullptr;
+}
+
+void init_parameters(const int & nlayer_,
+		      const bool & iso_)
+{
+  if (Alf_ptr == nullptr)
+    {
+      printf("ERROR: Alfrodull Engine not initialised");
+      return;
+    }
+
+  Alf_ptr->set_parameters(nlayer_, iso_);
+}
+
+void allocate()
+{
+  if (Alf_ptr == nullptr)
+    {
+      printf("ERROR: Alfrodull Engine not initialised");
+      return;
+    }
+
+  Alf_ptr->allocate_internal_variables();
+}
+
+// TODO: this is ugly and should not exist! 
+void get_device_pointers_for_helios_write(long & dev_scat_cross_section_lay,
+				     long & dev_scat_cross_section_int,
+				     long & dev_interwave,
+				     long & dev_deltawave)
+{
+  if (Alf_ptr == nullptr)
+    {
+      printf("ERROR: Alfrodull Engine not initialised");
+      return;
+    }
+  double * dev_scat_cross_section_lay_ptr = 0;
+  double * dev_scat_cross_section_int_ptr = 0;
+  double * dev_interwave_ptr = 0;
+  double * dev_deltawave_ptr = 0;
+  
+  Alf_ptr-> get_device_pointers_for_helios_write(dev_scat_cross_section_lay_ptr,
+						 dev_scat_cross_section_int_ptr,
+						 dev_interwave_ptr,
+						 dev_deltawave_ptr);
+
+  dev_scat_cross_section_lay = (long)dev_scat_cross_section_lay_ptr;
+  dev_scat_cross_section_int = (long)dev_scat_cross_section_int_ptr;
+  dev_interwave = (long)dev_interwave_ptr;
+  dev_deltawave = (long)dev_deltawave_ptr;
 }
