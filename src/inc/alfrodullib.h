@@ -6,8 +6,6 @@ bool prepare_compute_flux(
 		  double * dev_planckband_grid,  // pil, pii
 		  double * dev_planckband_int,  // pii
 		  double * dev_starflux, // pil
-		  double * dev_opac_interwave,  // csp
-		  double * dev_opac_deltawave,  // csp, cse
 		  double * dev_F_down_tot, // cse
 		  double * dev_T_lay, // it, pil, io, mmm, kil
 		  double * dev_T_int, // it, pii, ioi, mmmi, kii

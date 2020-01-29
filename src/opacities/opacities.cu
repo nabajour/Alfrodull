@@ -76,7 +76,7 @@ bool opacity_table::load_opacity_table(const string& filename) {
     else {
         tie(data_opac_wave, nbin) = read_table_to_host<double>(s, "/wavelengths");
     }
-
+    
     push_table_to_device<double>(data_opac_wave, nbin, dev_opac_wave);
 
     if (s.has_table("/ypoints")) {
@@ -102,7 +102,7 @@ bool opacity_table::load_opacity_table(const string& filename) {
         for (int i = 0; i < nbin - 1; i++)
             data_opac_interwave[i + 1] = (data_opac_wave[i + 1] + data_opac_wave[i]) / 2.0;
         data_opac_interwave[nbin] =
-            data_opac_wave[nbin] + (data_opac_wave[nbin] - data_opac_wave[nbin - 1]) / 2.0;
+            data_opac_wave[nbin - 1] + (data_opac_wave[nbin - 1] - data_opac_wave[nbin - 2]) / 2.0;
 
         push_table_to_device<double>(data_opac_interwave, nbin + 1, dev_opac_interwave);
     }
@@ -118,11 +118,14 @@ bool opacity_table::load_opacity_table(const string& filename) {
             push_table_to_device<double>(data_opac_deltawave, 1, dev_opac_deltawave);
         }
         else {
-            std::unique_ptr<double[]> data_opac_deltawave(new double[nbin - 1]);
-            for (int i = 0; i < nbin - 1; i++)
+	  
+            std::unique_ptr<double[]> data_opac_deltawave(new double[nbin]);
+            for (int i = 0; i < nbin; i++)
                 data_opac_deltawave[i] = data_opac_interwave[i + 1] - data_opac_interwave[i];
-            push_table_to_device<double>(data_opac_deltawave, nbin - 1, dev_opac_deltawave);
+            push_table_to_device<double>(data_opac_deltawave, nbin, dev_opac_deltawave);
+
         }
+
     }
 
 

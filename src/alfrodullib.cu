@@ -25,8 +25,8 @@ __host__ bool prepare_compute_flux(
 
     double* dev_starflux, // pil
     // TODO: from opacity tables
-    double* dev_opac_interwave, // csp
-    double* dev_opac_deltawave, // csp, cse
+    // double* dev_opac_interwave, // csp
+    // double* dev_opac_deltawave, // csp, cse
     // TODO: this seems to be unused here
     double* dev_F_down_tot, // cse
     // state variables
@@ -65,7 +65,13 @@ __host__ bool prepare_compute_flux(
     dim3 calc_surf_blocks(16, 1, 1);
     // csp
     calc_surface_planck<<<calc_surf_grid, calc_surf_blocks>>>(
-        dev_planckband_lay, dev_opac_interwave, dev_opac_deltawave, nbin, nlayer, T_surf);
+        dev_planckband_lay,
+	*(Alf_ptr->opacities.dev_opac_interwave),
+	*(Alf_ptr->opacities.dev_opac_deltawave),
+	nbin,
+	//Alf_ptr->opacities.nbin,
+	nlayer,
+	T_surf);
 
     cudaDeviceSynchronize();
 
@@ -75,11 +81,13 @@ __host__ bool prepare_compute_flux(
         // cse
         correct_surface_emission<<<corr_surf_emiss_grid, corr_surf_emiss_block>>>(
             dev_F_down_tot,
-            dev_opac_deltawave,
+	    *(Alf_ptr->opacities.dev_opac_deltawave),
+            //dev_opac_deltawave,
             dev_planckband_lay,
             surf_albedo,
             T_surf,
-            nbin,
+	    nbin,
+	    //Alf_ptr->opacities.nbin,
             nlayer,
             iter_value);
 
