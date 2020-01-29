@@ -160,7 +160,7 @@ __host__ bool prepare_compute_flux(
                 *(Alf_ptr->opacities.dev_kpoints),
                 dev_opac_wg_int,
                 *(Alf_ptr->opacities.dev_scat_cross_sections),
-		*(Alf_ptr->scatter_cross_section_int),
+		*(Alf_ptr->scatter_cross_section_inter),
                 Alf_ptr->opacities.n_pressures,
                 Alf_ptr->opacities.n_temperatures,
                 Alf_ptr->opacities.ny,
