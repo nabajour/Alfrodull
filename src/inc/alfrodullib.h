@@ -10,19 +10,19 @@ bool prepare_compute_flux(
 		  double * dev_F_down_tot, // cse
 		  double * dev_T_lay, // it, pil, io, mmm, kil
 		  double * dev_T_int, // it, pii, ioi, mmmi, kii
-		  double * dev_ktemp, // io, mmm, mmmi
+		  //		  double * dev_ktemp, // io, mmm, mmmi
 		  double * dev_p_lay, // io, mmm, kil
 		  double * dev_p_int, // ioi, mmmi, kii
-		  double * dev_kpress, // io, mmm, mmmi
-		  double * dev_opac_k, // io
+		  //		  double * dev_kpress, // io, mmm, mmmi
+		  //		  double * dev_opac_k, // io
 		  double * dev_opac_wg_lay, // io
 		  double * dev_opac_wg_int, // ioi
-		  double * dev_opac_scat_cross, // io
+		  //		  double * dev_opac_scat_cross, // io
 		  double * dev_scat_cross_lay, // io
 		  double * dev_scat_cross_int, // ioi
 		  double * dev_meanmolmass_lay, // mmm
 		  double * dev_meanmolmass_int, // mmmi
-		  double * dev_opac_meanmass, // mmm, mmmi
+		  //		  double * dev_opac_meanmass, // mmm, mmmi
 		  double * dev_opac_kappa, // kil, kii
 		  double * dev_entr_temp, // kil, kii
 		  double * dev_entr_press, // kil, kii
@@ -33,9 +33,9 @@ bool prepare_compute_flux(
 		  const int & nlayer, // csp, cse, pil, io, mmm, kil
 		  const int & iter_value, // cse // TODO: check what this is for. Should maybe be external
 		  const int & real_star, // pil
-		  const int & npress, // io, mmm, mmmi
-		  const int & ntemp, // io, mmm, mmmi
-		  const int & ny, // io
+		  //		  const int & npress, // io, mmm, mmmi
+		  //		  const int & ntemp, // io, mmm, mmmi
+		  //		  const int & ny, // io
 		  const int & entr_npress, // kii, kil
 		  const int & entr_ntemp, // kii, kil		  
 		  const double & fake_opac, // io

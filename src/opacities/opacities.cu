@@ -55,8 +55,8 @@ bool opacity_table::load_opacity_table(const string& filename) {
     storage s(filename, true);
 
     read_table_to_device<double>(s, "/kpoints", dev_kpoints);
-    n_temp      = read_table_to_device<double>(s, "/temperatures", dev_temperatures);
-    n_pressures = read_table_to_device<double>(s, "/pressures", dev_pressures);
+    n_temperatures = read_table_to_device<double>(s, "/temperatures", dev_temperatures);
+    n_pressures    = read_table_to_device<double>(s, "/pressures", dev_pressures);
     read_table_to_device<double>(s, "/weighted Rayleigh cross-sections", dev_scat_cross_sections);
     {
         std::unique_ptr<double[]> data = nullptr;
@@ -96,33 +96,33 @@ bool opacity_table::load_opacity_table(const string& filename) {
         read_table_to_device<double>(s, "/interface wavelengths", dev_opac_interwave);
     }
     else {
-      // TODO : check those interpolated values usage
-      // quick and dirty way to get the lamda interface values
-      data_opac_interwave[0] = data_opac_wave[0] - (data_opac_wave[1] - data_opac_wave[0])/2.0;
-      for (int i = 0; i < nbin - 1; i++)
-	data_opac_interwave[i + 1] = (data_opac_wave[i+1] + data_opac_wave[i])/2.0;
-      data_opac_interwave[nbin] = data_opac_wave[nbin] + (data_opac_wave[nbin] - data_opac_wave[nbin - 1])/2.0;
+        // TODO : check those interpolated values usage
+        // quick and dirty way to get the lamda interface values
+        data_opac_interwave[0] = data_opac_wave[0] - (data_opac_wave[1] - data_opac_wave[0]) / 2.0;
+        for (int i = 0; i < nbin - 1; i++)
+            data_opac_interwave[i + 1] = (data_opac_wave[i + 1] + data_opac_wave[i]) / 2.0;
+        data_opac_interwave[nbin] =
+            data_opac_wave[nbin] + (data_opac_wave[nbin] - data_opac_wave[nbin - 1]) / 2.0;
 
-      push_table_to_device<double>(data_opac_interwave, nbin + 1, dev_opac_interwave);
+        push_table_to_device<double>(data_opac_interwave, nbin + 1, dev_opac_interwave);
     }
 
     if (s.has_table("/wavelength width of bins")) {
         read_table_to_device<double>(s, "/wavelength width of bins", dev_opac_deltawave);
     }
     else {
-      // TODO : check those interpolated values usage
-      if (nbin == 1)
-	{
-	  std::unique_ptr<double[]> data_opac_deltawave(new double[1]);
-	  data_opac_deltawave[0] = 0.0;
-	  push_table_to_device<double>(data_opac_deltawave, 1, dev_opac_deltawave);
-	}
-    else {
-        std::unique_ptr<double[]> data_opac_deltawave(new double[nbin - 1]);
-        for (int i = 0; i < nbin - 1; i++)
-	  data_opac_deltawave[i] = data_opac_interwave[i+1] - data_opac_interwave[i];
-	push_table_to_device<double>(data_opac_deltawave, nbin - 1, dev_opac_deltawave);
-    }
+        // TODO : check those interpolated values usage
+        if (nbin == 1) {
+            std::unique_ptr<double[]> data_opac_deltawave(new double[1]);
+            data_opac_deltawave[0] = 0.0;
+            push_table_to_device<double>(data_opac_deltawave, 1, dev_opac_deltawave);
+        }
+        else {
+            std::unique_ptr<double[]> data_opac_deltawave(new double[nbin - 1]);
+            for (int i = 0; i < nbin - 1; i++)
+                data_opac_deltawave[i] = data_opac_interwave[i + 1] - data_opac_interwave[i];
+            push_table_to_device<double>(data_opac_deltawave, nbin - 1, dev_opac_deltawave);
+        }
     }
 
 

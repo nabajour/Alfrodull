@@ -25,7 +25,7 @@ public:
     cuda_device_memory<double> dev_kpoints;
 
     cuda_device_memory<double> dev_temperatures;
-    int                        n_temp = 0;
+    int                        n_temperatures = 0;
     cuda_device_memory<double> dev_pressures;
     int                        n_pressures = 0;
 
