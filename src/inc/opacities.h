@@ -40,7 +40,7 @@ public:
     int                        nbin = 0;
 
     cuda_device_memory<double> dev_opac_y;
-    int                        ny;
+    int                        ny = 0;
 
     cuda_device_memory<double> dev_opac_interwave;
 

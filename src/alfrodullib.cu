@@ -27,19 +27,19 @@ __host__ bool prepare_compute_flux(
 		  double * dev_F_down_tot, // cse
 		  double * dev_T_lay, // it, pil, io, mmm, kil
 		  double * dev_T_int, // it, pii, ioi, mmmi, kii
-		  double * dev_ktemp, // io, mmm, mmmi
+		  //		  double * dev_ktemp, // io, mmm, mmmi
 		  double * dev_p_lay, // io, mmm, kil
 		  double * dev_p_int, // ioi, mmmi, kii
-		  double * dev_kpress, // io, mmm, mmmi
-		  double * dev_opac_k, // io
+		  //		  double * dev_kpress, // io, mmm, mmmi
+		  //		  double * dev_opac_k, // io
 		  double * dev_opac_wg_lay, // io
 		  double * dev_opac_wg_int, // ioi
-		  double * dev_opac_scat_cross, // io
+		  //		  double * dev_opac_scat_cross, // io
 		  double * dev_scat_cross_lay, // io
 		  double * dev_scat_cross_int, // ioi
 		  double * dev_meanmolmass_lay, // mmm
 		  double * dev_meanmolmass_int, // mmmi
-		  double * dev_opac_meanmass, // mmm, mmmi
+		  //		  double * dev_opac_meanmass, // mmm, mmmi
 		  double * dev_opac_kappa, // kil, kii
 		  double * dev_entr_temp, // kil, kii
 		  double * dev_entr_press, // kil, kii
@@ -50,9 +50,9 @@ __host__ bool prepare_compute_flux(
 		  const int & nlayer, // csp, cse, pil, io, mmm, kil
 		  const int & iter_value, // cse // TODO: check what this is for. Should maybe be external
 		  const int & real_star, // pil
-		  const int & npress, // io, mmm, mmmi
-		  const int & ntemp, // io, mmm, mmmi
-		  const int & ny, // io
+		  //		  const int & npress, // io, mmm, mmmi
+		  //		  const int & ntemp, // io, mmm, mmmi
+		  //		  const int & ny, // io
 		  const int & entr_npress, // kii, kil
 		  const int & entr_ntemp, // kii, kil		  
 		  const double & fake_opac, // io
@@ -106,24 +106,24 @@ __host__ bool prepare_compute_flux(
  dim3 it_block(16,1,1);
    
  interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay,
-			 dev_T_int,
-			 ninterface);
+						dev_T_int,
+						ninterface);
    cudaDeviceSynchronize();
 
    // pil
    dim3 pil_grid(int((nbin+15)/16),int(((nlayer+2)+15))/16, 1);
    dim3 pil_block(16,16,1);
    planck_interpol_layer<<<pil_grid, pil_block>>>(dev_T_lay,
-                         dev_planckband_lay,
-                         dev_planckband_grid,
-                         dev_starflux,
-                         real_star,
-                         nlayer,
-                         nbin,
-			 T_surf,
-			 plancktable_dim,
-			 plancktable_step
-                        );
+						  dev_planckband_lay,
+						  dev_planckband_grid,
+						  dev_starflux,
+						  real_star,
+						  nlayer,
+						  nbin,
+						  T_surf,
+						  plancktable_dim,
+						  plancktable_step
+						  );
    cudaDeviceSynchronize();
 
    if (!iso)
@@ -151,13 +151,13 @@ __host__ bool prepare_compute_flux(
 						    *(Alf_ptr->opacities.dev_temperatures),
 						    dev_p_lay,
 						    *(Alf_ptr->opacities.dev_pressures),
-						    dev_opac_k,
+						    *(Alf_ptr->opacities.dev_kpoints),
 						    dev_opac_wg_lay,
 						    *(Alf_ptr->opacities.dev_scat_cross_sections),
 						    dev_scat_cross_lay,
-						    npress,
-						    ntemp,
-						    ny,
+						    *(Alf_ptr->opacities.n_pressures),
+						    *(Alf_ptr->opacities.n_temperatures),
+						    *(Alf_ptr->opacities.ny),
 						    nbin,
 						    fake_opac,
 						    nlayer);
@@ -172,19 +172,19 @@ __host__ bool prepare_compute_flux(
 	   dim3 ioi_block(16,16,1);
 	   
 	   interpolate_opacities<<<ioi_grid, ioi_block>>>(dev_T_int,
-							dev_ktemp,
-							dev_p_int,
-							dev_kpress,
-							dev_opac_k,
-							dev_opac_wg_int,
-							dev_opac_scat_cross,
-							dev_scat_cross_int,
-							npress,
-							ntemp,
-							ny,
-							nbin,
-							fake_opac,
-							ninterface);
+							  *(Alf_ptr->opacities.dev_temperatures),
+							  dev_p_int,
+							  *(Alf_ptr->opacities.dev_pressures),
+							  *(Alf_ptr->opacities.dev_kpoints),
+							  dev_opac_wg_int,
+							  *(Alf_ptr->opacities.dev_scat_cross_sections),
+							  dev_scat_cross_int,
+							  *(Alf_ptr->opacities.n_pressures),
+							  *(Alf_ptr->opacities.n_temperatures),ł
+							  *(Alf_ptr->opacities.ny),
+							  nbin,
+							  fake_opac,
+							  ninterface);
 	   
 	   cudaDeviceSynchronize();
 	 }
@@ -194,15 +194,15 @@ __host__ bool prepare_compute_flux(
        dim3 mmm_grid(int((nlayer + 15)/16), 1, 1);
        
        meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,
-					     dev_ktemp,
-					     dev_meanmolmass_lay,
-					     dev_opac_meanmass,
-					     dev_p_lay,
-					     dev_kpress,
-					     npress,
-					     ntemp,
-					     nlayer);
-			
+						     *(Alf_ptr->opacities.dev_temperatures),
+						     dev_meanmolmass_lay,
+						     *(Alf_ptr->opacities.dev_meanmolmass),
+						     dev_p_lay,
+						     *(Alf_ptr->opacities.dev_pressures),
+						     *(Alf_ptr->opacities.n_pressures),
+						     *(Alf_ptr->opacities.n_temperatures),
+						     nlayer);
+       
 	   
        cudaDeviceSynchronize();
 
@@ -213,14 +213,14 @@ __host__ bool prepare_compute_flux(
 	   dim3 mmmi_grid(int((ninterface + 15)/16), 1, 1);
 	   
 	   meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,
-						   dev_ktemp,
-						   dev_meanmolmass_int,
-						   dev_opac_meanmass,
-						   dev_p_int,
-						   dev_kpress,
-						   npress,
-						   ntemp,
-						   ninterface);
+							   *(Alf_ptr->opacities.dev_temperatures),
+							   dev_meanmolmass_int,
+							   *(Alf_ptr->opacities.dev_meanmolmass),
+							   dev_p_int,
+							   *(Alf_ptr->opacities.dev_pressures),
+							   *(Alf_ptr->opacities.n_pressures),
+							   *(Alf_ptr->opacities.n_temperatures),
+							   ninterface);
 	   
 	   
 	   cudaDeviceSynchronize();
