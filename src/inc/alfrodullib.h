@@ -1,3 +1,4 @@
+#include <tuple>
 
 
 bool prepare_compute_flux(
@@ -252,7 +253,4 @@ void deinit_alfrodull();
 // TODO: this shouldn't be visible externally
 void allocate();
 
-void get_device_pointers_for_helios_write(long & dev_scat_cross_section_lay,
-				     long & dev_scat_cross_section_int,
-				     long & dev_interwave,
-				     long & dev_deltawave);
+std::tuple<long, long, long, long> get_device_pointers_for_helios_write();

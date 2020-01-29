@@ -158,7 +158,7 @@ __host__ bool prepare_compute_flux(
                 *(Alf_ptr->opacities.dev_kpoints),
                 dev_opac_wg_int,
                 *(Alf_ptr->opacities.dev_scat_cross_sections),
-		*(Alf_ptr->scatter_cross_section_inter),
+                *(Alf_ptr->scatter_cross_section_inter),
                 Alf_ptr->opacities.n_pressures,
                 Alf_ptr->opacities.n_temperatures,
                 Alf_ptr->opacities.ny,
@@ -340,7 +340,7 @@ __host__ bool calculate_transmission_iso(double* trans_wg,
                                opac_wg_lay,
                                cloud_opac_lay,
                                meanmolmass_lay,
-			       *(Alf_ptr->scatter_cross_section_lay),
+                               *(Alf_ptr->scatter_cross_section_lay),
                                cloud_scat_cross_lay,
                                w_0,
                                g_0_tot_lay,
@@ -468,8 +468,8 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                   cloud_opac_int,
                                   meanmolmass_lay,
                                   meanmolmass_int,
-				  *(Alf_ptr->scatter_cross_section_lay),
-				  *(Alf_ptr->scatter_cross_section_inter),
+                                  *(Alf_ptr->scatter_cross_section_lay),
+                                  *(Alf_ptr->scatter_cross_section_inter),
                                   cloud_scat_cross_lay,
                                   cloud_scat_cross_int,
                                   w_0_upper,
@@ -973,52 +973,47 @@ void deinit_alfrodull() {
     Alf_ptr = nullptr;
 }
 
-void init_parameters(const int & nlayer_,
-		      const bool & iso_)
-{
-  if (Alf_ptr == nullptr)
-    {
-      printf("ERROR: Alfrodull Engine not initialised");
-      return;
+void init_parameters(const int& nlayer_, const bool& iso_) {
+    if (Alf_ptr == nullptr) {
+        printf("ERROR: Alfrodull Engine not initialised");
+        return;
     }
 
-  Alf_ptr->set_parameters(nlayer_, iso_);
+    Alf_ptr->set_parameters(nlayer_, iso_);
 }
 
-void allocate()
-{
-  if (Alf_ptr == nullptr)
-    {
-      printf("ERROR: Alfrodull Engine not initialised");
-      return;
+void allocate() {
+    if (Alf_ptr == nullptr) {
+        printf("ERROR: Alfrodull Engine not initialised");
+        return;
     }
 
-  Alf_ptr->allocate_internal_variables();
+    Alf_ptr->allocate_internal_variables();
 }
 
-// TODO: this is ugly and should not exist! 
-void get_device_pointers_for_helios_write(long & dev_scat_cross_section_lay,
-				     long & dev_scat_cross_section_int,
-				     long & dev_interwave,
-				     long & dev_deltawave)
-{
-  if (Alf_ptr == nullptr)
-    {
-      printf("ERROR: Alfrodull Engine not initialised");
-      return;
+// TODO: this is ugly and should not exist!
+std::tuple<long, long, long, long> get_device_pointers_for_helios_write() {
+    if (Alf_ptr == nullptr) {
+        printf("ERROR: Alfrodull Engine not initialised");
+        return std::make_tuple(0, 0, 0, 0);
     }
-  double * dev_scat_cross_section_lay_ptr = 0;
-  double * dev_scat_cross_section_int_ptr = 0;
-  double * dev_interwave_ptr = 0;
-  double * dev_deltawave_ptr = 0;
-  
-  Alf_ptr-> get_device_pointers_for_helios_write(dev_scat_cross_section_lay_ptr,
-						 dev_scat_cross_section_int_ptr,
-						 dev_interwave_ptr,
-						 dev_deltawave_ptr);
+    double* dev_scat_cross_section_lay_ptr = 0;
+    double* dev_scat_cross_section_int_ptr = 0;
+    double* dev_interwave_ptr              = 0;
+    double* dev_deltawave_ptr              = 0;
 
-  dev_scat_cross_section_lay = (long)dev_scat_cross_section_lay_ptr;
-  dev_scat_cross_section_int = (long)dev_scat_cross_section_int_ptr;
-  dev_interwave = (long)dev_interwave_ptr;
-  dev_deltawave = (long)dev_deltawave_ptr;
+    Alf_ptr->get_device_pointers_for_helios_write(dev_scat_cross_section_lay_ptr,
+                                                  dev_scat_cross_section_int_ptr,
+                                                  dev_interwave_ptr,
+                                                  dev_deltawave_ptr);
+
+    long dev_scat_cross_section_lay = (long)dev_scat_cross_section_lay_ptr;
+    long dev_scat_cross_section_int = (long)dev_scat_cross_section_int_ptr;
+    long dev_interwave              = (long)dev_interwave_ptr;
+    long dev_deltawave              = (long)dev_deltawave_ptr;
+
+    return std::make_tuple(dev_scat_cross_section_int,
+			   dev_scat_cross_section_lay,
+			   dev_interwave,
+			   dev_deltawave);
 }
