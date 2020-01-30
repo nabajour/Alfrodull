@@ -195,32 +195,32 @@ __global__ void fdir_noniso(
 
 // calculation of the spectral fluxes, isothermal case with emphasis on on-the-fly calculations
 __global__ void fband_iso_notabu(
-        double* F_down_wg, 
-        double* F_up_wg, 
-        double* F_dir_wg, 
-        double* planckband_lay,
-        double* w_0,
-        double* delta_tau_wg,
-        double* M_term,
-        double* N_term,
-        double* P_term,
-        double* G_plus,
-        double* G_minus,
-        double* g_0_tot_lay,
-        double 	g_0,
-        int 	singlewalk, 
-        double 	Rstar, 
-        double 	a, 
-        int 	numinterfaces, 
-        int 	nbin, 
-        double 	f_factor, 
-        double 	mu_star,
-        int 	ny, 
-        double 	epsi,
-        double 	w_0_limit,
-        int 	dir_beam,
-        int 	clouds,
-        double   albedo
+				 double* F_down_wg, // out
+				 double* F_up_wg, // out
+				 double* F_dir_wg, // in
+				 double* planckband_lay, // in
+				 double* w_0, // in
+				 double* delta_tau_wg, // in
+				 double* M_term, // in
+				 double* N_term, // in
+				 double* P_term, // in
+				 double* G_plus, // in
+				 double* G_minus, // in
+				 double* g_0_tot_lay, 
+				 double 	g_0,
+				 int 	singlewalk, 
+				 double 	Rstar, 
+				 double 	a, 
+				 int 	numinterfaces, 
+				 int 	nbin, 
+				 double 	f_factor, 
+				 double 	mu_star,
+				 int 	ny, 
+				 double 	epsi,
+				 double 	w_0_limit,
+				 int 	dir_beam,
+				 int 	clouds,
+				 double   albedo
 ){
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;

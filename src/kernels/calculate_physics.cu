@@ -167,35 +167,35 @@ __device__ double zeta_plus(
 // TODO: check ny meaning
 // kernel runs per wavelength bin, per wavelength sampling (?) and per layer
 __global__ void trans_iso(
-        double* 	trans_wg,
-        double* 	delta_tau_wg,
-        double* 	M_term,
-        double* 	N_term,
-        double* 	P_term,
-        double* 	G_plus,
-        double* 	G_minus,
-        double* 	delta_colmass,
-        double* 	opac_wg_lay,
-        double* cloud_opac_lay,
-        double* 	meanmolmass_lay,
-        double* 	scat_cross_lay,
-        double* 	cloud_scat_cross_lay,
-        double*  w_0,
-        double* 	g_0_tot_lay,
-        double   g_0,
-        double 	epsi,
-        double 	mu_star,
-        int 	scat,
-        int 	nbin,
-        int 	ny,
-        int 	nlayer,
-        int 	clouds,
-        int 	scat_corr
-){
+			  double* 	trans_wg, // out
+			  double* 	delta_tau_wg, // out
+			  double* 	M_term, // out
+			  double* 	N_term, // out
+			  double* 	P_term, // out
+			  double* 	G_plus, // out
+			  double* 	G_minus, // out
+			  double* 	delta_colmass, // in
+			  double* 	opac_wg_lay,  // in
+			  double* cloud_opac_lay,  // in
+			  double* 	meanmolmass_lay, // in
+			  double* 	scat_cross_lay,  // in
+			  double* 	cloud_scat_cross_lay,  // in
+			  double*  w_0, // out
+			  double* 	g_0_tot_lay,   // in
+			  double   g_0, 
+			  double 	epsi,
+			  double 	mu_star,
+			  int 	scat,
+			  int 	nbin,
+			  int 	ny,
+			  int 	nlayer,
+			  int 	clouds,
+			  int 	scat_corr
+			  ){
     // indices
     // wavelength bin
     int x = threadIdx.x + blockIdx.x * blockDim.x;
-    // sampling point (?)
+    // sampling point (?) y coordinate?
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     // layer
     int i = threadIdx.z + blockIdx.z * blockDim.z;

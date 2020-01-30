@@ -34,5 +34,26 @@ public:
   // device memory
   cuda_device_memory<double> scatter_cross_section_lay;
   cuda_device_memory<double> scatter_cross_section_inter;
-  
+
+  // Flux computation quantities
+  // iso
+  cuda_device_memory<double> M_term;
+  cuda_device_memory<double> N_term;   
+  cuda_device_memory<double> P_term;
+  cuda_device_memory<double> G_plus;
+  cuda_device_memory<double> G_minus;
+  cuda_device_memory<double> w_0;
+  // noniso
+  cuda_device_memory<double> M_upper;
+  cuda_device_memory<double> M_lower;
+  cuda_device_memory<double> N_upper;
+  cuda_device_memory<double> N_lower;
+  cuda_device_memory<double> P_upper;
+  cuda_device_memory<double> P_lower;
+  cuda_device_memory<double> G_plus_upper;
+  cuda_device_memory<double> G_plus_lower;
+  cuda_device_memory<double> G_minus_upper;
+  cuda_device_memory<double> G_minus_lower;
+  cuda_device_memory<double> w_0_upper;
+  cuda_device_memory<double> w_0_lower;
 };
