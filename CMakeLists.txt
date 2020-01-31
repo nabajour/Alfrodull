@@ -65,6 +65,7 @@ set(SRC_PYMODULE
 set(SRC_ALFRODULLIB
 	src/alfrodullib.cu
 	src/alfrodull_engine.cu
+	src/planck_table.cu
 	src/opacities/opacities.cu
 	src/kernels/calculate_physics.cu
 	src/kernels/math_helpers.cu

@@ -4,21 +4,21 @@
 
 // calculates the integrated upwards and downwards fluxes
 __global__ void integrate_flux_double(
-        double* deltalambda, 
-        double* F_down_tot, 
-        double* F_up_tot, 
-        double* F_net, 
-        double* F_down_wg, 
-        double* F_up_wg,
-        double* F_dir_wg,
-        double* F_down_band, 
-        double* F_up_band, 
-        double* F_dir_band,
-        double* gauss_weight,
-        int 	nbin, 
-        int 	numinterfaces, 
-        int 	ny
-){
+				      double* deltalambda,             // in
+				      double* F_down_tot,              // out
+				      double* F_up_tot,                // out
+				      double* F_net,                   // out
+				      double* F_down_wg,               // in
+				      double* F_up_wg,                 // in
+				      double* F_dir_wg,                // in
+				      double* F_down_band,              // out 
+				      double* F_up_band,                // out
+				      double* F_dir_band,               // out
+				      double* gauss_weight,             // in
+				      int 	nbin, 
+				      int 	numinterfaces, 
+				      int 	ny
+				      ){
 
     int x = threadIdx.x;
     int y = threadIdx.y;

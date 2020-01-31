@@ -4,7 +4,6 @@ bool wrap_prepare_compute_flux(
 			  long dev_planckband_grid,  // pil, pii
 			  long dev_planckband_int,  // pii
 			  long dev_starflux, // pil
-			  long dev_F_down_tot, // cse
 			  long dev_T_lay, // it, pil, io, mmm, kil
 			  long dev_T_int, // it, pii, ioi, mmmi, kii
 			  long dev_p_lay, // io, mmm, kil

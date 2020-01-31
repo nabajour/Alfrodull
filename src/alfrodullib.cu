@@ -19,25 +19,20 @@ std::unique_ptr<alfrodull_engine> Alf_ptr = nullptr;
 
 __host__ bool prepare_compute_flux(
     // TODO: planck value tabulated and then interpolated
-    double* dev_planckband_lay,  // csp, cse
-    double* dev_planckband_grid, // pil, pii
-    double* dev_planckband_int,  // pii
-
-    double* dev_starflux, // pil
-    // TODO: from opacity tables
-    // double* dev_opac_interwave, // csp
-    // double* dev_opac_deltawave, // csp, cse
-    double* dev_F_down_tot, // cse (surface emissions)
+    double* dev_planckband_lay,        // out: csp, cse 
+    double* dev_planckband_grid,       // in: pil, pii
+    double* dev_planckband_int,        // out: pii
+    double* dev_starflux,              // in: pil
     // state variables
     // TODO: check which ones can be internal only
-    double*       dev_T_lay,           // it, pil, io, mmm, kil
-    double*       dev_T_int,           // it, pii, ioi, mmmi, kii
-    double*       dev_p_lay,           // io, mmm, kil
-    double*       dev_p_int,           // ioi, mmmi, kii
-    double*       dev_opac_wg_lay,     // io
-    double*       dev_opac_wg_int,     // ioi
-    double*       dev_meanmolmass_lay, // mmm
-    double*       dev_meanmolmass_int, // mmmi
+    double*       dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+    double*       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
+    double*       dev_p_lay,           // in: io, mmm, kil
+    double*       dev_p_int,           // in: ioi, mmmi, kii
+    double*       dev_opac_wg_lay,     // out: io
+    double*       dev_opac_wg_int,     // out: ioi
+    double*       dev_meanmolmass_lay, // out: mmm
+    double*       dev_meanmolmass_int, // out: mmmi
     const int&    ninterface,          // it, pii, mmmi, kii
     const int&    nbin,                // csp, cse, pil, pii, io
     const int&    nlayer,              // csp, cse, pil, io, mmm, kil
@@ -54,14 +49,14 @@ __host__ bool prepare_compute_flux(
     dim3 calc_surf_blocks(16, 1, 1);
     // csp
     calc_surface_planck<<<calc_surf_grid, calc_surf_blocks>>>(
-        dev_planckband_lay,
-	*(Alf_ptr->opacities.dev_opac_interwave),
-	*(Alf_ptr->opacities.dev_opac_deltawave),
-	nbin,
-	//Alf_ptr->opacities.nbin,
-	nlayer,
-	T_surf);
-
+							      dev_planckband_lay,                       // out
+							      *(Alf_ptr->opacities.dev_opac_interwave), // in
+							      *(Alf_ptr->opacities.dev_opac_deltawave), // in
+							      nbin,
+							      //Alf_ptr->opacities.nbin,
+							      nlayer,
+							      T_surf);
+    
     cudaDeviceSynchronize();
 
     if (correct_surface_emissions) {
@@ -69,10 +64,8 @@ __host__ bool prepare_compute_flux(
         dim3 corr_surf_emiss_block(16, 1, 1);
         // cse
         correct_surface_emission<<<corr_surf_emiss_grid, corr_surf_emiss_block>>>(
-            dev_F_down_tot,
-	    *(Alf_ptr->opacities.dev_opac_deltawave),
-            //dev_opac_deltawave,
-            dev_planckband_lay,
+	    *(Alf_ptr->opacities.dev_opac_deltawave),     // in
+            dev_planckband_lay,                           // in/out
             surf_albedo,
             T_surf,
 	    nbin,
@@ -110,9 +103,9 @@ __host__ bool prepare_compute_flux(
         // pii
         dim3 pii_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
         dim3 pii_block(16, 16, 1);
-        planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int,
-                                                           dev_planckband_int,
-                                                           dev_planckband_grid,
+        planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int,            // in
+                                                           dev_planckband_int,   // out
+                                                           dev_planckband_grid,  // in
                                                            ninterface,
                                                            nbin,
                                                            plancktable_dim,
@@ -127,14 +120,14 @@ __host__ bool prepare_compute_flux(
         // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
 	// out -> opacities (dev_opac_wg_lay)
 	// out -> scetter cross section (scatter_cross_section_...)
-        interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,
-                                                     *(Alf_ptr->opacities.dev_temperatures),
-                                                     dev_p_lay,
-                                                     *(Alf_ptr->opacities.dev_pressures),
-                                                     *(Alf_ptr->opacities.dev_kpoints),
-                                                     dev_opac_wg_lay,
-                                                     *(Alf_ptr->opacities.dev_scat_cross_sections),
-                                                     *(Alf_ptr->scatter_cross_section_lay),
+        interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,                                     // in
+                                                     *(Alf_ptr->opacities.dev_temperatures),        // in
+                                                     dev_p_lay,                                     // in
+                                                     *(Alf_ptr->opacities.dev_pressures),           // in
+                                                     *(Alf_ptr->opacities.dev_kpoints),             // in
+                                                     dev_opac_wg_lay,                               // out
+                                                     *(Alf_ptr->opacities.dev_scat_cross_sections), // in
+                                                     *(Alf_ptr->scatter_cross_section_lay),         // out
                                                      Alf_ptr->opacities.n_pressures,
                                                      Alf_ptr->opacities.n_temperatures,
                                                      Alf_ptr->opacities.ny,
@@ -151,21 +144,21 @@ __host__ bool prepare_compute_flux(
             dim3 ioi_block(16, 16, 1);
 
             interpolate_opacities<<<ioi_grid, ioi_block>>>(
-                dev_T_int,
-                *(Alf_ptr->opacities.dev_temperatures),
-                dev_p_int,
-                *(Alf_ptr->opacities.dev_pressures),
-                *(Alf_ptr->opacities.dev_kpoints),
-                dev_opac_wg_int,
-                *(Alf_ptr->opacities.dev_scat_cross_sections),
-                *(Alf_ptr->scatter_cross_section_inter),
-                Alf_ptr->opacities.n_pressures,
-                Alf_ptr->opacities.n_temperatures,
-                Alf_ptr->opacities.ny,
-                nbin,
-                fake_opac,
-                ninterface);
-
+							   dev_T_int,                                    // in
+							   *(Alf_ptr->opacities.dev_temperatures),       // in
+							   dev_p_int,                                    // in
+							   *(Alf_ptr->opacities.dev_pressures),          // in
+							   *(Alf_ptr->opacities.dev_kpoints),            // in
+							   dev_opac_wg_int,                              // out
+							   *(Alf_ptr->opacities.dev_scat_cross_sections),// in
+							   *(Alf_ptr->scatter_cross_section_inter),      // out
+							   Alf_ptr->opacities.n_pressures,
+							   Alf_ptr->opacities.n_temperatures,
+							   Alf_ptr->opacities.ny,
+							   nbin,
+							   fake_opac,
+							   ninterface);
+	    
             cudaDeviceSynchronize();
         }
 
@@ -173,12 +166,12 @@ __host__ bool prepare_compute_flux(
         dim3 mmm_block(16, 1, 1);
         dim3 mmm_grid(int((nlayer + 15) / 16), 1, 1);
 
-        meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,
-                                                      *(Alf_ptr->opacities.dev_temperatures),
-                                                      dev_meanmolmass_lay,
-                                                      *(Alf_ptr->opacities.dev_meanmolmass),
-                                                      dev_p_lay,
-                                                      *(Alf_ptr->opacities.dev_pressures),
+        meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,                              // in
+                                                      *(Alf_ptr->opacities.dev_temperatures), // in 
+                                                      dev_meanmolmass_lay,                    // out
+                                                      *(Alf_ptr->opacities.dev_meanmolmass),  // in
+                                                      dev_p_lay,                              // in
+                                                      *(Alf_ptr->opacities.dev_pressures),    // in
                                                       Alf_ptr->opacities.n_pressures,
                                                       Alf_ptr->opacities.n_temperatures,
                                                       nlayer);
@@ -191,12 +184,12 @@ __host__ bool prepare_compute_flux(
             dim3 mmmi_block(16, 1, 1);
             dim3 mmmi_grid(int((ninterface + 15) / 16), 1, 1);
 
-            meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,
-                                                            *(Alf_ptr->opacities.dev_temperatures),
-                                                            dev_meanmolmass_int,
-                                                            *(Alf_ptr->opacities.dev_meanmolmass),
-                                                            dev_p_int,
-                                                            *(Alf_ptr->opacities.dev_pressures),
+            meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,                              // in
+                                                            *(Alf_ptr->opacities.dev_temperatures), // in
+                                                            dev_meanmolmass_int,                    // out
+                                                            *(Alf_ptr->opacities.dev_meanmolmass),  // in
+                                                            dev_p_int,                              // in
+                                                            *(Alf_ptr->opacities.dev_pressures),    // in
                                                             Alf_ptr->opacities.n_pressures,
                                                             Alf_ptr->opacities.n_temperatures,
                                                             ninterface);

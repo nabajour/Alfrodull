@@ -68,11 +68,11 @@ __global__ void planck_interpol_layer(double* temp,            // in
     }
 }
 
-
+// TODO: note can we merge those two plank interpolation function and split out the stellar function computation?
 // interpolates the Planck function for the interface temperatures from the pre-tabulated values
-__global__ void planck_interpol_interface(double* temp,
-                                          double* planckband_int,
-                                          double* planck_grid,
+__global__ void planck_interpol_interface(double* temp,             // in
+                                          double* planckband_int,   // out 
+                                          double* planck_grid,      // in
                                           int     numinterfaces,
                                           int     nwave,
                                           int     dim,
@@ -243,12 +243,12 @@ __global__ void interpolate_opacities(
 
 
 // interpolate the mean molecular mass for each layer
-__global__ void meanmolmass_interpol(double* temp,
-                                     double* opactemp,
-                                     double* meanmolmass,
-                                     double* opac_meanmass,
-                                     double* press,
-                                     double* opacpress,
+__global__ void meanmolmass_interpol(double* temp,          // in
+                                     double* opactemp,      // in
+                                     double* meanmolmass,   // out
+                                     double* opac_meanmass, // in
+                                     double* press,         // in
+                                     double* opacpress,     // in
                                      int     npress,
                                      int     ntemp,
                                      int     ninterface) {
