@@ -36,6 +36,8 @@ public:
   cuda_device_memory<double> scatter_cross_section_inter;
 
   // Flux computation quantities
+  // computed in trans_iso/trans_noniso
+  // used in populate_spectral_flux (iso/non_iso)
   // iso
   cuda_device_memory<double> M_term;
   cuda_device_memory<double> N_term;   

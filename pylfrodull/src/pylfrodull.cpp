@@ -19,25 +19,16 @@ bool wrap_prepare_compute_flux(
 			  long dev_opac_wg_int, // ioi
 			  long dev_meanmolmass_lay, // mmm
 			  long dev_meanmolmass_int, // mmmi
-			  long dev_opac_kappa, // kil, kii
-			  long dev_entr_temp, // kil, kii
-			  long dev_entr_press, // kil, kii
-			  long dev_kappa_lay, // kil
-			  long dev_kappa_int, // kii
 			  const int & ninterface, // it, pii, mmmi, kii
 			  const int & nbin, // csp, cse, pil, pii, io
 			  const int & nlayer, // csp, cse, pil, io, mmm, kil
 			  const int & iter_value, // cse // TODO: check what this is for. Should maybe be external
 			  const int & real_star, // pil
-			  const int & entr_npress, // kii, kil
-			  const int & entr_ntemp, // kii, kil		  
 			  const double & fake_opac, // io
 			  const double & T_surf, // csp, cse, pil
 			  const double & surf_albedo, // cse
 			  const int & dim, // pil, pii
 			  const int & step, // pil, pii
-			  const bool & use_kappa_manual, // ki
-			  const double & kappa_manual_value, // ki	     
 			  const bool & iso, // pii
 			  const bool & correct_surface_emissions,
 			  const bool & interp_and_calc_flux_step
@@ -59,25 +50,16 @@ bool wrap_prepare_compute_flux(
 				  (double *)dev_opac_wg_int, // ioi
 				  (double *)dev_meanmolmass_lay, // mmm
 				  (double *)dev_meanmolmass_int, // mmmi
-				  (double *)dev_opac_kappa, // kil, kii
-				  (double *)dev_entr_temp, // kil, kii
-				  (double *)dev_entr_press, // kil, kii
-				  (double *)dev_kappa_lay, // kil
-				  (double *)dev_kappa_int, // kii
 				  ninterface, // it, pii, mmmi, kii
 				  nbin, // csp, cse, pil, pii, io
 				  nlayer, // csp, cse, pil, io, mmm, kil
 				  iter_value, // cse // TODO: check what this is for. Should maybe be external
 				  real_star, // pil
-				  entr_npress,
-				  entr_ntemp,
 				  fake_opac, // io
 				  T_surf, // csp, cse, pil
 				  surf_albedo, // cse
 				  dim, // pil, pii
 				  step, // pil, pii
-				  use_kappa_manual, // ki
-				  kappa_manual_value, // ki	     
 				  iso, // pii
 				  correct_surface_emissions,
 				  interp_and_calc_flux_step

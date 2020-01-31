@@ -91,10 +91,10 @@ __global__ void integrate_flux_double(
 
 // calculates the direct beam flux with geometric zenith angle correction, isothermal version
 __global__ void fdir_iso(
-        double* 	F_dir_wg,
-        double* 	planckband_lay,
-        double* 	delta_tau_wg,
-        double* 	z_lay,
+			 double* 	F_dir_wg,    // out
+			 double* 	planckband_lay,  // in
+			 double* 	delta_tau_wg,  // in
+			 double* 	z_lay,  // in
         double 	mu_star,
         double	R_planet,
         double 	R_star, 
@@ -206,7 +206,7 @@ __global__ void fband_iso_notabu(
 				 double* P_term, // in
 				 double* G_plus, // in
 				 double* G_minus, // in
-				 double* g_0_tot_lay, 
+				 double* g_0_tot_lay, // in (clouds)
 				 double 	g_0,
 				 int 	singlewalk, 
 				 double 	Rstar, 

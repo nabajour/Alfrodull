@@ -38,25 +38,16 @@ __host__ bool prepare_compute_flux(
     double*       dev_opac_wg_int,     // ioi
     double*       dev_meanmolmass_lay, // mmm
     double*       dev_meanmolmass_int, // mmmi
-    double*       dev_opac_kappa,      // kil, kii
-    double*       dev_entr_temp,       // kil, kii
-    double*       dev_entr_press,      // kil, kii
-    double*       dev_kappa_lay,       // kil
-    double*       dev_kappa_int,       // kii
     const int&    ninterface,          // it, pii, mmmi, kii
     const int&    nbin,                // csp, cse, pil, pii, io
     const int&    nlayer,              // csp, cse, pil, io, mmm, kil
     const int&    iter_value,       // cse // TODO: check what this is for. Should maybe be external
     const int&    real_star,        // pil
-    const int&    entr_npress,      // kii, kil
-    const int&    entr_ntemp,       // kii, kil
     const double& fake_opac,        // io
     const double& T_surf,           // csp, cse, pil
     const double& surf_albedo,      // cse
     const int&    plancktable_dim,  // pil, pii
     const int&    plancktable_step, // pil, pii
-    const bool&   use_kappa_manual, // ki
-    const double& kappa_manual_value, // ki
     const bool&   iso,                // pii
     const bool&   correct_surface_emissions,
     const bool&   interp_and_calc_flux_step) {
@@ -134,6 +125,8 @@ __host__ bool prepare_compute_flux(
         dim3 io_grid(int((nbin + 15) / 16), int((nlayer + 15) / 16), 1);
         dim3 io_block(16, 16, 1);
         // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
+	// out -> opacities (dev_opac_wg_lay)
+	// out -> scetter cross section (scatter_cross_section_...)
         interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,
                                                      *(Alf_ptr->opacities.dev_temperatures),
                                                      dev_p_lay,
@@ -212,46 +205,6 @@ __host__ bool prepare_compute_flux(
             cudaDeviceSynchronize();
         }
 
-        // kappa interpolation
-        double kappa_kernel_value = 0;
-        if (use_kappa_manual)
-            kappa_kernel_value = kappa_manual_value;
-
-        // kil
-        dim3 kil_grid(int((nlayer + 15) / 16), 1, 1);
-        dim3 kil_block(16, 1, 1);
-
-        kappa_interpol<<<kil_grid, kil_block>>>(dev_T_lay,
-                                                dev_entr_temp,
-                                                dev_p_lay,
-                                                dev_entr_press,
-                                                dev_kappa_lay,
-                                                dev_opac_kappa,
-                                                entr_npress,
-                                                entr_ntemp,
-                                                nlayer,
-                                                kappa_kernel_value);
-
-        cudaDeviceSynchronize();
-
-        if (!iso) {
-            // kii
-            dim3 kii_grid(int((ninterface + 15) / 16), 1, 1);
-            dim3 kii_block(16, 1, 1);
-
-            kappa_interpol<<<kii_grid, kii_block>>>(dev_T_int,
-                                                    dev_entr_temp,
-                                                    dev_p_int,
-                                                    dev_entr_press,
-                                                    dev_kappa_int,
-                                                    dev_opac_kappa,
-                                                    entr_npress,
-                                                    entr_ntemp,
-                                                    ninterface,
-                                                    kappa_kernel_value);
-
-            cudaDeviceSynchronize();
-        }
     }
 
     // TODO: add state check and return value
@@ -313,14 +266,14 @@ void wrap_integrate_flux(long deltalambda_,  // double*
      cudaDeviceSynchronize();
 }
 
-__host__ bool calculate_transmission_iso(double* trans_wg,
-                                         double* delta_tau_wg,
-                                         double* delta_colmass,
-                                         double* opac_wg_lay,
-                                         double* cloud_opac_lay,
-                                         double* meanmolmass_lay,
-                                         double* cloud_scat_cross_lay,
-                                         double* g_0_tot_lay,
+__host__ bool calculate_transmission_iso(double* trans_wg,        // out
+                                         double* delta_tau_wg,    // out 
+                                         double* delta_colmass,   // in
+                                         double* opac_wg_lay,     // in
+                                         double* cloud_opac_lay,  // in
+                                         double* meanmolmass_lay, // in
+                                         double* cloud_scat_cross_lay, // in
+                                         double* g_0_tot_lay,       // in
                                          double  g_0,
                                          double  epsi,
                                          double  mu_star,
@@ -620,12 +573,12 @@ bool wrap_direct_beam_flux(long   F_dir_wg,
 }
 
 
-bool populate_spectral_flux_iso(double* F_down_wg,
-                                double* F_up_wg,
-                                double* F_dir_wg,
-                                double* planckband_lay,
-                                double* delta_tau_wg,
-                                double* g_0_tot_lay,
+bool populate_spectral_flux_iso(double* F_down_wg,    // out
+                                double* F_up_wg,      // out
+                                double* F_dir_wg,     // in
+                                double* planckband_lay,  // in
+                                double* delta_tau_wg,  // in
+                                double* g_0_tot_lay,   // in
                                 double  g_0,
                                 int     singlewalk,
                                 double  Rstar,
