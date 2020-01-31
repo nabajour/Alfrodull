@@ -41,7 +41,6 @@ __host__ bool prepare_compute_flux(
     const int&    ninterface,          // it, pii, mmmi, kii
     const int&    nbin,                // csp, cse, pil, pii, io
     const int&    nlayer,              // csp, cse, pil, io, mmm, kil
-    const int&    iter_value,       // cse // TODO: check what this is for. Should maybe be external
     const int&    real_star,        // pil
     const double& fake_opac,        // io
     const double& T_surf,           // csp, cse, pil
@@ -78,8 +77,7 @@ __host__ bool prepare_compute_flux(
             T_surf,
 	    nbin,
 	    //Alf_ptr->opacities.nbin,
-            nlayer,
-            iter_value);
+            nlayer);
 
         cudaDeviceSynchronize();
     }
@@ -88,16 +86,18 @@ __host__ bool prepare_compute_flux(
     dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
     dim3 it_block(16, 1, 1);
 
-    interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, dev_T_int, ninterface);
+    interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay,   // out
+						   dev_T_int,   // in
+						   ninterface);
     cudaDeviceSynchronize();
 
     // pil
     dim3 pil_grid(int((nbin + 15) / 16), int(((nlayer + 2) + 15)) / 16, 1);
     dim3 pil_block(16, 16, 1);
-    planck_interpol_layer<<<pil_grid, pil_block>>>(dev_T_lay,
-                                                   dev_planckband_lay,
-                                                   dev_planckband_grid,
-                                                   dev_starflux,
+    planck_interpol_layer<<<pil_grid, pil_block>>>(dev_T_lay,           // in
+                                                   dev_planckband_lay,  // out
+                                                   dev_planckband_grid, // in
+                                                   dev_starflux,        // in
                                                    real_star,
                                                    nlayer,
                                                    nbin,

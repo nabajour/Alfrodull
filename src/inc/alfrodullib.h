@@ -18,7 +18,6 @@ bool prepare_compute_flux(
 		  const int & ninterface, // it, pii, mmmi, kii
 		  const int & nbin, // csp, cse, pil, pii, io
 		  const int & nlayer, // csp, cse, pil, io, mmm, kil
-		  const int & iter_value, // cse // TODO: check what this is for. Should maybe be external
 		  const int & real_star, // pil
 		  const double & fake_opac, // io
 		  const double & T_surf, // csp, cse, pil

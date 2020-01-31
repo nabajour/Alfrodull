@@ -10,8 +10,7 @@ __global__ void correct_surface_emission(
 				      double   surf_albedo,
 				      double   T_surf,
 				      int     nwave,
-				      int     numlayers,
-				      int     itervalue
+				      int     numlayers
 ){
     
     int x = threadIdx.x + blockIdx.x * blockDim.x;

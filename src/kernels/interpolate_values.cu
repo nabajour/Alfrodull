@@ -20,10 +20,10 @@ __global__ void interpolate_temperature(double* tlay, double* tint, int numinter
 
 
 // interpolates the Planck function for the layer temperatures from the pre-tabulated values
-__global__ void planck_interpol_layer(double* temp,
-                                      double* planckband_lay,
-                                      double* planck_grid,
-                                      double* starflux,
+__global__ void planck_interpol_layer(double* temp,            // in
+                                      double* planckband_lay,  // out 
+                                      double* planck_grid,     // in
+                                      double* starflux,        // in
                                       int     realstar,
                                       int     numlayers,
                                       int     nwave,
