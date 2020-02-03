@@ -20,14 +20,18 @@ void alfrodull_engine::init()
 }
 
 void alfrodull_engine::set_parameters(const int & nlayer_,
-				      const bool & iso_)
+				      const bool & iso_,
+				      const double & T_star_)
 {
   nlayer = nlayer_;
   ninterface = nlayer + 1;
   iso = iso_;
-
+  T_star = T_star_;
+  
   // TODO: maybe should stay in opacities object
   nbin = opacities.nbin;
+
+  prepare_planck_table();
 }
 
 void alfrodull_engine::allocate_internal_variables()
@@ -75,10 +79,22 @@ void alfrodull_engine::allocate_internal_variables()
 void alfrodull_engine::get_device_pointers_for_helios_write(double *& dev_scat_cross_section_lay,
 							    double *& dev_scat_cross_section_int,
 							    double *& dev_interwave,
-							    double *& dev_deltawave)
+							    double *& dev_deltawave,
+							    double *& dev_planck_grid)
 {
   dev_scat_cross_section_lay = *scatter_cross_section_lay;
   dev_scat_cross_section_int = *scatter_cross_section_inter;
   dev_interwave = *opacities.dev_opac_interwave;
   dev_deltawave = *opacities.dev_opac_deltawave;
+  dev_planck_grid = *plancktable.planck_grid;
+}
+
+// TODO: check how to enforce this: must be called after loading opacities and setting parameters
+void alfrodull_engine::prepare_planck_table()
+{
+  plancktable.construct_planck_table(*opacities.dev_opac_interwave,
+				     *opacities.dev_opac_deltawave,
+				     opacities.nbin,
+				     T_star);
+				     
 }

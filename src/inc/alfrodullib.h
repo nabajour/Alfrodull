@@ -198,10 +198,13 @@ bool wrap_populate_spectral_flux_iso(
 
 void init_alfrodull();
 void init_parameters(const int & nlayer_,
-		      const bool & iso_);
+		     const bool & iso_,
+		     const double & Tstar_);
 void deinit_alfrodull();
 
 // TODO: this shouldn't be visible externally
 void allocate();
 
-std::tuple<long, long, long, long> get_device_pointers_for_helios_write();
+std::tuple<long, long, long, long, long> get_device_pointers_for_helios_write();
+
+void prepare_planck_table();

@@ -1,7 +1,6 @@
 #include "pylfrodull.h"
 #include "alfrodullib.h"
 
-
 #include <pybind11/pybind11.h>
 
 
@@ -39,7 +38,6 @@ bool wrap_prepare_compute_flux(
 				  (double *)dev_planckband_grid,  // pil, pii
 				  (double *)dev_planckband_int,  // pii
 				  (double *)dev_starflux, // pil
-				  (double *)dev_F_down_tot, // cse
 				  (double *)dev_T_lay, // it, pil, io, mmm, kil
 				  (double *)dev_T_int, // it, pii, ioi, mmmi, kii
 				  (double *)dev_p_lay, // io, mmm, kil
@@ -80,4 +78,5 @@ PYBIND11_MODULE(pylfrodull, m) {
     m.def("init_parameters", &init_parameters, "initialise global sim parameters");
     m.def("allocate", &allocate, "allocate internal memory");
     m.def("get_dev_pointers", &get_device_pointers_for_helios_write, "Get device pointers");
+    m.def("prepare_planck_table", &prepare_planck_table, "Prepare planck table");
 }

@@ -820,13 +820,15 @@ void deinit_alfrodull() {
     Alf_ptr = nullptr;
 }
 
-void init_parameters(const int& nlayer_, const bool& iso_) {
+void init_parameters(const int& nlayer_,
+		     const bool& iso_,
+		     const double & Tstar_) {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
         return;
     }
 
-    Alf_ptr->set_parameters(nlayer_, iso_);
+    Alf_ptr->set_parameters(nlayer_, iso_, Tstar_);
 }
 
 void allocate() {
@@ -839,28 +841,41 @@ void allocate() {
 }
 
 // TODO: this is ugly and should not exist!
-std::tuple<long, long, long, long> get_device_pointers_for_helios_write() {
+std::tuple<long, long, long, long, long> get_device_pointers_for_helios_write() {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
-        return std::make_tuple(0, 0, 0, 0);
+        return std::make_tuple(0, 0, 0, 0, 0);
     }
     double* dev_scat_cross_section_lay_ptr = 0;
     double* dev_scat_cross_section_int_ptr = 0;
     double* dev_interwave_ptr              = 0;
     double* dev_deltawave_ptr              = 0;
+    double* dev_planck_grid_ptr              = 0;
 
     Alf_ptr->get_device_pointers_for_helios_write(dev_scat_cross_section_lay_ptr,
                                                   dev_scat_cross_section_int_ptr,
                                                   dev_interwave_ptr,
-                                                  dev_deltawave_ptr);
+                                                  dev_deltawave_ptr,
+						  dev_planck_grid_ptr
+						  );
 
     long dev_scat_cross_section_lay = (long)dev_scat_cross_section_lay_ptr;
     long dev_scat_cross_section_int = (long)dev_scat_cross_section_int_ptr;
     long dev_interwave              = (long)dev_interwave_ptr;
     long dev_deltawave              = (long)dev_deltawave_ptr;
+    long dev_planck_grid            = (long)dev_planck_grid_ptr;
 
     return std::make_tuple(dev_scat_cross_section_int,
 			   dev_scat_cross_section_lay,
 			   dev_interwave,
-			   dev_deltawave);
+			   dev_deltawave,
+			   dev_planck_grid);
+}
+
+void prepare_planck_table()
+{
+  if (Alf_ptr != nullptr)
+    Alf_ptr->prepare_planck_table();
+  else
+    printf("ERROR: prepare_planck_table: no Alf_ptr\n");
 }

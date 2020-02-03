@@ -66,19 +66,18 @@ __global__ void plancktable(
 
 planck_table::planck_table()
 {
-  int dim = 8000;
-  int step = 2;
+  dim = 8000;
+  step = 2;
 }
 
-~planck_table::planck_table()
+planck_table::~planck_table()
 {
 
 }
 
-
-void planck_table::construct_planck_table(        double* lambda_edge, 
-						  double* deltalambda,
-						  int 	nwave, 
+void planck_table::construct_planck_table(        double* lambda_edge,   // linked to opacity tables binning: opacities.dev_opac_interwave
+						  double* deltalambda,   // linked to opacity tables binning: opacities.dev_opac_deltawave
+						  int 	nwave,           // linked to opacity tables binning: nbin
 						  double 	Tstar_)
 {
   nplanck_grid = (dim+1)*nwave;
@@ -86,8 +85,11 @@ void planck_table::construct_planck_table(        double* lambda_edge,
   
   planck_grid.allocate(nplanck_grid);
 
+  dim3 grid = dim3(int((nwave + 15 )/16.0), int( (dim/10.0+1)/16.0), 1 );
+  dim3 block = dim3(16,16,1);
+  
   for (int p_iter = 0; p_iter< 10; p_iter++)
-    plancktable(*planck_grid,
+    plancktable<<<grid, block>>>(*planck_grid,
 		lambda_edge,
 		deltalambda,
 		nwave, 

@@ -8,13 +8,12 @@ public:
 
   ~planck_table();
 
-  construct_planck_table(        double* lambda_edge, 
-				 double* deltalambda,
-				 int 	nwave, 
-				 double 	Tstar, 
-				 int     dim,
-				 int     step);
 
+  void construct_planck_table(double* lambda_edge, 
+                         double* deltalambda,
+                         int     nwave, 
+                         double Tstar);
+  
   cuda_device_memory<double> planck_grid;
 
   int dim = 0;
