@@ -1,10 +1,28 @@
 #include <tuple>
 
+bool wrap_prepare_compute_flux(
+			  long dev_starflux, // pil
+			  long dev_T_lay, // it, pil, io, mmm, kil
+			  long dev_T_int, // it, pii, ioi, mmmi, kii
+			  long dev_p_lay, // io, mmm, kil
+			  long dev_p_int, // ioi, mmmi, kii
+			  long dev_opac_wg_lay, // io
+			  long dev_opac_wg_int, // ioi
+			  long dev_meanmolmass_lay, // mmm
+			  long dev_meanmolmass_int, // mmmi
+			  const int & ninterface, // it, pii, mmmi, kii
+			  const int & nbin, // csp, cse, pil, pii, io
+			  const int & nlayer, // csp, cse, pil, io, mmm, kil
+			  const int & real_star, // pil
+			  const double & fake_opac, // io
+			  const double & T_surf, // csp, cse, pil
+			  const double & surf_albedo, // cse
+			  const bool & iso, // pii
+			  const bool & correct_surface_emissions,
+			  const bool & interp_and_calc_flux_step
+			       );
 
 bool prepare_compute_flux(
-		  double * dev_planckband_lay,  // csp, cse
-		  double * dev_planckband_grid,  // pil, pii
-		  double * dev_planckband_int,  // pii
 		  double * dev_starflux, // pil
 		  double * dev_T_lay, // it, pil, io, mmm, kil
 		  double * dev_T_int, // it, pii, ioi, mmmi, kii
@@ -121,7 +139,6 @@ bool wrap_calculate_transmission_iso(
 
 bool wrap_direct_beam_flux(long 	F_dir_wg,
 			   long 	Fc_dir_wg,
-			   long 	planckband_lay,
 			   long 	delta_tau_wg,
 			   long 	delta_tau_wg_upper,
 			   long 	delta_tau_wg_lower,
@@ -148,8 +165,6 @@ bool wrap_populate_spectral_flux_noniso(
 					      long Fc_up_wg,
 					      long F_dir_wg,
 					      long Fc_dir_wg,
-					      long planckband_lay, 
-					      long planckband_int,
 					      long delta_tau_wg_upper,
 					      long delta_tau_wg_lower,
 					      long g_0_tot_lay,
@@ -177,7 +192,6 @@ bool wrap_populate_spectral_flux_iso(
 				     long F_down_wg, 
         long F_up_wg, 
         long F_dir_wg, 
-        long planckband_lay,
         long delta_tau_wg,
         long g_0_tot_lay,
         double 	g_0,
@@ -205,6 +219,6 @@ void deinit_alfrodull();
 // TODO: this shouldn't be visible externally
 void allocate();
 
-std::tuple<long, long, long, long, long> get_device_pointers_for_helios_write();
+std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write();
 
 void prepare_planck_table();

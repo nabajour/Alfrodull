@@ -37,15 +37,20 @@ void alfrodull_engine::set_parameters(const int & nlayer_,
 void alfrodull_engine::allocate_internal_variables()
 {
   int nlayer_nbin = nlayer*opacities.nbin;
+  int nlayer_plus2_nbin = (nlayer + 2)*opacities.nbin;
   int ninterface_nbin = ninterface*opacities.nbin;
   int nlayer_wg_nbin = nlayer*opacities.ny*opacities.nbin;
   int ninterface_wg_nbin = ninterface*opacities.ny*opacities.nbin;
+
+  
+  
   // scatter cross section layer and interface
   // those are shared for print out
   scatter_cross_section_lay.allocate(nlayer_nbin);
   scatter_cross_section_inter.allocate(ninterface_nbin);
+  planckband_lay.allocate(nlayer_plus2_nbin);
+  planckband_int.allocate(ninterface_nbin);
   
-
   // flux computation internal quantities
   // TODO: not needed to allocate everything, depending on iso or noniso
   if (iso)
@@ -80,13 +85,22 @@ void alfrodull_engine::get_device_pointers_for_helios_write(double *& dev_scat_c
 							    double *& dev_scat_cross_section_int,
 							    double *& dev_interwave,
 							    double *& dev_deltawave,
-							    double *& dev_planck_grid)
+							    double *& dev_planck_lay,
+							    double *& dev_planck_int,
+							    double *& dev_planck_grid,
+							    int & dim,
+							    int & step
+							    )
 {
   dev_scat_cross_section_lay = *scatter_cross_section_lay;
   dev_scat_cross_section_int = *scatter_cross_section_inter;
   dev_interwave = *opacities.dev_opac_interwave;
   dev_deltawave = *opacities.dev_opac_deltawave;
+  dev_planck_lay = *planckband_lay;
+  dev_planck_int = *planckband_int;
   dev_planck_grid = *plancktable.planck_grid;
+  dim = plancktable.dim;
+  step = plancktable.step;
 }
 
 // TODO: check how to enforce this: must be called after loading opacities and setting parameters

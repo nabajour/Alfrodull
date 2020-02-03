@@ -66,7 +66,9 @@ __global__ void plancktable(
 
 planck_table::planck_table()
 {
+  // number of pre-tabulated temperature values for the planck table
   dim = 8000;
+  // temperature step for the planck table. e.g. dim = 10000 and step = 2 will give a table from 1 K to 19999 K in 2 K steps
   step = 2;
 }
 

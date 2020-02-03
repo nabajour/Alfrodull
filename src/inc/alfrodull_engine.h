@@ -24,7 +24,11 @@ public:
 					    double *& dev_scat_cross_section_int,
 					    double *& dev_interwave,
 					    double *& dev_deltawave,
-					    double *& dev_planck_grid);
+					    double *& dev_planck_lay,
+					    double *& dev_planck_int,
+					    double *& dev_planck_grid,
+					    int & dim,
+					    int & step);
   
   //private:
   opacity_table opacities;
@@ -40,9 +44,14 @@ public:
   double T_star = 0.0;
   
   // device memory
+  //  scattering
   cuda_device_memory<double> scatter_cross_section_lay;
   cuda_device_memory<double> scatter_cross_section_inter;
 
+  // planck function 
+  cuda_device_memory<double> planckband_lay;
+  cuda_device_memory<double> planckband_int;
+  
   // Flux computation quantities
   // computed in trans_iso/trans_noniso
   // used in populate_spectral_flux (iso/non_iso)
