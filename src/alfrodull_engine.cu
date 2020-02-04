@@ -117,7 +117,7 @@ void alfrodull_engine::correct_incident_energy(double * starflux_array_ptr,
 					       bool real_star,
 					       bool energy_budget_correction)
 {
-  printf("T_star %d, energy budget_correction: %s\n", T_star,energy_budget_correction?"true":"false" );
+  printf("T_star %g, energy budget_correction: %s\n", T_star, energy_budget_correction?"true":"false" );
   if (T_star > 10 && energy_budget_correction)
     {
       dim3 grid((int(opacities.nbin) + 15 )/16, 1, 1 );
@@ -136,11 +136,11 @@ void alfrodull_engine::correct_incident_energy(double * starflux_array_ptr,
       
     }
 
-  //nplanck_grid = (plancktable.dim+1)*opacities.nbin;
-  // print out planck grid for debug
-  std::unique_ptr<double[]> plgrd = std::make_unique<double[]>(plancktable.nplanck_grid);
+  // //nplanck_grid = (plancktable.dim+1)*opacities.nbin;
+  // // print out planck grid for debug
+  // std::unique_ptr<double[]> plgrd = std::make_unique<double[]>(plancktable.nplanck_grid);
   
-  plancktable.planck_grid.fetch(plgrd);
-  for (int i = 0; i < plancktable.nplanck_grid; i++)
-    printf("array[%d] : %g\n", i, plgrd[i]);
+  // plancktable.planck_grid.fetch(plgrd);
+  // for (int i = 0; i < plancktable.nplanck_grid; i++)
+  //   printf("array[%d] : %g\n", i, plgrd[i]);
 }

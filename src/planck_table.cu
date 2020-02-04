@@ -142,8 +142,6 @@ void planck_table::construct_planck_table(        double* lambda_edge,   // link
 
   dim3 grid((int(nwave) + 15 )/16, (int(dim/10.0+1.0)+15)/16, 1 );
   dim3 block(16,16,1);
-  printf("dim: %d, step: %d, Tstar: %g, nwave: %d\n", dim, step, Tstar, nwave);
-  printf("grid1: %d, grid2: %d\n", (int(nwave) + 15 )/16, (int(dim/10.0+1.0)+15)/16);
 
   for (int p_iter = 0; p_iter< 10; p_iter++)
     {
