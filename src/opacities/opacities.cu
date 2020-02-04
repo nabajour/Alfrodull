@@ -97,6 +97,7 @@ bool opacity_table::load_opacity_table(const string& filename) {
     }
     else {
         // TODO : check those interpolated values usage
+        // TODO: dump tables to compare wiwth original
         // quick and dirty way to get the lamda interface values
         data_opac_interwave[0] = data_opac_wave[0] - (data_opac_wave[1] - data_opac_wave[0]) / 2.0;
         for (int i = 0; i < nbin - 1; i++)
@@ -106,6 +107,8 @@ bool opacity_table::load_opacity_table(const string& filename) {
 
         push_table_to_device<double>(data_opac_interwave, nbin + 1, dev_opac_interwave);
     }
+    // for (int i = 0; i < nbin + 1; i++)
+    //   printf("interwave %d %g\n", i, data_opac_interwave[i]);
 
     if (s.has_table("/wavelength width of bins")) {
         read_table_to_device<double>(s, "/wavelength width of bins", dev_opac_deltawave);
@@ -123,6 +126,8 @@ bool opacity_table::load_opacity_table(const string& filename) {
             for (int i = 0; i < nbin; i++)
                 data_opac_deltawave[i] = data_opac_interwave[i + 1] - data_opac_interwave[i];
             push_table_to_device<double>(data_opac_deltawave, nbin, dev_opac_deltawave);
+	    // for (int i = 0; i < nbin; i++)
+	    //   printf("deltawave %d %g\n", i, data_opac_deltawave[i]);
 
         }
 

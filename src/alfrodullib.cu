@@ -943,8 +943,21 @@ std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointe
 
 void prepare_planck_table()
 {
+  printf("Preparing planck table\n");
   if (Alf_ptr != nullptr)
     Alf_ptr->prepare_planck_table();
   else
     printf("ERROR: prepare_planck_table: no Alf_ptr\n");
+}
+
+void correct_incident_energy(long starflux_array_ptr,
+			     bool real_star,
+			     bool energy_budget_correction)
+{
+  printf("Correcting incident energy\n");
+
+  if (Alf_ptr != nullptr)
+    Alf_ptr->correct_incident_energy((double*)starflux_array_ptr, real_star, energy_budget_correction);
+  else
+    printf("ERROR: correct_incident_energy : no Alf_ptr\n");
 }

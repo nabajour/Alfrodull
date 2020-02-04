@@ -1,6 +1,16 @@
 #include "cudaDeviceMemory.h"
 
-
+// adjust the incident flux to correspond to the correct brightness temperature
+__global__ void corr_inc_energy(
+				double* 	planck_grid,
+				double* 	starflux,
+				double* 	deltalambda,
+				bool 	realstar,
+				int 	nwave, 
+				double 	Tstar,
+				int     dim
+				);
+  
 class planck_table
 {
 public:

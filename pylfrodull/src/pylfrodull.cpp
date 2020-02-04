@@ -22,4 +22,5 @@ PYBIND11_MODULE(pylfrodull, m) {
     m.def("allocate", &allocate, "allocate internal memory");
     m.def("get_dev_pointers", &get_device_pointers_for_helios_write, "Get device pointers");
     m.def("prepare_planck_table", &prepare_planck_table, "Prepare planck table");
+    m.def("correct_incident_energy", &correct_incident_energy, "Correct incident flux");
 }

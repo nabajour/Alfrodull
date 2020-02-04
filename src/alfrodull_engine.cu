@@ -31,7 +31,7 @@ void alfrodull_engine::set_parameters(const int & nlayer_,
   // TODO: maybe should stay in opacities object
   nbin = opacities.nbin;
 
-  prepare_planck_table();
+  // prepare_planck_table();
 }
 
 void alfrodull_engine::allocate_internal_variables()
@@ -111,4 +111,36 @@ void alfrodull_engine::prepare_planck_table()
 				     opacities.nbin,
 				     T_star);
 				     
+}
+
+void alfrodull_engine::correct_incident_energy(double * starflux_array_ptr,
+					       bool real_star,
+					       bool energy_budget_correction)
+{
+  printf("T_star %d, energy budget_correction: %s\n", T_star,energy_budget_correction?"true":"false" );
+  if (T_star > 10 && energy_budget_correction)
+    {
+      dim3 grid((int(opacities.nbin) + 15 )/16, 1, 1 );
+      dim3 block(16,1,1);
+      
+      corr_inc_energy<<<grid, block>>>(*plancktable.planck_grid,
+		      starflux_array_ptr,
+		      *opacities.dev_opac_deltawave,
+		      real_star,
+		      opacities.nbin,
+		      T_star,
+		      plancktable.dim);
+      
+      cudaDeviceSynchronize();
+
+      
+    }
+
+  //nplanck_grid = (plancktable.dim+1)*opacities.nbin;
+  // print out planck grid for debug
+  std::unique_ptr<double[]> plgrd = std::make_unique<double[]>(plancktable.nplanck_grid);
+  
+  plancktable.planck_grid.fetch(plgrd);
+  for (int i = 0; i < plancktable.nplanck_grid; i++)
+    printf("array[%d] : %g\n", i, plgrd[i]);
 }

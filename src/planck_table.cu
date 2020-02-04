@@ -61,8 +61,61 @@ __global__ void plancktable(
             }
         }
         planck_grid[x + (t + p_iter * (dim/10)) * nwave] /= deltalambda[x];
+	//printf("planck_grid: %g \n",planck_grid[x + (t + p_iter * (dim/10)) * nwave] );
     }
 }
+
+// adjust the incident flux to correspond to the correct brightness temperature
+__global__ void corr_inc_energy(
+        double* 	planck_grid,
+        double* 	starflux,
+        double* 	deltalambda,
+        bool 	realstar,
+        int 	nwave, 
+        double 	Tstar,
+        int     dim
+){
+
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (x < nwave){
+
+        double num_flux = 0;
+
+        if(realstar){
+
+            for (int xl = 0; xl < nwave; xl++){
+
+                num_flux += deltalambda[xl] * starflux[xl];
+            }
+        }
+        else{
+            for (int xl = 0; xl < nwave; xl++){
+                
+                num_flux += deltalambda[xl] * PI * planck_grid[xl + dim * nwave];
+                
+            }
+        }
+        
+        double theo_flux = STEFANBOLTZMANN * pow(Tstar, 4.0);
+        
+        double corr_factor = theo_flux / num_flux;
+        if(x==0){
+            if(corr_factor > 1) printf("\nEnergy budget corrected (increased) by %.2f percent.\n", 100.0 * (corr_factor - 1.0));
+            if(corr_factor < 1) printf("\nEnergy budget corrected (decreased) by %.2f percent.\n", 100.0 * (1.0 - corr_factor));
+        }
+        if(realstar == 1){
+            
+            starflux[x] *= corr_factor;
+        }
+        else{
+            
+            planck_grid[x + dim * nwave] *= corr_factor;
+            
+        }
+    }
+}
+
 
 planck_table::planck_table()
 {
@@ -87,16 +140,28 @@ void planck_table::construct_planck_table(        double* lambda_edge,   // link
   
   planck_grid.allocate(nplanck_grid);
 
-  dim3 grid = dim3(int((nwave + 15 )/16.0), int( (dim/10.0+1)/16.0), 1 );
-  dim3 block = dim3(16,16,1);
-  
+  dim3 grid((int(nwave) + 15 )/16, (int(dim/10.0+1.0)+15)/16, 1 );
+  dim3 block(16,16,1);
+  printf("dim: %d, step: %d, Tstar: %g, nwave: %d\n", dim, step, Tstar, nwave);
+  printf("grid1: %d, grid2: %d\n", (int(nwave) + 15 )/16, (int(dim/10.0+1.0)+15)/16);
+
   for (int p_iter = 0; p_iter< 10; p_iter++)
-    plancktable<<<grid, block>>>(*planck_grid,
-		lambda_edge,
-		deltalambda,
-		nwave, 
-		Tstar, 
-		p_iter,
-		dim,
-		step);
+    {
+      plancktable<<<grid, block>>>(*planck_grid,
+				   lambda_edge,
+				   deltalambda,
+				   nwave, 
+				   Tstar, 
+				   p_iter,
+				   dim,
+				   step);
+      cudaDeviceSynchronize();
+    }
+  // // print out planck grid for debug
+  // std::unique_ptr<double[]> plgrd = std::make_unique<double[]>(nplanck_grid);
+
+  // planck_grid.fetch(plgrd);
+  // for (int i = 0; i < nplanck_grid; i++)
+  //   printf("array[%d] : %g\n", i, plgrd[i]);
+  
 }

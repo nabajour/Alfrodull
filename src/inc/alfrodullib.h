@@ -222,3 +222,6 @@ void allocate();
 std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write();
 
 void prepare_planck_table();
+void correct_incident_energy(long starflux_array_ptr,
+			     bool real_star,
+			     bool energy_budge_correction);

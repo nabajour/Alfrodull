@@ -29,7 +29,10 @@ public:
 					    double *& dev_planck_grid,
 					    int & dim,
 					    int & step);
-  
+
+  void correct_incident_energy(double * starflux_array_ptr,
+			       bool real_star,
+			       bool energy_budge_correction);
   //private:
   opacity_table opacities;
 
