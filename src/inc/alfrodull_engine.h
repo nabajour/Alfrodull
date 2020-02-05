@@ -2,6 +2,7 @@
 #include "cudaDeviceMemory.h"
 #include "planck_table.h"
 
+#include <functional>
 
 class alfrodull_engine
 {
@@ -36,6 +37,10 @@ public:
   void correct_incident_energy(double * starflux_array_ptr,
 			       bool real_star,
 			       bool energy_budge_correction);
+
+  void set_z_calc_func( std::function<void()> & fun);
+  void call_z_callback();
+  
   //private:
   opacity_table opacities;
 
@@ -48,6 +53,8 @@ public:
   int ninterface = 0; // nlayers + 1
   bool iso = false;
   double T_star = 0.0;
+
+  std::function<void()> calc_z_func;
   
   // device memory
   //  scattering

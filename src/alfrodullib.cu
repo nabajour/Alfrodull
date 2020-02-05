@@ -17,6 +17,8 @@
 
 std::unique_ptr<alfrodull_engine> Alf_ptr = nullptr;
 
+
+
 __host__ bool prepare_compute_flux(
     // TODO: planck value tabulated and then interpolated
     double* dev_starflux,              // in: pil
@@ -256,39 +258,53 @@ bool wrap_prepare_compute_flux(
     return ret;
 }
 
-void wrap_integrate_flux(long deltalambda_,  // double*
-                         long F_down_tot_,   // double *
-                         long F_up_tot_,     // double *
-                         long F_net_,        // double *
-                         long F_down_wg_,    // double *
-                         long F_up_wg_,      // double *
-                         long F_dir_wg_,     // double *
-                         long F_down_band_,  // double *
-                         long F_up_band_,    // double *
-                         long F_dir_band_,   // double *
-                         long gauss_weight_, // double *
+void wrap_integrate_flux(long deltalambda,  // double*
+                         long F_down_tot,   // double *
+                         long F_up_tot,     // double *
+                         long F_net,        // double *
+                         long F_down_wg,    // double *
+                         long F_up_wg,      // double *
+                         long F_dir_wg,     // double *
+                         long F_down_band,  // double *
+                         long F_up_band,    // double *
+                         long F_dir_band,   // double *
+                         long gauss_weight, // double *
                          int  numinterfaces,
-                         int  ny,
-                         int  block_x,
-                         int  block_y,
-                         int  block_z,
-                         int  grid_x,
-                         int  grid_y,
-                         int  grid_z) {
-    double* deltalambda  = (double*)deltalambda_;
-    double* F_down_tot   = (double*)F_down_tot_;
-    double* F_up_tot     = (double*)F_up_tot_;
-    double* F_net        = (double*)F_net_;
-    double* F_down_wg    = (double*)F_down_wg_;
-    double* F_up_wg      = (double*)F_up_wg_;
-    double* F_dir_wg     = (double*)F_dir_wg_;
-    double* F_down_band  = (double*)F_down_band_;
-    double* F_up_band    = (double*)F_up_band_;
-    double* F_dir_band   = (double*)F_dir_band_;
-    double* gauss_weight = (double*)gauss_weight_;
+                         int  ny)
+{
+  integrate_flux((double*) deltalambda,
+		 (double*) F_down_tot,
+		 (double*) F_up_tot,
+		 (double*) F_net,
+		 (double*) F_down_wg,
+		 (double*) F_up_wg,
+		 (double*) F_dir_wg,
+		 (double*) F_down_band,
+		 (double*) F_up_band,
+		 (double*) F_dir_band,
+		 (double*) gauss_weight,
+		 numinterfaces,
+		 ny);
 
-    dim3 threadsPerBlock(grid_x, grid_y, grid_z);
-    dim3 numBlocks(block_x, block_y, block_z);
+}
+
+void integrate_flux(double* deltalambda,
+		    double* F_down_tot,
+		    double* F_up_tot,
+		    double* F_net,
+		    double* F_down_wg,
+		    double* F_up_wg,
+		    double* F_dir_wg,
+		    double* F_down_band,
+		    double* F_up_band,
+		    double* F_dir_band,
+		    double* gauss_weight,
+		    int numinterfaces,
+		    int ny)
+{
+  
+    dim3 threadsPerBlock(1, 1, 1);
+    dim3 numBlocks(32, 4, 8);
     
     int nbin = Alf_ptr->opacities.nbin;
   
@@ -927,4 +943,443 @@ void correct_incident_energy(long starflux_array_ptr,
     Alf_ptr->correct_incident_energy((double*)starflux_array_ptr, real_star, energy_budget_correction);
   else
     printf("ERROR: correct_incident_energy : no Alf_ptr\n");
+}
+
+
+void set_z_calc_function(std::function<void()> & func)
+{
+  if (Alf_ptr != nullptr)
+    Alf_ptr->set_z_calc_func(func);
+  
+}
+
+
+
+// var already present:
+// bool iso 
+void compute_radiative_transfer(
+				// prepare_compute_flux
+				
+				// TODO: planck value tabulated and then interpolated
+				double* dev_starflux,              // in: pil
+				// state variables
+				// TODO: check which ones can be internal only
+				double*       dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+				double*       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
+				double*       dev_p_lay,           // in: io, mmm, kil
+				double*       dev_p_int,           // in: ioi, mmmi, kii
+				double*       opac_wg_lay,     // out: io
+				double*       opac_wg_int,     // out: ioi
+				double*       meanmolmass_lay, // out: mmm
+				double*       meanmolmass_int, // out: mmmi
+				const int&    ninterface,          // it, pii, mmmi, kii
+				const int&    real_star,        // pil
+				const double& fake_opac,        // io
+				const double& T_surf,           // csp, cse, pil
+				const double& surf_albedo,      // cse
+				const bool&   correct_surface_emissions,
+				const bool&   interp_and_calc_flux_step,
+				// calculate_transmission_iso
+				double* trans_wg,        // out
+				double* delta_colmass,   // in
+				//double* opac_wg_lay,     // in
+				//double* cloud_opac_lay,  // in
+				//double* meanmolmass_lay, // in
+				//double* cloud_scat_cross_lay, // in
+				//double* g_0_tot_lay,       // in
+				//double  g_0,
+				//double  epsi,
+				//double  mu_star,
+				//int     scat,
+				//int     ny,
+				//int     clouds,
+				//int     scat_corr
+				
+				
+				// calculate_transmission_non_iso
+				double* trans_wg_upper,
+				double* trans_wg_lower,
+				double* delta_col_upper,
+				double* delta_col_lower,
+				double* cloud_opac_lay,
+				double* cloud_opac_int,
+				double* cloud_scat_cross_lay,
+				double* cloud_scat_cross_int,
+				double* g_0_tot_lay,
+				double* g_0_tot_int,
+				double  g_0,
+				double  epsi,
+				double  mu_star,
+				int     scat,
+				int     ny,
+				int     clouds,
+				int     scat_corr,
+				// direct_beam_flux
+				//double* F_dir_wg,
+				//double* Fc_dir_wg,
+				double* z_lay,
+				//double  mu_star,
+				double  R_planet,
+				double  R_star,
+				double  a,
+				int     dir_beam,
+				int     geom_zenith_corr,
+				//int     ny
+				
+				// spectral flux loop
+				bool single_walk,
+				// int scat_val, -> same as scat
+				
+				
+				// populate_spectral_flux_iso
+				//double* F_down_wg,    // out
+                                //double* F_up_wg,      // out
+                                //double* F_dir_wg,     // in
+                                //double* g_0_tot_lay,   // in
+                                //double  g_0,
+                                // int     singlewalk, -> single_walk 
+				//                                double  Rstar, -> R_star
+                                //double  a,
+                                // int     numinterfaces, -> ninterface
+                                double  f_factor,
+                                //double  mu_star,
+                                //int     ny,
+                                //double  epsi,
+                                double  w_0_limit,
+                                double  albedo,
+				// populate_spectral_flux_noniso
+				double* F_down_wg,
+				double* F_up_wg,
+				double* Fc_down_wg,
+				double* Fc_up_wg,
+				double* F_dir_wg,
+				double* Fc_dir_wg,
+				//double* g_0_tot_lay,
+				//double* g_0_tot_int,
+				//double  g_0,
+				//int     singlewalk,
+				//double  Rstar,
+				//double  a,
+				//int     numinterfaces,
+				//double  f_factor,
+				//double  mu_star,
+				//int     ny,
+				//double  epsi,
+				//double  w_0_limit,
+				double  delta_tau_limit,
+				//int     dir_beam,
+				//int     clouds,
+				//double  albedo, -> surf_albedo
+				// double* trans_wg_upper,
+				// double* trans_wg_lower,
+				
+				// integrate_flux
+				double* deltalambda, // -> dev_opac_deltawave
+				double* F_down_tot,
+				double* F_up_tot,
+				double* F_net,
+				//double* F_down_wg,
+				//double* F_up_wg,
+				//double* F_dir_wg,
+				double* F_down_band,
+				double* F_up_band,
+				double* F_dir_band,
+				double* gauss_weight
+				//int num_interfaces, -> ninterface
+				//int ny
+				)
+{
+  prepare_compute_flux(    dev_starflux,        
+			   dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+			   dev_T_int,           // in: it, pii, ioi, mmmi, kii  
+			   dev_p_lay,           // in: io, mmm, kil
+			   dev_p_int,           // in: ioi, mmmi, kii
+			   opac_wg_lay,     // out: io
+			   opac_wg_int,     // out: ioi
+			   meanmolmass_lay, // out: mmm
+			   meanmolmass_int, // out: mmmi
+			   ninterface,          // it, pii, mmmi, kii
+			   real_star,        // pil
+			   fake_opac,        // io
+			   T_surf,           // csp, cse, pil
+			   surf_albedo,      // cse
+			   correct_surface_emissions,
+			   interp_and_calc_flux_step);
+    
+    
+    if (interp_and_calc_flux_step)
+      {
+	if (Alf_ptr->iso)
+	  {
+	    calculate_transmission_iso( trans_wg,        // out
+					delta_colmass,   // in
+					opac_wg_lay,     // in
+					cloud_opac_lay,  // in
+					meanmolmass_lay, // in
+					cloud_scat_cross_lay, // in
+					g_0_tot_lay,       // in
+					g_0,
+					epsi,
+					mu_star,
+					scat,
+					ny,
+					clouds,
+					scat_corr);
+	  }
+	else
+	  {
+	    calculate_transmission_noniso( trans_wg_upper,
+					   trans_wg_lower,
+					   delta_col_upper,
+					   delta_col_lower,
+					   opac_wg_lay,
+					   opac_wg_int,
+					   cloud_opac_lay,
+					   cloud_opac_int,
+					   meanmolmass_lay,
+					   meanmolmass_int,
+					   cloud_scat_cross_lay,
+					   cloud_scat_cross_int,
+					   g_0_tot_lay,
+					   g_0_tot_int,
+					   g_0,
+					   epsi,
+					   mu_star,
+					   scat,
+					   ny,
+					   clouds,
+					   scat_corr);
+	  }
+	
+	
+	Alf_ptr->call_z_callback();
+	
+	direct_beam_flux( F_dir_wg,
+			  Fc_dir_wg,
+			  z_lay,
+			  mu_star,
+			  R_planet,
+			  R_star,
+			  a,
+			  dir_beam,
+                          geom_zenith_corr,
+			  ninterface,
+			  ny);
+	  }
+  
+  int nscat_step = 0;
+  if (single_walk)
+    nscat_step = 200;
+  else
+    nscat_step = 3;
+  
+  for (int scat_iter = 0; scat_iter < nscat_step*scat + 1; scat_iter++)
+    {
+      if (Alf_ptr->iso)
+	{
+	  populate_spectral_flux_iso( F_down_wg,    // out
+				      F_up_wg,      // out
+				      F_dir_wg,     // in
+				      g_0_tot_lay,   // in
+				      g_0,
+				      single_walk,
+				      R_star,
+				      a,
+				      ninterface,
+				      f_factor,
+				      mu_star,
+				      ny,
+				      epsi,
+				      w_0_limit,
+				      dir_beam,
+				      clouds,
+				      albedo);
+	}
+      else
+	{
+	  populate_spectral_flux_noniso( F_down_wg,
+					 F_up_wg,
+					 Fc_down_wg,
+					 Fc_up_wg,
+					 F_dir_wg,
+					 Fc_dir_wg,
+					 g_0_tot_lay,
+					 g_0_tot_int,
+					 g_0,
+					 single_walk,
+					 R_star,
+					 a,
+					 ninterface,
+					 f_factor,
+					 mu_star,
+					 ny,
+					 epsi,
+					 w_0_limit,
+					 delta_tau_limit,
+					 dir_beam,
+					 clouds,
+					 albedo,
+					 trans_wg_upper,
+					 trans_wg_lower);
+	}
+      
+    }
+  integrate_flux( deltalambda,
+		  F_down_tot,
+		  F_up_tot,
+		  F_net,
+		  F_down_wg,
+		  F_up_wg,
+		  F_dir_wg,
+		  F_down_band,
+		  F_up_band,
+		  F_dir_band,
+		  gauss_weight,
+		  ninterface,
+		  ny);
+  
+}
+
+void wrap_compute_radiative_transfer(
+				     // prepare_compute_flux
+				     long dev_starflux,              // in: pil
+				     // state variables
+				     long       dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+				     long       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
+				     long       dev_p_lay,           // in: io, mmm, kil
+				     long       dev_p_int,           // in: ioi, mmmi, kii
+				     long       opac_wg_lay,     // out: io
+				     long       opac_wg_int,     // out: ioi
+				     long       meanmolmass_lay, // out: mmm
+				     long       meanmolmass_int, // out: mmmi
+				     const int&    ninterface,          // it, pii, mmmi, kii
+				     const int&    real_star,        // pil
+				     const double& fake_opac,        // io
+				     const double& T_surf,           // csp, cse, pil
+				     const double& surf_albedo,      // cse
+				     const bool&   correct_surface_emissions,
+				     const bool&   interp_and_calc_flux_step,
+				     // calculate_transmission_iso
+				     long trans_wg,        // out
+				     long delta_colmass,   // in
+				     
+				     // calculate_transmission_non_iso
+				     long trans_wg_upper,
+				     long trans_wg_lower,
+				     long delta_col_upper,
+				     long delta_col_lower,
+				     long cloud_opac_lay,
+				     long cloud_opac_int,
+				     long cloud_scat_cross_lay,
+				     long cloud_scat_cross_int,
+				     long g_0_tot_lay,
+				     long g_0_tot_int,
+				     double  g_0,
+				     double  epsi,
+				     double  mu_star,
+				     int     scat,
+				     int     ny,
+				     int     clouds,
+				     int     scat_corr,
+				     // direct_beam_flux
+				     long z_lay,
+				     double  R_planet,
+				     double  R_star,
+				     double  a,
+				     int     dir_beam,
+				     int     geom_zenith_corr,
+				     // spectral flux loop
+				     bool single_walk,
+				     // populate_spectral_flux_iso
+				     double  f_factor,
+				     double  w_0_limit,
+				     double  albedo,
+				     // populate_spectral_flux_noniso
+				     long F_down_wg,
+				     long F_up_wg,
+				     long Fc_down_wg,
+				     long Fc_up_wg,
+				     long F_dir_wg,
+				     long Fc_dir_wg,
+				     double  delta_tau_limit,
+				     // integrate_flux
+				     long deltalambda, // -> dev_opac_deltawave
+				     long F_down_tot,
+				     long F_up_tot,
+				     long F_net,
+				     long F_down_band,
+				     long F_up_band,
+				     long F_dir_band,
+				     long gauss_weight
+				     )
+{
+  compute_radiative_transfer(
+			     (double*) dev_starflux,              // in: pil
+			     (double*)       dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+			     (double*)       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
+			     (double*)       dev_p_lay,           // in: io, mmm, kil
+			     (double*)       dev_p_int,           // in: ioi, mmmi, kii
+			     (double*)       opac_wg_lay,     // out: io
+			     (double*)       opac_wg_int,     // out: ioi
+			     (double*)       meanmolmass_lay, // out: mmm
+			     (double*)       meanmolmass_int, // out: mmmi
+			     ninterface,          // it, pii, mmmi, kii
+			     real_star,        // pil
+			     fake_opac,        // io
+			     T_surf,           // csp, cse, pil
+			     surf_albedo,      // cse
+			     correct_surface_emissions,
+			     interp_and_calc_flux_step,
+			     // calculate_transmission_iso
+			     (double*) trans_wg,        // out
+			     (double*) delta_colmass,   // in
+			     // calculate_transmission_non_iso
+			     (double*) trans_wg_upper,
+			     (double*) trans_wg_lower,
+			     (double*) delta_col_upper,
+			     (double*) delta_col_lower,
+			     (double*) cloud_opac_lay,
+			     (double*) cloud_opac_int,
+			     (double*) cloud_scat_cross_lay,
+			     (double*) cloud_scat_cross_int,
+			     (double*) g_0_tot_lay,
+			     (double*) g_0_tot_int,
+			     g_0,
+			     epsi,
+			     mu_star,
+			     scat,
+			     ny,
+			     clouds,
+			     scat_corr,
+			     // direct_beam_flux
+			     (double*) z_lay,
+			     R_planet,
+			     R_star,
+			     a,
+			     dir_beam,
+			     geom_zenith_corr,
+			     // spectral flux loop
+			     single_walk,
+			     // populate_spectral_flux_iso
+			     f_factor,
+			     w_0_limit,
+			     albedo,
+			     // populate_spectral_flux_noniso
+			     (double*) F_down_wg,
+			     (double*) F_up_wg,
+			     (double*) Fc_down_wg,
+			     (double*) Fc_up_wg,
+			     (double*) F_dir_wg,
+			     (double*) Fc_dir_wg,
+			     delta_tau_limit,
+			     // integrate_flux
+			     (double*) deltalambda, // -> dev_opac_deltawave
+			     (double*) F_down_tot,
+			     (double*) F_up_tot,
+			     (double*) F_net,
+			     (double*) F_down_band,
+			     (double*) F_up_band,
+			     (double*) F_dir_band,
+			     (double*) gauss_weight
+			     );
 }

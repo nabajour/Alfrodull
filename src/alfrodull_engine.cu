@@ -160,3 +160,16 @@ void alfrodull_engine::correct_incident_energy(double * starflux_array_ptr,
   // for (int i = 0; i < plancktable.nplanck_grid; i++)
   //   printf("array[%d] : %g\n", i, plgrd[i]);
 }
+
+
+void alfrodull_engine::set_z_calc_func( std::function<void()> & fun)
+{
+  calc_z_func = fun;
+}
+
+void alfrodull_engine::call_z_callback()
+{
+  // if (calc_z_func)
+  //   calc_z_func();
+  
+}
