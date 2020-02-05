@@ -11,8 +11,6 @@ bool wrap_prepare_compute_flux(
 			  long dev_meanmolmass_lay, // mmm
 			  long dev_meanmolmass_int, // mmmi
 			  const int & ninterface, // it, pii, mmmi, kii
-			  const int & nbin, // csp, cse, pil, pii, io
-			  const int & nlayer, // csp, cse, pil, io, mmm, kil
 			  const int & real_star, // pil
 			  const double & fake_opac, // io
 			  const double & T_surf, // csp, cse, pil
@@ -33,8 +31,6 @@ bool prepare_compute_flux(
 		  double * dev_meanmolmass_lay, // mmm
 		  double * dev_meanmolmass_int, // mmmi
 		  const int & ninterface, // it, pii, mmmi, kii
-		  const int & nbin, // csp, cse, pil, pii, io
-		  const int & nlayer, // csp, cse, pil, io, mmm, kil
 		  const int & real_star, // pil
 		  const double & fake_opac, // io
 		  const double & T_surf, // csp, cse, pil
@@ -61,7 +57,6 @@ void integrate_flux(
 		    double* F_up_band, 
 		    double* F_dir_band,
 		    double* gauss_weight,
-		    int 	nbin, 
 		    int 	numinterfaces, 
 		    int 	ny
 		    );
@@ -77,7 +72,6 @@ void wrap_integrate_flux(long deltalambda_, // double*
 			 long F_up_band_,  // double *
 			 long F_dir_band_, // double *
 			 long gauss_weight_, // double *
-			 int 	nbin, 
 			 int 	numinterfaces, 
 			 int 	ny,
 			 int block_x,
@@ -90,7 +84,6 @@ void wrap_integrate_flux(long deltalambda_, // double*
 
 bool wrap_calculate_transmission_iso(
 				      long 	trans_wg,
-        long 	delta_tau_wg,
         long 	delta_colmass,
         long 	opac_wg_lay,
         long cloud_opac_lay,
@@ -101,9 +94,7 @@ bool wrap_calculate_transmission_iso(
         double 	epsi,
         double 	mu_star,
         int 	scat,
-        int 	nbin,
         int 	ny,
-        int 	nlayer,
         int 	clouds,
         int 	scat_corr
 					      );
@@ -111,8 +102,6 @@ bool wrap_calculate_transmission_iso(
  bool wrap_calculate_transmission_noniso(
         long trans_wg_upper,
         long trans_wg_lower,
-        long delta_tau_wg_upper,
-        long delta_tau_wg_lower,
         long delta_col_upper,
         long delta_col_lower,
         long opac_wg_lay,
@@ -129,9 +118,7 @@ bool wrap_calculate_transmission_iso(
         double 	epsi,
         double 	mu_star,
         int 	scat,
-        int 	nbin,
         int 	ny,
-        int 	nlayer,
         int 	clouds,
         int 	scat_corr
 					 );
@@ -139,9 +126,6 @@ bool wrap_calculate_transmission_iso(
 
 bool wrap_direct_beam_flux(long 	F_dir_wg,
 			   long 	Fc_dir_wg,
-			   long 	delta_tau_wg,
-			   long 	delta_tau_wg_upper,
-			   long 	delta_tau_wg_lower,
 			   long 	z_lay,
 			   double 	mu_star,
 			   double	R_planet,
@@ -150,10 +134,7 @@ bool wrap_direct_beam_flux(long 	F_dir_wg,
 			   int		dir_beam,
 			   int		geom_zenith_corr,
 			   int 	ninterface,
-			   int 	nbin,
-			   int 	ny,
-			   bool iso
-			   );
+			   int 	ny			   );
 
 
 
@@ -165,8 +146,6 @@ bool wrap_populate_spectral_flux_noniso(
 					      long Fc_up_wg,
 					      long F_dir_wg,
 					      long Fc_dir_wg,
-					      long delta_tau_wg_upper,
-					      long delta_tau_wg_lower,
 					      long g_0_tot_lay,
 					      long g_0_tot_int,
 					      double 	g_0,
@@ -174,7 +153,6 @@ bool wrap_populate_spectral_flux_noniso(
 					      double 	Rstar, 
 					      double 	a, 
 					      int 	numinterfaces,
-					      int 	nbin, 
 					      double 	f_factor,
 					      double 	mu_star,
 					      int 	ny,
@@ -192,14 +170,12 @@ bool wrap_populate_spectral_flux_iso(
 				     long F_down_wg, 
         long F_up_wg, 
         long F_dir_wg, 
-        long delta_tau_wg,
         long g_0_tot_lay,
         double 	g_0,
         int 	singlewalk, 
         double 	Rstar, 
         double 	a, 
         int 	numinterfaces, 
-        int 	nbin, 
         double 	f_factor, 
         double 	mu_star,
         int 	ny, 
@@ -219,7 +195,7 @@ void deinit_alfrodull();
 // TODO: this shouldn't be visible externally
 void allocate();
 
-std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write();
+std::tuple<long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write();
 
 void prepare_planck_table();
 void correct_incident_energy(long starflux_array_ptr,

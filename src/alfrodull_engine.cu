@@ -42,14 +42,23 @@ void alfrodull_engine::allocate_internal_variables()
   int nlayer_wg_nbin = nlayer*opacities.ny*opacities.nbin;
   int ninterface_wg_nbin = ninterface*opacities.ny*opacities.nbin;
 
-  
-  
   // scatter cross section layer and interface
   // those are shared for print out
   scatter_cross_section_lay.allocate(nlayer_nbin);
   scatter_cross_section_inter.allocate(ninterface_nbin);
   planckband_lay.allocate(nlayer_plus2_nbin);
   planckband_int.allocate(ninterface_nbin);
+
+  
+  if (iso)
+    {
+      delta_tau_wg.allocate(nlayer_wg_nbin);
+    }
+  else
+    {
+      delta_tau_wg_upper.allocate(nlayer_wg_nbin);
+      delta_tau_wg_lower.allocate(nlayer_wg_nbin);
+    }
   
   // flux computation internal quantities
   // TODO: not needed to allocate everything, depending on iso or noniso
@@ -88,6 +97,9 @@ void alfrodull_engine::get_device_pointers_for_helios_write(double *& dev_scat_c
 							    double *& dev_planck_lay,
 							    double *& dev_planck_int,
 							    double *& dev_planck_grid,
+							    double *& dev_delta_tau_wg,
+							    double *& dev_delta_tau_wg_upper,
+							    double *& dev_delta_tau_wg_lower,
 							    int & dim,
 							    int & step
 							    )
@@ -99,6 +111,10 @@ void alfrodull_engine::get_device_pointers_for_helios_write(double *& dev_scat_c
   dev_planck_lay = *planckband_lay;
   dev_planck_int = *planckband_int;
   dev_planck_grid = *plancktable.planck_grid;
+  dev_delta_tau_wg = *delta_tau_wg;
+  dev_delta_tau_wg_upper = *delta_tau_wg_upper;
+  dev_delta_tau_wg_lower = *delta_tau_wg_lower;
+  
   dim = plancktable.dim;
   step = plancktable.step;
 }

@@ -27,6 +27,9 @@ public:
 					    double *& dev_planck_lay,
 					    double *& dev_planck_int,
 					    double *& dev_planck_grid,
+					    double *& dev_delta_tau_wg,
+					    double *& dev_delta_tau_wg_upper,
+					    double *& dev_delta_tau_wg_lower,
 					    int & dim,
 					    int & step);
 
@@ -54,6 +57,14 @@ public:
   // planck function 
   cuda_device_memory<double> planckband_lay;
   cuda_device_memory<double> planckband_int;
+
+  // delta tau, for weights. Only used internally (on device) for flux computations
+  // and shared at the end for integration over wg
+  // iso
+  cuda_device_memory<double> delta_tau_wg;
+  // noiso
+  cuda_device_memory<double> delta_tau_wg_upper;
+  cuda_device_memory<double> delta_tau_wg_lower;
   
   // Flux computation quantities
   // computed in trans_iso/trans_noniso

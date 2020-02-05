@@ -31,15 +31,14 @@ __host__ bool prepare_compute_flux(
     double*       dev_meanmolmass_lay, // out: mmm
     double*       dev_meanmolmass_int, // out: mmmi
     const int&    ninterface,          // it, pii, mmmi, kii
-    const int&    nbin,                // csp, cse, pil, pii, io
-    const int&    nlayer,              // csp, cse, pil, io, mmm, kil
     const int&    real_star,        // pil
     const double& fake_opac,        // io
     const double& T_surf,           // csp, cse, pil
     const double& surf_albedo,      // cse
-    const bool&   iso,                // pii
     const bool&   correct_surface_emissions,
     const bool&   interp_and_calc_flux_step) {
+  int nbin = Alf_ptr->opacities.nbin;
+      
     dim3 calc_surf_grid(int((nbin + 15) / 16), 1, 1);
     dim3 calc_surf_blocks(16, 1, 1);
     // csp
@@ -53,7 +52,10 @@ __host__ bool prepare_compute_flux(
     int plancktable_dim = Alf_ptr->plancktable.dim;
     int plancktable_step = Alf_ptr->plancktable.step;
 
-	  
+    bool iso = Alf_ptr->iso;
+
+    int nlayer = Alf_ptr->nlayer;
+    
     calc_surface_planck<<<calc_surf_grid, calc_surf_blocks>>>(
 							      dev_planckband_lay,                       // out
 							      *(Alf_ptr->opacities.dev_opac_interwave), // in
@@ -271,7 +273,6 @@ void wrap_integrate_flux(long deltalambda_,  // double*
                          long F_up_band_,    // double *
                          long F_dir_band_,   // double *
                          long gauss_weight_, // double *
-                         int  nbin,
                          int  numinterfaces,
                          int  ny,
                          int  block_x,
@@ -294,7 +295,9 @@ void wrap_integrate_flux(long deltalambda_,  // double*
 
     dim3 threadsPerBlock(grid_x, grid_y, grid_z);
     dim3 numBlocks(block_x, block_y, block_z);
-
+    
+    int nbin = Alf_ptr->opacities.nbin;
+  
     printf("Running Alfrodull Wrapper for integrate flux\n");
     integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
                                                           F_down_tot,
@@ -315,7 +318,6 @@ void wrap_integrate_flux(long deltalambda_,  // double*
 }
 
 __host__ bool calculate_transmission_iso(double* trans_wg,        // out
-                                         double* delta_tau_wg,    // out 
                                          double* delta_colmass,   // in
                                          double* opac_wg_lay,     // in
                                          double* cloud_opac_lay,  // in
@@ -326,15 +328,16 @@ __host__ bool calculate_transmission_iso(double* trans_wg,        // out
                                          double  epsi,
                                          double  mu_star,
                                          int     scat,
-                                         int     nbin,
                                          int     ny,
-                                         int     nlayer,
                                          int     clouds,
                                          int     scat_corr) {
+  int nbin = Alf_ptr->opacities.nbin;
+  int nlayer = Alf_ptr->nlayer;
+  
     dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
     dim3 block(16, 4, 4);
     trans_iso<<<grid, block>>>(trans_wg,
-                               delta_tau_wg,
+                               *(Alf_ptr->delta_tau_wg),
                                *(Alf_ptr->M_term),
                                *(Alf_ptr->N_term),
 				 *(Alf_ptr->P_term),
@@ -354,7 +357,7 @@ __host__ bool calculate_transmission_iso(double* trans_wg,        // out
                                scat,
                                nbin,
                                ny,
-                               nlayer,
+                               Alf_ptr->nlayer,
                                clouds,
                                scat_corr);
 
@@ -363,7 +366,6 @@ __host__ bool calculate_transmission_iso(double* trans_wg,        // out
 }
 
 bool wrap_calculate_transmission_iso(long   trans_wg,
-                                     long   delta_tau_wg,
                                      long   delta_colmass,
                                      long   opac_wg_lay,
                                      long   cloud_opac_lay,
@@ -374,13 +376,10 @@ bool wrap_calculate_transmission_iso(long   trans_wg,
                                      double epsi,
                                      double mu_star,
                                      int    scat,
-                                     int    nbin,
                                      int    ny,
-                                     int    nlayer,
                                      int    clouds,
                                      int    scat_corr) {
     return calculate_transmission_iso((double*)trans_wg,
-                                      (double*)delta_tau_wg,
                                       (double*)delta_colmass,
                                       (double*)opac_wg_lay,
                                       (double*)cloud_opac_lay,
@@ -391,17 +390,13 @@ bool wrap_calculate_transmission_iso(long   trans_wg,
                                       epsi,
                                       mu_star,
                                       scat,
-                                      nbin,
                                       ny,
-                                      nlayer,
                                       clouds,
                                       scat_corr);
 }
 
 __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                             double* trans_wg_lower,
-                                            double* delta_tau_wg_upper,
-                                            double* delta_tau_wg_lower,
                                             double* delta_col_upper,
                                             double* delta_col_lower,
                                             double* opac_wg_lay,
@@ -418,18 +413,18 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                             double  epsi,
                                             double  mu_star,
                                             int     scat,
-                                            int     nbin,
                                             int     ny,
-                                            int     nlayer,
                                             int     clouds,
                                             int     scat_corr) {
+  int nbin = Alf_ptr->opacities.nbin;
+  int nlayer = Alf_ptr->nlayer;
     dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
     dim3 block(16, 4, 4);
 
     trans_noniso<<<grid, block>>>(trans_wg_upper,
                                   trans_wg_lower,
-                                  delta_tau_wg_upper,
-                                  delta_tau_wg_lower,
+                                  *(Alf_ptr->delta_tau_wg_upper),
+				  *(Alf_ptr->delta_tau_wg_lower),
                                   *(Alf_ptr->M_upper),
                                   *(Alf_ptr->M_lower),
                                   *(Alf_ptr->N_upper),
@@ -462,7 +457,7 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                   scat,
                                   nbin,
                                   ny,
-                                  nlayer,
+                                  Alf_ptr->nlayer,
                                   clouds,
                                   scat_corr);
     cudaDeviceSynchronize();
@@ -471,8 +466,6 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
 
 bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
                                         long   trans_wg_lower,
-                                        long   delta_tau_wg_upper,
-                                        long   delta_tau_wg_lower,
                                         long   delta_col_upper,
                                         long   delta_col_lower,
                                         long   opac_wg_lay,
@@ -489,15 +482,11 @@ bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
                                         double epsi,
                                         double mu_star,
                                         int    scat,
-                                        int    nbin,
                                         int    ny,
-                                        int    nlayer,
                                         int    clouds,
                                         int    scat_corr) {
     return calculate_transmission_noniso((double*)trans_wg_upper,
                                          (double*)trans_wg_lower,
-                                         (double*)delta_tau_wg_upper,
-                                         (double*)delta_tau_wg_lower,
                                          (double*)delta_col_upper,
                                          (double*)delta_col_lower,
                                          (double*)opac_wg_lay,
@@ -514,9 +503,7 @@ bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
                                          epsi,
                                          mu_star,
                                          scat,
-                                         nbin,
                                          ny,
-                                         nlayer,
                                          clouds,
                                          scat_corr);
 }
@@ -524,9 +511,6 @@ bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
 
 bool direct_beam_flux(double* F_dir_wg,
                       double* Fc_dir_wg,
-                      double* delta_tau_wg,
-                      double* delta_tau_wg_upper,
-                      double* delta_tau_wg_lower,
                       double* z_lay,
                       double  mu_star,
                       double  R_planet,
@@ -535,18 +519,17 @@ bool direct_beam_flux(double* F_dir_wg,
                       int     dir_beam,
                       int     geom_zenith_corr,
                       int     ninterface,
-                      int     nbin,
-                      int     ny,
-                      bool    iso) {
+                      int     ny) {
 
   double* planckband_lay = *(Alf_ptr->planckband_lay);
+  int nbin = Alf_ptr->opacities.nbin;
   
-    if (iso) {
+    if (Alf_ptr->iso) {
         dim3 block(4, 32, 4);
         dim3 grid(int((ninterface + 3) / 4), int((nbin + 31) / 32), int((ny + 3) / 4));
         fdir_iso<<<grid, block>>>(F_dir_wg,
                                   planckband_lay,
-                                  delta_tau_wg,
+                                  *(Alf_ptr->delta_tau_wg),
                                   z_lay,
                                   mu_star,
                                   R_planet,
@@ -567,8 +550,8 @@ bool direct_beam_flux(double* F_dir_wg,
         fdir_noniso<<<grid, block>>>(F_dir_wg,
                                      Fc_dir_wg,
                                      planckband_lay,
-                                     delta_tau_wg_upper,
-                                     delta_tau_wg_lower,
+                                     *(Alf_ptr->delta_tau_wg_upper),
+				     *(Alf_ptr->delta_tau_wg_lower),
                                      z_lay,
                                      mu_star,
                                      R_planet,
@@ -588,9 +571,6 @@ bool direct_beam_flux(double* F_dir_wg,
 
 bool wrap_direct_beam_flux(long   F_dir_wg,
                            long   Fc_dir_wg,
-                           long   delta_tau_wg,
-                           long   delta_tau_wg_upper,
-                           long   delta_tau_wg_lower,
                            long   z_lay,
                            double mu_star,
                            double R_planet,
@@ -599,16 +579,11 @@ bool wrap_direct_beam_flux(long   F_dir_wg,
                            int    dir_beam,
                            int    geom_zenith_corr,
                            int    ninterface,
-                           int    nbin,
-                           int    ny,
-                           bool   iso) {
+                           int    ny) {
   double* planckband_lay = *(Alf_ptr->planckband_lay);
   
     return direct_beam_flux((double*)F_dir_wg,
                             (double*)Fc_dir_wg,
-                            (double*)delta_tau_wg,
-                            (double*)delta_tau_wg_upper,
-                            (double*)delta_tau_wg_lower,
                             (double*)z_lay,
                             mu_star,
                             R_planet,
@@ -617,23 +592,19 @@ bool wrap_direct_beam_flux(long   F_dir_wg,
                             dir_beam,
                             geom_zenith_corr,
                             ninterface,
-                            nbin,
-                            ny,
-                            iso);
+                            ny);
 }
 
 
 bool populate_spectral_flux_iso(double* F_down_wg,    // out
                                 double* F_up_wg,      // out
                                 double* F_dir_wg,     // in
-                                double* delta_tau_wg,  // in
                                 double* g_0_tot_lay,   // in
                                 double  g_0,
                                 int     singlewalk,
                                 double  Rstar,
                                 double  a,
                                 int     numinterfaces,
-                                int     nbin,
                                 double  f_factor,
                                 double  mu_star,
                                 int     ny,
@@ -643,6 +614,7 @@ bool populate_spectral_flux_iso(double* F_down_wg,    // out
                                 int     clouds,
                                 double  albedo) {
     double* planckband_lay = *(Alf_ptr->planckband_lay);
+    int nbin = Alf_ptr->opacities.nbin;
     
     dim3 block(16, 16, 1);
     dim3 grid(int((nbin + 15) / 16), int((ny + 16) / 16), 1);
@@ -651,7 +623,7 @@ bool populate_spectral_flux_iso(double* F_down_wg,    // out
                                       F_dir_wg,
                                       planckband_lay,
                                       *(Alf_ptr->w_0),
-                                      delta_tau_wg,
+                                      *(Alf_ptr->delta_tau_wg),
                                       *(Alf_ptr->M_term),
                                       *(Alf_ptr->N_term),
                                       *(Alf_ptr->P_term),
@@ -679,14 +651,12 @@ bool populate_spectral_flux_iso(double* F_down_wg,    // out
 bool wrap_populate_spectral_flux_iso(long   F_down_wg,
                                      long   F_up_wg,
                                      long   F_dir_wg,
-                                     long   delta_tau_wg,
                                      long   g_0_tot_lay,
                                      double g_0,
                                      int    singlewalk,
                                      double Rstar,
                                      double a,
                                      int    numinterfaces,
-                                     int    nbin,
                                      double f_factor,
                                      double mu_star,
                                      int    ny,
@@ -698,14 +668,12 @@ bool wrap_populate_spectral_flux_iso(long   F_down_wg,
     return populate_spectral_flux_iso((double*)F_down_wg,
                                       (double*)F_up_wg,
                                       (double*)F_dir_wg,
-                                      (double*)delta_tau_wg,
                                       (double*)g_0_tot_lay,
                                       g_0,
                                       singlewalk,
                                       Rstar,
                                       a,
                                       numinterfaces,
-                                      nbin,
                                       f_factor,
                                       mu_star,
                                       ny,
@@ -724,8 +692,6 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                             double* Fc_up_wg,
                                             double* F_dir_wg,
                                             double* Fc_dir_wg,
-                                            double* delta_tau_wg_upper,
-                                            double* delta_tau_wg_lower,
                                             double* g_0_tot_lay,
                                             double* g_0_tot_int,
                                             double  g_0,
@@ -733,7 +699,6 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                             double  Rstar,
                                             double  a,
                                             int     numinterfaces,
-                                            int     nbin,
                                             double  f_factor,
                                             double  mu_star,
                                             int     ny,
@@ -745,12 +710,14 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                             double  albedo,
                                             double* trans_wg_upper,
                                             double* trans_wg_lower) {
-    dim3 block(16, 16, 1);
-    dim3 grid(int((nbin + 15) / 16), int((ny + 16) / 16), 1);
-
+  int nbin = Alf_ptr->opacities.nbin;
+  dim3 block(16, 16, 1);
+  
+  dim3 grid(int((nbin + 15) / 16), int((ny + 16) / 16), 1);
+  
     double* planckband_lay = *(Alf_ptr->planckband_lay);
     double* planckband_int = *(Alf_ptr->planckband_int);
-
+ 
     // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
     fband_noniso_notabu<<<grid, block>>>(F_down_wg,
                                          F_up_wg,
@@ -762,8 +729,8 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                          planckband_int,
                                          *(Alf_ptr->w_0_upper),
                                          *(Alf_ptr->w_0_lower),
-                                         delta_tau_wg_upper,
-                                         delta_tau_wg_lower,
+                                         *(Alf_ptr->delta_tau_wg_upper),
+					 *(Alf_ptr->delta_tau_wg_lower),
                                          *(Alf_ptr->M_upper),
                                          *(Alf_ptr->M_lower),
                                          *(Alf_ptr->N_upper),
@@ -803,8 +770,6 @@ bool wrap_populate_spectral_flux_noniso(long   F_down_wg,
                                         long   Fc_up_wg,
                                         long   F_dir_wg,
                                         long   Fc_dir_wg,
-                                        long   delta_tau_wg_upper,
-                                        long   delta_tau_wg_lower,
                                         long   g_0_tot_lay,
                                         long   g_0_tot_int,
                                         double g_0,
@@ -812,7 +777,6 @@ bool wrap_populate_spectral_flux_noniso(long   F_down_wg,
                                         double Rstar,
                                         double a,
                                         int    numinterfaces,
-                                        int    nbin,
                                         double f_factor,
                                         double mu_star,
                                         int    ny,
@@ -830,8 +794,6 @@ bool wrap_populate_spectral_flux_noniso(long   F_down_wg,
                                          (double*)Fc_up_wg,
                                          (double*)F_dir_wg,
                                          (double*)Fc_dir_wg,
-                                         (double*)delta_tau_wg_upper,
-                                         (double*)delta_tau_wg_lower,
                                          (double*)g_0_tot_lay,
                                          (double*)g_0_tot_int,
                                          g_0,
@@ -839,7 +801,6 @@ bool wrap_populate_spectral_flux_noniso(long   F_down_wg,
                                          Rstar,
                                          a,
                                          numinterfaces,
-                                         nbin,
                                          f_factor,
                                          mu_star,
                                          ny,
@@ -895,10 +856,10 @@ void allocate() {
 }
 
 // TODO: this is ugly and should not exist!
-std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write() {
+std::tuple<long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write() {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
-        return std::make_tuple(0, 0, 0, 0, 0, 0, 0, 0, 0);
+        return std::make_tuple(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
     double* dev_scat_cross_section_lay_ptr = 0;
     double* dev_scat_cross_section_int_ptr = 0;
@@ -907,6 +868,9 @@ std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointe
     double* dev_planck_lay_ptr              = 0;
     double* dev_planck_int_ptr              = 0;
     double* dev_planck_grid_ptr              = 0;
+    double* dev_delta_tau_wg_ptr              = 0;
+    double* dev_delta_tau_wg_upper_ptr              = 0;
+    double* dev_delta_tau_wg_lower_ptr              = 0;
     int dim = 0;
     int step = 0;
 
@@ -917,6 +881,9 @@ std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointe
 						  dev_planck_lay_ptr,
 						  dev_planck_int_ptr,
 						  dev_planck_grid_ptr,
+						  dev_delta_tau_wg_ptr,
+						  dev_delta_tau_wg_upper_ptr,
+						  dev_delta_tau_wg_lower_ptr,
 						  dim,
 						  step
 						  );
@@ -928,7 +895,10 @@ std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointe
     long dev_planck_lay             = (long)dev_planck_lay_ptr;
     long dev_planck_int             = (long)dev_planck_int_ptr;
     long dev_planck_grid            = (long)dev_planck_grid_ptr;
-
+    long dev_delta_tau_wg           = (long)dev_delta_tau_wg_ptr;
+    long dev_delta_tau_upper_wg           = (long)dev_delta_tau_wg_upper_ptr;
+    long dev_delta_tau_lower_wg           = (long)dev_delta_tau_wg_lower_ptr;
+    
     return std::make_tuple(dev_scat_cross_section_int,
 			   dev_scat_cross_section_lay,
 			   dev_interwave,
@@ -936,6 +906,9 @@ std::tuple<long, long, long, long, long, long, long, int, int> get_device_pointe
 			   dev_planck_lay,
 			   dev_planck_int,
 			   dev_planck_grid,
+			   dev_delta_tau_wg,
+			   dev_delta_tau_upper_wg,
+			   dev_delta_tau_lower_wg,
 			   dim,
 			   step
 			   );
