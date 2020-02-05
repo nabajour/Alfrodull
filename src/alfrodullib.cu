@@ -225,13 +225,10 @@ bool wrap_prepare_compute_flux(
 			  long dev_meanmolmass_lay, // mmm
 			  long dev_meanmolmass_int, // mmmi
 			  const int & ninterface, // it, pii, mmmi, kii
-			  const int & nbin, // csp, cse, pil, pii, io
-			  const int & nlayer, // csp, cse, pil, io, mmm, kil
 			  const int & real_star, // pil
 			  const double & fake_opac, // io
 			  const double & T_surf, // csp, cse, pil
 			  const double & surf_albedo, // cse
-			  const bool & iso, // pii
 			  const bool & correct_surface_emissions,
 			  const bool & interp_and_calc_flux_step
 			  
@@ -249,13 +246,10 @@ bool wrap_prepare_compute_flux(
 				  (double *)dev_meanmolmass_lay, // mmm
 				  (double *)dev_meanmolmass_int, // mmmi
 				  ninterface, // it, pii, mmmi, kii
-				  nbin, // csp, cse, pil, pii, io
-				  nlayer, // csp, cse, pil, io, mmm, kil
 				  real_star, // pil
 				  fake_opac, // io
 				  T_surf, // csp, cse, pil
 				  surf_albedo, // cse
-				  iso, // pii
 				  correct_surface_emissions,
 				  interp_and_calc_flux_step
 				  );

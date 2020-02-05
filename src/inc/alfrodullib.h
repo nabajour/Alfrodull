@@ -15,7 +15,6 @@ bool wrap_prepare_compute_flux(
 			  const double & fake_opac, // io
 			  const double & T_surf, // csp, cse, pil
 			  const double & surf_albedo, // cse
-			  const bool & iso, // pii
 			  const bool & correct_surface_emissions,
 			  const bool & interp_and_calc_flux_step
 			       );
@@ -35,9 +34,6 @@ bool prepare_compute_flux(
 		  const double & fake_opac, // io
 		  const double & T_surf, // csp, cse, pil
 		  const double & surf_albedo, // cse
-		  const int & dim, // pil, pii
-		  const int & step, // pil, pii
-		  const bool & iso, // pii
 		  const bool & correct_surface_emissions,
 		  const bool & interp_and_calc_flux_step
 		  
