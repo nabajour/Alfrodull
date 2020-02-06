@@ -169,7 +169,7 @@ void alfrodull_engine::set_z_calc_func( std::function<void()> & fun)
 
 void alfrodull_engine::call_z_callback()
 {
-  // if (calc_z_func)
-  //   calc_z_func();
+  if (calc_z_func)
+    calc_z_func();
   
 }

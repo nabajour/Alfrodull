@@ -7,13 +7,14 @@
 namespace py = pybind11;
 
 py::function fn_clbck;
+bool  fn_clbck_set = false;
 
 void call_callback()
 {
   printf("Called call_callback\n");
   fn_clbck();
   printf("Came back from callback\n");
-  fn_clbck.release();
+  //  fn_clbck.release();
 }
 
 std::function<void()> calc_z_callback = call_callback;
@@ -22,12 +23,21 @@ void set_callback(py::object & fn)
 {
   printf("Called set_callback\n");
   fn_clbck = fn;
-
+  fn_clbck_set = true;
   
   set_z_calc_function(calc_z_callback);
 
 }
 
+auto cleanup_callback = []()
+			{
+			  // perform cleanup here -- this function is called with the GIL held
+			  if (fn_clbck_set)
+			    {
+			      fn_clbck.release();
+			      fn_clbck_set = false;
+			    }
+};
 
 
 
@@ -56,4 +66,5 @@ PYBIND11_MODULE(pylfrodull, m) {
 
     m.def("set_callback", &set_callback, "Set function callback");
     m.def("call_callback", &call_callback, "call function callback");
+    m.add_object("_cleanup", py::capsule(cleanup_callback));
 }
