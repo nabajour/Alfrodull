@@ -866,62 +866,14 @@ void allocate() {
 }
 
 // TODO: this is ugly and should not exist!
-std::tuple<long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write() {
+std::tuple<long, long, long, long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write() {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
-        return std::make_tuple(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        return std::make_tuple(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
-    double* dev_scat_cross_section_lay_ptr = 0;
-    double* dev_scat_cross_section_int_ptr = 0;
-    double* dev_interwave_ptr              = 0;
-    double* dev_deltawave_ptr              = 0;
-    double* dev_planck_lay_ptr              = 0;
-    double* dev_planck_int_ptr              = 0;
-    double* dev_planck_grid_ptr              = 0;
-    double* dev_delta_tau_wg_ptr              = 0;
-    double* dev_delta_tau_wg_upper_ptr              = 0;
-    double* dev_delta_tau_wg_lower_ptr              = 0;
-    int dim = 0;
-    int step = 0;
-
-    Alf_ptr->get_device_pointers_for_helios_write(dev_scat_cross_section_lay_ptr,
-                                                  dev_scat_cross_section_int_ptr,
-                                                  dev_interwave_ptr,
-                                                  dev_deltawave_ptr,
-						  dev_planck_lay_ptr,
-						  dev_planck_int_ptr,
-						  dev_planck_grid_ptr,
-						  dev_delta_tau_wg_ptr,
-						  dev_delta_tau_wg_upper_ptr,
-						  dev_delta_tau_wg_lower_ptr,
-						  dim,
-						  step
-						  );
-
-    long dev_scat_cross_section_lay = (long)dev_scat_cross_section_lay_ptr;
-    long dev_scat_cross_section_int = (long)dev_scat_cross_section_int_ptr;
-    long dev_interwave              = (long)dev_interwave_ptr;
-    long dev_deltawave              = (long)dev_deltawave_ptr;
-    long dev_planck_lay             = (long)dev_planck_lay_ptr;
-    long dev_planck_int             = (long)dev_planck_int_ptr;
-    long dev_planck_grid            = (long)dev_planck_grid_ptr;
-    long dev_delta_tau_wg           = (long)dev_delta_tau_wg_ptr;
-    long dev_delta_tau_upper_wg           = (long)dev_delta_tau_wg_upper_ptr;
-    long dev_delta_tau_lower_wg           = (long)dev_delta_tau_wg_lower_ptr;
     
-    return std::make_tuple(dev_scat_cross_section_int,
-			   dev_scat_cross_section_lay,
-			   dev_interwave,
-			   dev_deltawave,
-			   dev_planck_lay,
-			   dev_planck_int,
-			   dev_planck_grid,
-			   dev_delta_tau_wg,
-			   dev_delta_tau_upper_wg,
-			   dev_delta_tau_lower_wg,
-			   dim,
-			   step
-			   );
+
+    return Alf_ptr->get_device_pointers_for_helios_write( );
 }
 
 void prepare_planck_table()
@@ -981,7 +933,6 @@ void compute_radiative_transfer(
 				const bool&   interp_and_calc_flux_step,
 				// calculate_transmission_iso
 				double* trans_wg,        // out
-				double* delta_colmass,   // in
 				//double* opac_wg_lay,     // in
 				//double* cloud_opac_lay,  // in
 				//double* meanmolmass_lay, // in
@@ -999,8 +950,6 @@ void compute_radiative_transfer(
 				// calculate_transmission_non_iso
 				double* trans_wg_upper,
 				double* trans_wg_lower,
-				double* delta_col_upper,
-				double* delta_col_lower,
 				double* cloud_opac_lay,
 				double* cloud_opac_int,
 				double* cloud_scat_cross_lay,
@@ -1089,6 +1038,11 @@ void compute_radiative_transfer(
 				//int ny
 				)
 {
+
+  double* delta_colmass = *Alf_ptr->delta_col_mass;
+  double* delta_col_upper = *Alf_ptr->delta_col_upper;
+  double* delta_col_lower = *Alf_ptr->delta_col_lower;
+				  
   prepare_compute_flux(    dev_starflux,        
 			   dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
 			   dev_T_int,           // in: it, pii, ioi, mmmi, kii  
@@ -1237,7 +1191,13 @@ void compute_radiative_transfer(
 		  gauss_weight,
 		  ninterface,
 		  ny);
-  
+
+
+  cudaError_t err = cudaGetLastError();
+ 
+  if (err != cudaSuccess) {
+    printf("compute_radiative_transfer: cuda error: %s\n", cudaGetErrorString(err));
+  }
 }
 
 void wrap_compute_radiative_transfer(
@@ -1261,13 +1221,10 @@ void wrap_compute_radiative_transfer(
 				     const bool&   interp_and_calc_flux_step,
 				     // calculate_transmission_iso
 				     long trans_wg,        // out
-				     long delta_colmass,   // in
 				     
 				     // calculate_transmission_non_iso
 				     long trans_wg_upper,
 				     long trans_wg_lower,
-				     long delta_col_upper,
-				     long delta_col_lower,
 				     long cloud_opac_lay,
 				     long cloud_opac_int,
 				     long cloud_scat_cross_lay,
@@ -1332,12 +1289,9 @@ void wrap_compute_radiative_transfer(
 			     interp_and_calc_flux_step,
 			     // calculate_transmission_iso
 			     (double*) trans_wg,        // out
-			     (double*) delta_colmass,   // in
 			     // calculate_transmission_non_iso
 			     (double*) trans_wg_upper,
 			     (double*) trans_wg_lower,
-			     (double*) delta_col_upper,
-			     (double*) delta_col_lower,
 			     (double*) cloud_opac_lay,
 			     (double*) cloud_opac_int,
 			     (double*) cloud_scat_cross_lay,

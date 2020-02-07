@@ -31,6 +31,7 @@ void set_callback(py::object & fn)
 
 auto cleanup_callback = []()
 			{
+			  printf("Cleanup pylfrodull module\n");
 			  // perform cleanup here -- this function is called with the GIL held
 			  if (fn_clbck_set)
 			    {

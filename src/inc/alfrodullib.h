@@ -22,13 +22,10 @@ void wrap_compute_radiative_transfer(
 				     const bool&   interp_and_calc_flux_step,
 				     // calculate_transmission_iso
 				     long trans_wg,        // out
-				     long delta_colmass,   // in
 				     
 				     // calculate_transmission_non_iso
 				     long trans_wg_upper,
 				     long trans_wg_lower,
-				     long delta_col_upper,
-				     long delta_col_lower,
 				     long cloud_opac_lay,
 				     long cloud_opac_int,
 				     long cloud_scat_cross_lay,
@@ -261,7 +258,7 @@ void set_z_calc_function(std::function<void()> & func);
 // TODO: this shouldn't be visible externally
 void allocate();
 
-std::tuple<long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write();
+std::tuple<long, long, long, long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write();
 
 void prepare_planck_table();
 void correct_incident_energy(long starflux_array_ptr,

@@ -44,6 +44,11 @@ void alfrodull_engine::allocate_internal_variables()
 
   // scatter cross section layer and interface
   // those are shared for print out
+  printf("nlayer_nbin %d\n", nlayer_nbin);
+  printf("nlayer_plus2_nbin %d\n", nlayer_plus2_nbin);
+  printf("ninterface_nbin %d\n", ninterface_nbin);
+  printf("nlayer_wg_nbin %d\n", nlayer_wg_nbin);
+  printf("ninterface_wg_nbin %d\n", ninterface_wg_nbin);
   scatter_cross_section_lay.allocate(nlayer_nbin);
   scatter_cross_section_inter.allocate(ninterface_nbin);
   planckband_lay.allocate(nlayer_plus2_nbin);
@@ -86,37 +91,73 @@ void alfrodull_engine::allocate_internal_variables()
       w_0_upper.allocate(nlayer_wg_nbin);
       w_0_lower.allocate(nlayer_wg_nbin);
     }
+
+  //  dev_T_int.allocate(ninterface);
+
+  // column mass
+  // TODO: computed by grid in helios, should be computed by alfrodull or comes from THOR?
+  delta_col_mass.allocate(nlayer);
+  delta_col_upper.allocate(nlayer);
+  delta_col_lower.allocate(nlayer);
+  
+
+  
+  // dev_meanmolmass_int.allocate(ninterface);
+  
+  // dev_opac_wg_lay.allocate(nlayer_wg_nbin);
+
+  // dev_trans_wg.allocate(nlayer_wg_nbin);
+
+  // if (!iso)
+  //   {
+  //       dev_opac_wg_int.allocate(ninterface_wg_nbin);
+  // 	dev_trans_wg_upper.allocate(nlayer_wg_nbin);
+  // 	dev_trans_wg_lower.allocate(nlayer_wg_nbin);
+  //   }
+  
 }
 
 // return device pointers for helios data save
 // TODO: how ugly can it get, really?
-void alfrodull_engine::get_device_pointers_for_helios_write(double *& dev_scat_cross_section_lay,
-							    double *& dev_scat_cross_section_int,
-							    double *& dev_interwave,
-							    double *& dev_deltawave,
-							    double *& dev_planck_lay,
-							    double *& dev_planck_int,
-							    double *& dev_planck_grid,
-							    double *& dev_delta_tau_wg,
-							    double *& dev_delta_tau_wg_upper,
-							    double *& dev_delta_tau_wg_lower,
-							    int & dim,
-							    int & step
-							    )
+std::tuple<long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, int, int>
+alfrodull_engine::get_device_pointers_for_helios_write( )
 {
-  dev_scat_cross_section_lay = *scatter_cross_section_lay;
-  dev_scat_cross_section_int = *scatter_cross_section_inter;
-  dev_interwave = *opacities.dev_opac_interwave;
-  dev_deltawave = *opacities.dev_opac_deltawave;
-  dev_planck_lay = *planckband_lay;
-  dev_planck_int = *planckband_int;
-  dev_planck_grid = *plancktable.planck_grid;
-  dev_delta_tau_wg = *delta_tau_wg;
-  dev_delta_tau_wg_upper = *delta_tau_wg_upper;
-  dev_delta_tau_wg_lower = *delta_tau_wg_lower;
-  
-  dim = plancktable.dim;
-  step = plancktable.step;
+  printf("Mem pointers:\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%d\n%d\n",
+	 *scatter_cross_section_lay,
+	 *scatter_cross_section_inter,
+	 *opacities.dev_opac_interwave,
+	 *opacities.dev_opac_deltawave,
+	 *planckband_lay,
+	 *planckband_int,
+	 *plancktable.planck_grid,
+	 *delta_tau_wg,
+	 *delta_tau_wg_upper,
+	 *delta_tau_wg_lower,
+	 *delta_col_mass,
+	 *delta_col_upper,
+	 *delta_col_lower,
+	 plancktable.dim,
+	 plancktable.step);
+	 
+  return std::make_tuple((long) *scatter_cross_section_lay,
+			 (long) *scatter_cross_section_inter,
+			 (long) *opacities.dev_opac_interwave,
+			 (long) *opacities.dev_opac_deltawave,
+			 (long) *planckband_lay,
+			 (long) *planckband_int,
+			 (long) *plancktable.planck_grid,
+			 (long) *delta_tau_wg,
+			 (long) *delta_tau_wg_upper,
+			 (long) *delta_tau_wg_lower,
+			 (long) *delta_col_mass,
+			 (long) *delta_col_upper,
+			 (long) *delta_col_lower,
+			 plancktable.dim,
+			 plancktable.step);
 }
 
 // TODO: check how to enforce this: must be called after loading opacities and setting parameters
