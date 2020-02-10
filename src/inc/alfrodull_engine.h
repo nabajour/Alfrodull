@@ -31,9 +31,11 @@ public:
   get_device_pointers_for_helios_write( );
 
   std::tuple<long,
-	   long,
-	   int,
-	   int>
+	     long,
+	     long,
+	     long,
+	     int,
+	     int>
   get_opac_data_for_helios();
 
   void correct_incident_energy(double * starflux_array_ptr,

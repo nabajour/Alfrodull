@@ -148,12 +148,16 @@ alfrodull_engine::get_device_pointers_for_helios_write( )
 // get opacity data for helios
 std::tuple<long,
 	   long,
+	   long,
+	   long,
 	   int,
 	   int>
 alfrodull_engine::get_opac_data_for_helios()
 {
-  return std::make_tuple((long) *opacities.dev_opac_interwave,
+  return std::make_tuple((long) *opacities.dev_opac_wave,
+			 (long) *opacities.dev_opac_interwave,
 			 (long) *opacities.dev_opac_deltawave,
+			 (long) *opacities.dev_opac_y,
 			 opacities.nbin,
 			 opacities.ny);
 }

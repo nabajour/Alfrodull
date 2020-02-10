@@ -881,12 +881,14 @@ std::tuple<long,
 
 std::tuple<long,
 	   long,
+	   long,
+	   long,
 	   int,
 	   int>
 get_opac_data_for_helios() {
   if (Alf_ptr == nullptr) {
     printf("ERROR: Alfrodull Engine not initialised");
-    return std::make_tuple(0, 0, 0, 0);
+    return std::make_tuple(0, 0, 0, 0, 0, 0);
   }
   
   return Alf_ptr->get_opac_data_for_helios();

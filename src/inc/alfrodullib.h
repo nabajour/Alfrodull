@@ -244,6 +244,8 @@ get_device_pointers_for_helios_write();
 
 std::tuple<long,
 	   long,
+	   long,
+	   long,
 	   int,
 	   int>
 get_opac_data_for_helios();
