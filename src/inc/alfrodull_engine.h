@@ -22,11 +22,13 @@ public:
 
   // TODO: temporary prototyping wrapper for HELIOS.
   std::tuple<long, long, long,
-	     long, long, long,
-	     long, long, long,
-	     long, long, long,
-	     long, int, int>
-   get_device_pointers_for_helios_write();
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   int, int>
+  get_device_pointers_for_helios_write( );
 
   void correct_incident_energy(double * starflux_array_ptr,
 			       bool real_star,
@@ -72,12 +74,13 @@ public:
   cuda_device_memory<double> delta_col_mass;
   cuda_device_memory<double> delta_col_upper;
   cuda_device_memory<double> delta_col_lower;
-  cuda_device_memory<double> dev_meanmolmass_int;
-  cuda_device_memory<double> dev_opac_wg_lay;
-  cuda_device_memory<double> dev_opac_wg_int;
-  cuda_device_memory<double> dev_trans_wg;
-  cuda_device_memory<double> dev_trans_wg_upper;
-  cuda_device_memory<double> dev_trans_wg_lower;
+  cuda_device_memory<double> meanmolmass_int;
+  cuda_device_memory<double> meanmolmass_lay;
+  cuda_device_memory<double> opac_wg_lay;
+  cuda_device_memory<double> opac_wg_int;
+  cuda_device_memory<double> trans_wg;
+  cuda_device_memory<double> trans_wg_upper;
+  cuda_device_memory<double> trans_wg_lower;
   
   // Flux computation quantities
   // computed in trans_iso/trans_noniso

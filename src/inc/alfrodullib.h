@@ -258,7 +258,14 @@ void set_z_calc_function(std::function<void()> & func);
 // TODO: this shouldn't be visible externally
 void allocate();
 
-std::tuple<long, long, long, long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write();
+std::tuple<long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   int, int>
+get_device_pointers_for_helios_write();
 
 void prepare_planck_table();
 void correct_incident_energy(long starflux_array_ptr,

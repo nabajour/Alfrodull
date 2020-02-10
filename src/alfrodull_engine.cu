@@ -44,11 +44,7 @@ void alfrodull_engine::allocate_internal_variables()
 
   // scatter cross section layer and interface
   // those are shared for print out
-  printf("nlayer_nbin %d\n", nlayer_nbin);
-  printf("nlayer_plus2_nbin %d\n", nlayer_plus2_nbin);
-  printf("ninterface_nbin %d\n", ninterface_nbin);
-  printf("nlayer_wg_nbin %d\n", nlayer_wg_nbin);
-  printf("ninterface_wg_nbin %d\n", ninterface_wg_nbin);
+
   scatter_cross_section_lay.allocate(nlayer_nbin);
   scatter_cross_section_inter.allocate(ninterface_nbin);
   planckband_lay.allocate(nlayer_plus2_nbin);
@@ -101,19 +97,20 @@ void alfrodull_engine::allocate_internal_variables()
   delta_col_lower.allocate(nlayer);
   
 
+  meanmolmass_lay.allocate(nlayer);
+  meanmolmass_int.allocate(ninterface);
   
-  // dev_meanmolmass_int.allocate(ninterface);
-  
-  // dev_opac_wg_lay.allocate(nlayer_wg_nbin);
+  opac_wg_lay.allocate(nlayer_wg_nbin);
 
-  // dev_trans_wg.allocate(nlayer_wg_nbin);
+  trans_wg.allocate(nlayer_wg_nbin);
 
-  // if (!iso)
-  //   {
-  //       dev_opac_wg_int.allocate(ninterface_wg_nbin);
-  // 	dev_trans_wg_upper.allocate(nlayer_wg_nbin);
-  // 	dev_trans_wg_lower.allocate(nlayer_wg_nbin);
-  //   }
+  if (!iso)
+    {
+      meanmolmass_lay.allocate(ninterface); // TODO: needs copy back to host
+      opac_wg_int.allocate(ninterface_wg_nbin);
+      trans_wg_upper.allocate(nlayer_wg_nbin);
+      trans_wg_lower.allocate(nlayer_wg_nbin);
+    }
   
 }
 
@@ -123,30 +120,16 @@ std::tuple<long, long, long,
 	   long, long, long,
 	   long, long, long,
 	   long, long, long,
-	   long, int, int>
+	   long, long, long,
+	   long, long, long,
+	   int, int>
 alfrodull_engine::get_device_pointers_for_helios_write( )
-{
-  printf("Mem pointers:\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%p\n%d\n%d\n",
-	 *scatter_cross_section_lay,
-	 *scatter_cross_section_inter,
-	 *opacities.dev_opac_interwave,
-	 *opacities.dev_opac_deltawave,
-	 *planckband_lay,
-	 *planckband_int,
-	 *plancktable.planck_grid,
-	 *delta_tau_wg,
-	 *delta_tau_wg_upper,
-	 *delta_tau_wg_lower,
-	 *delta_col_mass,
-	 *delta_col_upper,
-	 *delta_col_lower,
-	 plancktable.dim,
-	 plancktable.step);
-	 
+{ 
   return std::make_tuple((long) *scatter_cross_section_lay,
 			 (long) *scatter_cross_section_inter,
 			 (long) *opacities.dev_opac_interwave,
 			 (long) *opacities.dev_opac_deltawave,
+			 (long) *opac_wg_lay,
 			 (long) *planckband_lay,
 			 (long) *planckband_int,
 			 (long) *plancktable.planck_grid,
@@ -156,6 +139,10 @@ alfrodull_engine::get_device_pointers_for_helios_write( )
 			 (long) *delta_col_mass,
 			 (long) *delta_col_upper,
 			 (long) *delta_col_lower,
+			 (long) *meanmolmass_lay,
+			 (long) *trans_wg,
+			 (long) *trans_wg_upper,
+			 (long) *trans_wg_lower,
 			 plancktable.dim,
 			 plancktable.step);
 }

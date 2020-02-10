@@ -866,10 +866,22 @@ void allocate() {
 }
 
 // TODO: this is ugly and should not exist!
-std::tuple<long, long, long, long, long, long, long, long, long, long, long, long, long, int, int> get_device_pointers_for_helios_write() {
+std::tuple<long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   long, long, long,
+	   int, int> get_device_pointers_for_helios_write() {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
-        return std::make_tuple(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        return std::make_tuple(0, 0, 0,
+			       0, 0, 0,
+			       0, 0, 0,
+			       0, 0, 0,
+			       0, 0, 0,
+			       0, 0, 0,
+			       0, 0);
     }
     
 
@@ -920,10 +932,6 @@ void compute_radiative_transfer(
 				double*       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 				double*       dev_p_lay,           // in: io, mmm, kil
 				double*       dev_p_int,           // in: ioi, mmmi, kii
-				double*       opac_wg_lay,     // out: io
-				double*       opac_wg_int,     // out: ioi
-				double*       meanmolmass_lay, // out: mmm
-				double*       meanmolmass_int, // out: mmmi
 				const int&    ninterface,          // it, pii, mmmi, kii
 				const int&    real_star,        // pil
 				const double& fake_opac,        // io
@@ -932,7 +940,7 @@ void compute_radiative_transfer(
 				const bool&   correct_surface_emissions,
 				const bool&   interp_and_calc_flux_step,
 				// calculate_transmission_iso
-				double* trans_wg,        // out
+				//double* trans_wg,        // out
 				//double* opac_wg_lay,     // in
 				//double* cloud_opac_lay,  // in
 				//double* meanmolmass_lay, // in
@@ -948,8 +956,9 @@ void compute_radiative_transfer(
 				
 				
 				// calculate_transmission_non_iso
-				double* trans_wg_upper,
-				double* trans_wg_lower,
+				// double* trans_wg,        // out
+				// double* trans_wg_upper,
+				// double* trans_wg_lower,
 				double* cloud_opac_lay,
 				double* cloud_opac_int,
 				double* cloud_scat_cross_lay,
@@ -1042,7 +1051,16 @@ void compute_radiative_transfer(
   double* delta_colmass = *Alf_ptr->delta_col_mass;
   double* delta_col_upper = *Alf_ptr->delta_col_upper;
   double* delta_col_lower = *Alf_ptr->delta_col_lower;
-				  
+
+  double*       opac_wg_lay = *Alf_ptr->opac_wg_lay;     // out: io
+  double*       opac_wg_int = *Alf_ptr->opac_wg_int;     // out: ioi
+  double*       meanmolmass_lay = *Alf_ptr->meanmolmass_lay; // out: mmm
+  double*       meanmolmass_int = *Alf_ptr->meanmolmass_int; // out: mmmi
+  double* trans_wg = *Alf_ptr->trans_wg;        // out
+  double* trans_wg_upper = *Alf_ptr->trans_wg_upper;
+  double* trans_wg_lower = *Alf_ptr->trans_wg_lower;
+
+
   prepare_compute_flux(    dev_starflux,        
 			   dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
 			   dev_T_int,           // in: it, pii, ioi, mmmi, kii  
@@ -1208,23 +1226,14 @@ void wrap_compute_radiative_transfer(
 				     long       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 				     long       dev_p_lay,           // in: io, mmm, kil
 				     long       dev_p_int,           // in: ioi, mmmi, kii
-				     long       opac_wg_lay,     // out: io
-				     long       opac_wg_int,     // out: ioi
-				     long       meanmolmass_lay, // out: mmm
-				     long       meanmolmass_int, // out: mmmi
 				     const int&    ninterface,          // it, pii, mmmi, kii
 				     const int&    real_star,        // pil
 				     const double& fake_opac,        // io
 				     const double& T_surf,           // csp, cse, pil
 				     const double& surf_albedo,      // cse
 				     const bool&   correct_surface_emissions,
-				     const bool&   interp_and_calc_flux_step,
-				     // calculate_transmission_iso
-				     long trans_wg,        // out
-				     
+				     const bool&   interp_and_calc_flux_step,				     
 				     // calculate_transmission_non_iso
-				     long trans_wg_upper,
-				     long trans_wg_lower,
 				     long cloud_opac_lay,
 				     long cloud_opac_int,
 				     long cloud_scat_cross_lay,
@@ -1276,10 +1285,6 @@ void wrap_compute_radiative_transfer(
 			     (double*)       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 			     (double*)       dev_p_lay,           // in: io, mmm, kil
 			     (double*)       dev_p_int,           // in: ioi, mmmi, kii
-			     (double*)       opac_wg_lay,     // out: io
-			     (double*)       opac_wg_int,     // out: ioi
-			     (double*)       meanmolmass_lay, // out: mmm
-			     (double*)       meanmolmass_int, // out: mmmi
 			     ninterface,          // it, pii, mmmi, kii
 			     real_star,        // pil
 			     fake_opac,        // io
@@ -1287,11 +1292,7 @@ void wrap_compute_radiative_transfer(
 			     surf_albedo,      // cse
 			     correct_surface_emissions,
 			     interp_and_calc_flux_step,
-			     // calculate_transmission_iso
-			     (double*) trans_wg,        // out
 			     // calculate_transmission_non_iso
-			     (double*) trans_wg_upper,
-			     (double*) trans_wg_lower,
 			     (double*) cloud_opac_lay,
 			     (double*) cloud_opac_int,
 			     (double*) cloud_scat_cross_lay,
