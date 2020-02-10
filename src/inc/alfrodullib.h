@@ -9,10 +9,6 @@ void wrap_compute_radiative_transfer(
 				     long       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 				     long       dev_p_lay,           // in: io, mmm, kil
 				     long       dev_p_int,           // in: ioi, mmmi, kii
-				     long       opac_wg_lay,     // out: io
-				     long       opac_wg_int,     // out: ioi
-				     long       meanmolmass_lay, // out: mmm
-				     long       meanmolmass_int, // out: mmmi
 				     const int&    ninterface,          // it, pii, mmmi, kii
 				     const int&    real_star,        // pil
 				     const double& fake_opac,        // io
@@ -20,12 +16,7 @@ void wrap_compute_radiative_transfer(
 				     const double& surf_albedo,      // cse
 				     const bool&   correct_surface_emissions,
 				     const bool&   interp_and_calc_flux_step,
-				     // calculate_transmission_iso
-				     long trans_wg,        // out
-				     
 				     // calculate_transmission_non_iso
-				     long trans_wg_upper,
-				     long trans_wg_lower,
 				     long cloud_opac_lay,
 				     long cloud_opac_int,
 				     long cloud_scat_cross_lay,
