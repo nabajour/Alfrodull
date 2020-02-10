@@ -116,7 +116,7 @@ void alfrodull_engine::allocate_internal_variables()
 
 // return device pointers for helios data save
 // TODO: how ugly can it get, really?
-std::tuple<long, long, long,
+std::tuple<long, 
 	   long, long, long,
 	   long, long, long,
 	   long, long, long,
@@ -127,8 +127,6 @@ alfrodull_engine::get_device_pointers_for_helios_write( )
 { 
   return std::make_tuple((long) *scatter_cross_section_lay,
 			 (long) *scatter_cross_section_inter,
-			 (long) *opacities.dev_opac_interwave,
-			 (long) *opacities.dev_opac_deltawave,
 			 (long) *opac_wg_lay,
 			 (long) *planckband_lay,
 			 (long) *planckband_int,
@@ -146,6 +144,20 @@ alfrodull_engine::get_device_pointers_for_helios_write( )
 			 plancktable.dim,
 			 plancktable.step);
 }
+
+// get opacity data for helios
+std::tuple<long,
+	   long,
+	   int,
+	   int>
+alfrodull_engine::get_opac_data_for_helios()
+{
+  return std::make_tuple((long) *opacities.dev_opac_interwave,
+			 (long) *opacities.dev_opac_deltawave,
+			 opacities.nbin,
+			 opacities.ny);
+}
+
 
 // TODO: check how to enforce this: must be called after loading opacities and setting parameters
 void alfrodull_engine::prepare_planck_table()

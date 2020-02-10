@@ -32,7 +32,6 @@ __host__ bool prepare_compute_flux(
     double*       dev_opac_wg_int,     // out: ioi
     double*       dev_meanmolmass_lay, // out: mmm
     double*       dev_meanmolmass_int, // out: mmmi
-    const int&    ninterface,          // it, pii, mmmi, kii
     const int&    real_star,        // pil
     const double& fake_opac,        // io
     const double& T_surf,           // csp, cse, pil
@@ -40,8 +39,10 @@ __host__ bool prepare_compute_flux(
     const bool&   correct_surface_emissions,
     const bool&   interp_and_calc_flux_step) {
   int nbin = Alf_ptr->opacities.nbin;
-      
-    dim3 calc_surf_grid(int((nbin + 15) / 16), 1, 1);
+  int nlayer = Alf_ptr->nlayer;
+  int ninterface = Alf_ptr->ninterface;
+  
+  dim3 calc_surf_grid(int((nbin + 15) / 16), 1, 1);
     dim3 calc_surf_blocks(16, 1, 1);
     // csp
 
@@ -56,7 +57,6 @@ __host__ bool prepare_compute_flux(
 
     bool iso = Alf_ptr->iso;
 
-    int nlayer = Alf_ptr->nlayer;
     
     calc_surface_planck<<<calc_surf_grid, calc_surf_blocks>>>(
 							      dev_planckband_lay,                       // out
@@ -226,7 +226,6 @@ bool wrap_prepare_compute_flux(
 			  long dev_opac_wg_int, // ioi
 			  long dev_meanmolmass_lay, // mmm
 			  long dev_meanmolmass_int, // mmmi
-			  const int & ninterface, // it, pii, mmmi, kii
 			  const int & real_star, // pil
 			  const double & fake_opac, // io
 			  const double & T_surf, // csp, cse, pil
@@ -247,7 +246,6 @@ bool wrap_prepare_compute_flux(
 				  (double *)dev_opac_wg_int, // ioi
 				  (double *)dev_meanmolmass_lay, // mmm
 				  (double *)dev_meanmolmass_int, // mmmi
-				  ninterface, // it, pii, mmmi, kii
 				  real_star, // pil
 				  fake_opac, // io
 				  T_surf, // csp, cse, pil
@@ -268,9 +266,7 @@ void wrap_integrate_flux(long deltalambda,  // double*
                          long F_down_band,  // double *
                          long F_up_band,    // double *
                          long F_dir_band,   // double *
-                         long gauss_weight, // double *
-                         int  numinterfaces,
-                         int  ny)
+                         long gauss_weight) // double *
 {
   integrate_flux((double*) deltalambda,
 		 (double*) F_down_tot,
@@ -282,9 +278,7 @@ void wrap_integrate_flux(long deltalambda,  // double*
 		 (double*) F_down_band,
 		 (double*) F_up_band,
 		 (double*) F_dir_band,
-		 (double*) gauss_weight,
-		 numinterfaces,
-		 ny);
+		 (double*) gauss_weight);
 
 }
 
@@ -298,15 +292,17 @@ void integrate_flux(double* deltalambda,
 		    double* F_down_band,
 		    double* F_up_band,
 		    double* F_dir_band,
-		    double* gauss_weight,
-		    int numinterfaces,
-		    int ny)
+		    double* gauss_weight)
 {
   
     dim3 threadsPerBlock(1, 1, 1);
     dim3 numBlocks(32, 4, 8);
     
     int nbin = Alf_ptr->opacities.nbin;
+    int ny = Alf_ptr->opacities.ny;
+    
+    int ninterface = Alf_ptr->ninterface;
+    
   
     printf("Running Alfrodull Wrapper for integrate flux\n");
     integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
@@ -321,7 +317,7 @@ void integrate_flux(double* deltalambda,
                                                           F_dir_band,
                                                           gauss_weight,
                                                           nbin,
-                                                          numinterfaces,
+                                                          ninterface,
                                                           ny);
 
      cudaDeviceSynchronize();
@@ -338,12 +334,14 @@ __host__ bool calculate_transmission_iso(double* trans_wg,        // out
                                          double  epsi,
                                          double  mu_star,
                                          int     scat,
-                                         int     ny,
                                          int     clouds,
                                          int     scat_corr) {
   int nbin = Alf_ptr->opacities.nbin;
   int nlayer = Alf_ptr->nlayer;
-  
+
+    int ny = Alf_ptr->opacities.ny;
+    
+
     dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
     dim3 block(16, 4, 4);
     trans_iso<<<grid, block>>>(trans_wg,
@@ -386,7 +384,6 @@ bool wrap_calculate_transmission_iso(long   trans_wg,
                                      double epsi,
                                      double mu_star,
                                      int    scat,
-                                     int    ny,
                                      int    clouds,
                                      int    scat_corr) {
     return calculate_transmission_iso((double*)trans_wg,
@@ -400,7 +397,6 @@ bool wrap_calculate_transmission_iso(long   trans_wg,
                                       epsi,
                                       mu_star,
                                       scat,
-                                      ny,
                                       clouds,
                                       scat_corr);
 }
@@ -423,11 +419,15 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                             double  epsi,
                                             double  mu_star,
                                             int     scat,
-                                            int     ny,
                                             int     clouds,
                                             int     scat_corr) {
   int nbin = Alf_ptr->opacities.nbin;
   int nlayer = Alf_ptr->nlayer;
+  int ny = Alf_ptr->opacities.ny;
+    
+    
+
+    
     dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
     dim3 block(16, 4, 4);
 
@@ -492,7 +492,6 @@ bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
                                         double epsi,
                                         double mu_star,
                                         int    scat,
-                                        int    ny,
                                         int    clouds,
                                         int    scat_corr) {
     return calculate_transmission_noniso((double*)trans_wg_upper,
@@ -513,7 +512,6 @@ bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
                                          epsi,
                                          mu_star,
                                          scat,
-                                         ny,
                                          clouds,
                                          scat_corr);
 }
@@ -527,12 +525,14 @@ bool direct_beam_flux(double* F_dir_wg,
                       double  R_star,
                       double  a,
                       int     dir_beam,
-                      int     geom_zenith_corr,
-                      int     ninterface,
-                      int     ny) {
+                      int     geom_zenith_corr) {
 
   double* planckband_lay = *(Alf_ptr->planckband_lay);
   int nbin = Alf_ptr->opacities.nbin;
+  
+  int ny = Alf_ptr->opacities.ny;
+  
+  int ninterface = Alf_ptr->ninterface;
   
     if (Alf_ptr->iso) {
         dim3 block(4, 32, 4);
@@ -587,11 +587,7 @@ bool wrap_direct_beam_flux(long   F_dir_wg,
                            double R_star,
                            double a,
                            int    dir_beam,
-                           int    geom_zenith_corr,
-                           int    ninterface,
-                           int    ny) {
-  double* planckband_lay = *(Alf_ptr->planckband_lay);
-  
+                           int    geom_zenith_corr) {    
     return direct_beam_flux((double*)F_dir_wg,
                             (double*)Fc_dir_wg,
                             (double*)z_lay,
@@ -600,9 +596,7 @@ bool wrap_direct_beam_flux(long   F_dir_wg,
                             R_star,
                             a,
                             dir_beam,
-                            geom_zenith_corr,
-                            ninterface,
-                            ny);
+                            geom_zenith_corr);
 }
 
 
@@ -614,10 +608,8 @@ bool populate_spectral_flux_iso(double* F_down_wg,    // out
                                 int     singlewalk,
                                 double  Rstar,
                                 double  a,
-                                int     numinterfaces,
                                 double  f_factor,
                                 double  mu_star,
-                                int     ny,
                                 double  epsi,
                                 double  w_0_limit,
                                 int     dir_beam,
@@ -625,6 +617,10 @@ bool populate_spectral_flux_iso(double* F_down_wg,    // out
                                 double  albedo) {
     double* planckband_lay = *(Alf_ptr->planckband_lay);
     int nbin = Alf_ptr->opacities.nbin;
+
+    int ny = Alf_ptr->opacities.ny;
+    
+    int ninterface = Alf_ptr->ninterface;
     
     dim3 block(16, 16, 1);
     dim3 grid(int((nbin + 15) / 16), int((ny + 16) / 16), 1);
@@ -644,7 +640,7 @@ bool populate_spectral_flux_iso(double* F_down_wg,    // out
                                       singlewalk,
                                       Rstar,
                                       a,
-                                      numinterfaces,
+                                      ninterface,
                                       nbin,
                                       f_factor,
                                       mu_star,
@@ -666,10 +662,8 @@ bool wrap_populate_spectral_flux_iso(long   F_down_wg,
                                      int    singlewalk,
                                      double Rstar,
                                      double a,
-                                     int    numinterfaces,
                                      double f_factor,
                                      double mu_star,
-                                     int    ny,
                                      double epsi,
                                      double w_0_limit,
                                      int    dir_beam,
@@ -683,10 +677,8 @@ bool wrap_populate_spectral_flux_iso(long   F_down_wg,
                                       singlewalk,
                                       Rstar,
                                       a,
-                                      numinterfaces,
                                       f_factor,
                                       mu_star,
-                                      ny,
                                       epsi,
                                       w_0_limit,
                                       dir_beam,
@@ -708,10 +700,8 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                             int     singlewalk,
                                             double  Rstar,
                                             double  a,
-                                            int     numinterfaces,
                                             double  f_factor,
                                             double  mu_star,
-                                            int     ny,
                                             double  epsi,
                                             double  w_0_limit,
                                             double  delta_tau_limit,
@@ -721,6 +711,11 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                             double* trans_wg_upper,
                                             double* trans_wg_lower) {
   int nbin = Alf_ptr->opacities.nbin;
+  int ny = Alf_ptr->opacities.ny;
+    
+  int ninterface = Alf_ptr->ninterface;
+    
+
   dim3 block(16, 16, 1);
   
   dim3 grid(int((nbin + 15) / 16), int((ny + 16) / 16), 1);
@@ -756,8 +751,8 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                          g_0,
                                          singlewalk,
                                          Rstar,
-                                         a,
-                                         numinterfaces,
+					 a,
+                                         ninterface,
                                          nbin,
                                          f_factor,
                                          mu_star,
@@ -786,10 +781,8 @@ bool wrap_populate_spectral_flux_noniso(long   F_down_wg,
                                         int    singlewalk,
                                         double Rstar,
                                         double a,
-                                        int    numinterfaces,
                                         double f_factor,
                                         double mu_star,
-                                        int    ny,
                                         double epsi,
                                         double w_0_limit,
                                         double delta_tau_limit,
@@ -810,10 +803,8 @@ bool wrap_populate_spectral_flux_noniso(long   F_down_wg,
                                          singlewalk,
                                          Rstar,
                                          a,
-                                         numinterfaces,
                                          f_factor,
                                          mu_star,
-                                         ny,
                                          epsi,
                                          w_0_limit,
                                          delta_tau_limit,
@@ -866,7 +857,7 @@ void allocate() {
 }
 
 // TODO: this is ugly and should not exist!
-std::tuple<long, long, long,
+std::tuple<long, 
 	   long, long, long,
 	   long, long, long,
 	   long, long, long,
@@ -875,7 +866,7 @@ std::tuple<long, long, long,
 	   int, int> get_device_pointers_for_helios_write() {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
-        return std::make_tuple(0, 0, 0,
+        return std::make_tuple(0, 
 			       0, 0, 0,
 			       0, 0, 0,
 			       0, 0, 0,
@@ -887,6 +878,20 @@ std::tuple<long, long, long,
 
     return Alf_ptr->get_device_pointers_for_helios_write( );
 }
+
+std::tuple<long,
+	   long,
+	   int,
+	   int>
+get_opac_data_for_helios() {
+  if (Alf_ptr == nullptr) {
+    printf("ERROR: Alfrodull Engine not initialised");
+    return std::make_tuple(0, 0, 0, 0);
+  }
+  
+  return Alf_ptr->get_opac_data_for_helios();
+}
+
 
 void prepare_planck_table()
 {
@@ -932,7 +937,6 @@ void compute_radiative_transfer(
 				double*       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 				double*       dev_p_lay,           // in: io, mmm, kil
 				double*       dev_p_int,           // in: ioi, mmmi, kii
-				const int&    ninterface,          // it, pii, mmmi, kii
 				const int&    real_star,        // pil
 				const double& fake_opac,        // io
 				const double& T_surf,           // csp, cse, pil
@@ -969,7 +973,6 @@ void compute_radiative_transfer(
 				double  epsi,
 				double  mu_star,
 				int     scat,
-				int     ny,
 				int     clouds,
 				int     scat_corr,
 				// direct_beam_flux
@@ -1032,7 +1035,6 @@ void compute_radiative_transfer(
 				// double* trans_wg_lower,
 				
 				// integrate_flux
-				double* deltalambda, // -> dev_opac_deltawave
 				double* F_down_tot,
 				double* F_up_tot,
 				double* F_net,
@@ -1060,7 +1062,9 @@ void compute_radiative_transfer(
   double* trans_wg_upper = *Alf_ptr->trans_wg_upper;
   double* trans_wg_lower = *Alf_ptr->trans_wg_lower;
 
+  double* deltalambda = *Alf_ptr->opacities.dev_opac_deltawave;
 
+  
   prepare_compute_flux(    dev_starflux,        
 			   dev_T_lay,           // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
 			   dev_T_int,           // in: it, pii, ioi, mmmi, kii  
@@ -1070,7 +1074,6 @@ void compute_radiative_transfer(
 			   opac_wg_int,     // out: ioi
 			   meanmolmass_lay, // out: mmm
 			   meanmolmass_int, // out: mmmi
-			   ninterface,          // it, pii, mmmi, kii
 			   real_star,        // pil
 			   fake_opac,        // io
 			   T_surf,           // csp, cse, pil
@@ -1094,7 +1097,6 @@ void compute_radiative_transfer(
 					epsi,
 					mu_star,
 					scat,
-					ny,
 					clouds,
 					scat_corr);
 	  }
@@ -1118,7 +1120,6 @@ void compute_radiative_transfer(
 					   epsi,
 					   mu_star,
 					   scat,
-					   ny,
 					   clouds,
 					   scat_corr);
 	  }
@@ -1134,9 +1135,7 @@ void compute_radiative_transfer(
 			  R_star,
 			  a,
 			  dir_beam,
-                          geom_zenith_corr,
-			  ninterface,
-			  ny);
+                          geom_zenith_corr);
 	  }
   
   int nscat_step = 0;
@@ -1157,10 +1156,8 @@ void compute_radiative_transfer(
 				      single_walk,
 				      R_star,
 				      a,
-				      ninterface,
 				      f_factor,
 				      mu_star,
-				      ny,
 				      epsi,
 				      w_0_limit,
 				      dir_beam,
@@ -1181,10 +1178,8 @@ void compute_radiative_transfer(
 					 single_walk,
 					 R_star,
 					 a,
-					 ninterface,
 					 f_factor,
 					 mu_star,
-					 ny,
 					 epsi,
 					 w_0_limit,
 					 delta_tau_limit,
@@ -1206,9 +1201,7 @@ void compute_radiative_transfer(
 		  F_down_band,
 		  F_up_band,
 		  F_dir_band,
-		  gauss_weight,
-		  ninterface,
-		  ny);
+		  gauss_weight);
 
 
   cudaError_t err = cudaGetLastError();
@@ -1226,7 +1219,6 @@ void wrap_compute_radiative_transfer(
 				     long       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 				     long       dev_p_lay,           // in: io, mmm, kil
 				     long       dev_p_int,           // in: ioi, mmmi, kii
-				     const int&    ninterface,          // it, pii, mmmi, kii
 				     const int&    real_star,        // pil
 				     const double& fake_opac,        // io
 				     const double& T_surf,           // csp, cse, pil
@@ -1244,7 +1236,6 @@ void wrap_compute_radiative_transfer(
 				     double  epsi,
 				     double  mu_star,
 				     int     scat,
-				     int     ny,
 				     int     clouds,
 				     int     scat_corr,
 				     // direct_beam_flux
@@ -1269,7 +1260,6 @@ void wrap_compute_radiative_transfer(
 				     long Fc_dir_wg,
 				     double  delta_tau_limit,
 				     // integrate_flux
-				     long deltalambda, // -> dev_opac_deltawave
 				     long F_down_tot,
 				     long F_up_tot,
 				     long F_net,
@@ -1285,7 +1275,6 @@ void wrap_compute_radiative_transfer(
 			     (double*)       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 			     (double*)       dev_p_lay,           // in: io, mmm, kil
 			     (double*)       dev_p_int,           // in: ioi, mmmi, kii
-			     ninterface,          // it, pii, mmmi, kii
 			     real_star,        // pil
 			     fake_opac,        // io
 			     T_surf,           // csp, cse, pil
@@ -1303,7 +1292,6 @@ void wrap_compute_radiative_transfer(
 			     epsi,
 			     mu_star,
 			     scat,
-			     ny,
 			     clouds,
 			     scat_corr,
 			     // direct_beam_flux
@@ -1328,7 +1316,6 @@ void wrap_compute_radiative_transfer(
 			     (double*) Fc_dir_wg,
 			     delta_tau_limit,
 			     // integrate_flux
-			     (double*) deltalambda, // -> dev_opac_deltawave
 			     (double*) F_down_tot,
 			     (double*) F_up_tot,
 			     (double*) F_net,

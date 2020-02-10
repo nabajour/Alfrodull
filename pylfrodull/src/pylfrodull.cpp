@@ -65,6 +65,8 @@ PYBIND11_MODULE(pylfrodull, m) {
     m.def("prepare_planck_table", &prepare_planck_table, "Prepare planck table");
     m.def("correct_incident_energy", &correct_incident_energy, "Correct incident flux");
 
+    m.def("get_opac_data_for_helios", &get_opac_data_for_helios, "get data for helios");
+
     m.def("set_callback", &set_callback, "Set function callback");
     m.def("call_callback", &call_callback, "call function callback");
     m.add_object("_cleanup", py::capsule(cleanup_callback));

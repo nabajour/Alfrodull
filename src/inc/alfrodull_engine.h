@@ -21,7 +21,7 @@ public:
   void allocate_internal_variables();
 
   // TODO: temporary prototyping wrapper for HELIOS.
-  std::tuple<long, long, long,
+  std::tuple<long, 
 	   long, long, long,
 	   long, long, long,
 	   long, long, long,
@@ -29,6 +29,12 @@ public:
 	   long, long, long,
 	   int, int>
   get_device_pointers_for_helios_write( );
+
+  std::tuple<long,
+	   long,
+	   int,
+	   int>
+  get_opac_data_for_helios();
 
   void correct_incident_energy(double * starflux_array_ptr,
 			       bool real_star,
