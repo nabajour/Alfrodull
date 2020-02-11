@@ -21,12 +21,47 @@ void alfrodull_engine::init()
 
 void alfrodull_engine::set_parameters(const int & nlayer_,
 				      const bool & iso_,
-				      const double & T_star_)
+				      const double & T_star_,
+				      const bool&   real_star_,
+				      const double& fake_opac_,
+				      const double& T_surf_,
+				      const double& surf_albedo_,
+				      const double& g_0_,
+				      const double& epsi_,
+				      const double& mu_star_,
+				      const bool&   scat_,
+				      const bool&   scat_corr_,
+				      const double& R_planet_,
+				      const double& R_star_,
+				      const double& a_,
+				      const bool&   dir_beam_,
+				      const bool&   geom_zenith_corr_,
+				      const double& f_factor_,
+				      const double& w_0_limit_,
+				      const double& albedo_)
 {
   nlayer = nlayer_;
   ninterface = nlayer + 1;
   iso = iso_;
   T_star = T_star_;
+
+  real_star = real_star_;
+  fake_opac = fake_opac_;
+  T_surf = T_surf_;
+  surf_albedo = surf_albedo_;
+  g_0 = g_0_;
+  epsi  = epsi_;
+  mu_star = mu_star_;
+  scat =  scat_;
+  scat_corr =  scat_corr_;
+  R_planet = R_planet_;
+  R_star = R_star_;
+  a = a_;
+  dir_beam = dir_beam_;
+  geom_zenith_corr = geom_zenith_corr_;
+  f_factor = f_factor_;
+  w_0_limit = w_0_limit_;
+  albedo = albedo_;
   
   // TODO: maybe should stay in opacities object
   nbin = opacities.nbin;
@@ -216,4 +251,22 @@ void alfrodull_engine::call_z_callback()
   if (calc_z_func)
     calc_z_func();
   
+}
+
+void alfrodull_engine::set_clouds_data(const bool& clouds_,
+				       double*     cloud_opac_lay_,
+				       double*     cloud_opac_int_,
+				       double*     cloud_scat_cross_lay_,
+				       double*     cloud_scat_cross_int_,
+				       double*     g_0_tot_lay_,
+				       double*     g_0_tot_int_)
+{
+  cloud_opac_lay       = cloud_opac_lay_;
+  cloud_opac_int       = cloud_opac_int_;
+  cloud_scat_cross_lay = cloud_scat_cross_lay_;
+  cloud_scat_cross_int = cloud_scat_cross_int_;
+  g_0_tot_lay          = g_0_tot_lay_;
+  g_0_tot_int          = g_0_tot_int_;
+  
+  clouds = clouds_;
 }

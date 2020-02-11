@@ -9,38 +9,12 @@ void wrap_compute_radiative_transfer(
 				     long       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 				     long       dev_p_lay,           // in: io, mmm, kil
 				     long       dev_p_int,           // in: ioi, mmmi, kii
-				     const int&    real_star,        // pil
-				     const double& fake_opac,        // io
-				     const double& T_surf,           // csp, cse, pil
-				     const double& surf_albedo,      // cse
 				     const bool&   correct_surface_emissions,
 				     const bool&   interp_and_calc_flux_step,
-				     // calculate_transmission_non_iso
-				     long cloud_opac_lay,
-				     long cloud_opac_int,
-				     long cloud_scat_cross_lay,
-				     long cloud_scat_cross_int,
-				     long g_0_tot_lay,
-				     long g_0_tot_int,
-				     double  g_0,
-				     double  epsi,
-				     double  mu_star,
-				     int     scat,
-				     int     clouds,
-				     int     scat_corr,
 				     // direct_beam_flux
 				     long z_lay,
-				     double  R_planet,
-				     double  R_star,
-				     double  a,
-				     int     dir_beam,
-				     int     geom_zenith_corr,
 				     // spectral flux loop
 				     bool single_walk,
-				     // populate_spectral_flux_iso
-				     double  f_factor,
-				     double  w_0_limit,
-				     double  albedo,
 				     // populate_spectral_flux_noniso
 				     long F_down_wg,
 				     long F_up_wg,
@@ -225,8 +199,36 @@ bool wrap_populate_spectral_flux_iso(
 void init_alfrodull();
 void init_parameters(const int & nlayer_,
 		     const bool & iso_,
-		     const double & Tstar_);
+		     const double & Tstar_,
+		     const bool&   real_star,
+		     const double& fake_opac,
+		     const double& T_surf,
+		     const double& surf_albedo,
+		     const double& g_0,
+		     const double& epsi,
+		     const double& mu_star,
+		     const bool&   scat,
+		     const bool&   scat_corr,
+		     const double& R_planet,
+		     const double& R_star,
+		     const double& a,
+		     const bool&   dir_beam,
+		     const bool&   geom_zenith_corr,
+		     const double& f_factor,
+		     const double& w_0_limit,
+		     const double& albedo
+		     );
+
+void set_surface_temperature(		     const double& T_surf);
 void deinit_alfrodull();
+
+void set_clouds_data(const bool& clouds_,
+		     const long& cloud_opac_lay_,
+		     const long& cloud_opac_int_,
+		     const long& cloud_scat_cross_lay_,
+		     const long& cloud_scat_cross_int_,
+		     const long& g_0_tot_lay_,
+		     const long& g_0_tot_int_);
 
 void set_z_calc_function(std::function<void()> & func);
 
