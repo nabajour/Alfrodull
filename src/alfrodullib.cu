@@ -217,67 +217,6 @@ __host__ bool prepare_compute_flux(
 }
 
 
-bool wrap_prepare_compute_flux(long          dev_starflux,        // pil
-                               long          dev_T_lay,           // it, pil, io, mmm, kil
-                               long          dev_T_int,           // it, pii, ioi, mmmi, kii
-                               long          dev_p_lay,           // io, mmm, kil
-                               long          dev_p_int,           // ioi, mmmi, kii
-                               long          dev_opac_wg_lay,     // io
-                               long          dev_opac_wg_int,     // ioi
-                               long          dev_meanmolmass_lay, // mmm
-                               long          dev_meanmolmass_int, // mmmi
-                               const int&    real_star,           // pil
-                               const double& fake_opac,           // io
-                               const double& T_surf,              // csp, cse, pil
-                               const double& surf_albedo,         // cse
-                               const bool&   correct_surface_emissions,
-                               const bool&   interp_and_calc_flux_step
-
-) {
-
-    bool ret = prepare_compute_flux((double*)dev_starflux,        // pil
-                                    (double*)dev_T_lay,           // it, pil, io, mmm, kil
-                                    (double*)dev_T_int,           // it, pii, ioi, mmmi, kii
-                                    (double*)dev_p_lay,           // io, mmm, kil
-                                    (double*)dev_p_int,           // ioi, mmmi, kii
-                                    (double*)dev_opac_wg_lay,     // io
-                                    (double*)dev_opac_wg_int,     // ioi
-                                    (double*)dev_meanmolmass_lay, // mmm
-                                    (double*)dev_meanmolmass_int, // mmmi
-                                    real_star,                    // pil
-                                    fake_opac,                    // io
-                                    T_surf,                       // csp, cse, pil
-                                    surf_albedo,                  // cse
-                                    correct_surface_emissions,
-                                    interp_and_calc_flux_step);
-    return ret;
-}
-
-void wrap_integrate_flux(long deltalambda,  // double*
-                         long F_down_tot,   // double *
-                         long F_up_tot,     // double *
-                         long F_net,        // double *
-                         long F_down_wg,    // double *
-                         long F_up_wg,      // double *
-                         long F_dir_wg,     // double *
-                         long F_down_band,  // double *
-                         long F_up_band,    // double *
-                         long F_dir_band,   // double *
-                         long gauss_weight) // double *
-{
-    integrate_flux((double*)deltalambda,
-                   (double*)F_down_tot,
-                   (double*)F_up_tot,
-                   (double*)F_net,
-                   (double*)F_down_wg,
-                   (double*)F_up_wg,
-                   (double*)F_dir_wg,
-                   (double*)F_down_band,
-                   (double*)F_up_band,
-                   (double*)F_dir_band,
-                   (double*)gauss_weight);
-}
-
 void integrate_flux(double* deltalambda,
                     double* F_down_tot,
                     double* F_up_tot,
@@ -368,34 +307,6 @@ __host__ bool calculate_transmission_iso(double* trans_wg,             // out
     return true;
 }
 
-bool wrap_calculate_transmission_iso(long   trans_wg,
-                                     long   delta_colmass,
-                                     long   opac_wg_lay,
-                                     long   cloud_opac_lay,
-                                     long   meanmolmass_lay,
-                                     long   cloud_scat_cross_lay,
-                                     long   g_0_tot_lay,
-                                     double g_0,
-                                     double epsi,
-                                     double mu_star,
-                                     int    scat,
-                                     int    clouds,
-                                     int    scat_corr) {
-    return calculate_transmission_iso((double*)trans_wg,
-                                      (double*)delta_colmass,
-                                      (double*)opac_wg_lay,
-                                      (double*)cloud_opac_lay,
-                                      (double*)meanmolmass_lay,
-                                      (double*)cloud_scat_cross_lay,
-                                      (double*)g_0_tot_lay,
-                                      g_0,
-                                      epsi,
-                                      mu_star,
-                                      scat,
-                                      clouds,
-                                      scat_corr);
-}
-
 __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                             double* trans_wg_lower,
                                             double* delta_col_upper,
@@ -467,49 +378,6 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
     return true;
 }
 
-bool wrap_calculate_transmission_noniso(long   trans_wg_upper,
-                                        long   trans_wg_lower,
-                                        long   delta_col_upper,
-                                        long   delta_col_lower,
-                                        long   opac_wg_lay,
-                                        long   opac_wg_int,
-                                        long   cloud_opac_lay,
-                                        long   cloud_opac_int,
-                                        long   meanmolmass_lay,
-                                        long   meanmolmass_int,
-                                        long   cloud_scat_cross_lay,
-                                        long   cloud_scat_cross_int,
-                                        long   g_0_tot_lay,
-                                        long   g_0_tot_int,
-                                        double g_0,
-                                        double epsi,
-                                        double mu_star,
-                                        int    scat,
-                                        int    clouds,
-                                        int    scat_corr) {
-    return calculate_transmission_noniso((double*)trans_wg_upper,
-                                         (double*)trans_wg_lower,
-                                         (double*)delta_col_upper,
-                                         (double*)delta_col_lower,
-                                         (double*)opac_wg_lay,
-                                         (double*)opac_wg_int,
-                                         (double*)cloud_opac_lay,
-                                         (double*)cloud_opac_int,
-                                         (double*)meanmolmass_lay,
-                                         (double*)meanmolmass_int,
-                                         (double*)cloud_scat_cross_lay,
-                                         (double*)cloud_scat_cross_int,
-                                         (double*)g_0_tot_lay,
-                                         (double*)g_0_tot_int,
-                                         g_0,
-                                         epsi,
-                                         mu_star,
-                                         scat,
-                                         clouds,
-                                         scat_corr);
-}
-
-
 bool direct_beam_flux(double* F_dir_wg,
                       double* Fc_dir_wg,
                       double* z_lay,
@@ -572,27 +440,6 @@ bool direct_beam_flux(double* F_dir_wg,
     return true;
 }
 
-bool wrap_direct_beam_flux(long   F_dir_wg,
-                           long   Fc_dir_wg,
-                           long   z_lay,
-                           double mu_star,
-                           double R_planet,
-                           double R_star,
-                           double a,
-                           int    dir_beam,
-                           int    geom_zenith_corr) {
-    return direct_beam_flux((double*)F_dir_wg,
-                            (double*)Fc_dir_wg,
-                            (double*)z_lay,
-                            mu_star,
-                            R_planet,
-                            R_star,
-                            a,
-                            dir_beam,
-                            geom_zenith_corr);
-}
-
-
 bool populate_spectral_flux_iso(double* F_down_wg,   // out
                                 double* F_up_wg,     // out
                                 double* F_dir_wg,    // in
@@ -646,39 +493,6 @@ bool populate_spectral_flux_iso(double* F_down_wg,   // out
 
     return true;
 }
-
-bool wrap_populate_spectral_flux_iso(long   F_down_wg,
-                                     long   F_up_wg,
-                                     long   F_dir_wg,
-                                     long   g_0_tot_lay,
-                                     double g_0,
-                                     int    singlewalk,
-                                     double Rstar,
-                                     double a,
-                                     double f_factor,
-                                     double mu_star,
-                                     double epsi,
-                                     double w_0_limit,
-                                     int    dir_beam,
-                                     int    clouds,
-                                     double albedo) {
-    return populate_spectral_flux_iso((double*)F_down_wg,
-                                      (double*)F_up_wg,
-                                      (double*)F_dir_wg,
-                                      (double*)g_0_tot_lay,
-                                      g_0,
-                                      singlewalk,
-                                      Rstar,
-                                      a,
-                                      f_factor,
-                                      mu_star,
-                                      epsi,
-                                      w_0_limit,
-                                      dir_beam,
-                                      clouds,
-                                      albedo);
-}
-
 
 // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
 __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
@@ -761,53 +575,6 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
 
     return true;
 }
-
-bool wrap_populate_spectral_flux_noniso(long   F_down_wg,
-                                        long   F_up_wg,
-                                        long   Fc_down_wg,
-                                        long   Fc_up_wg,
-                                        long   F_dir_wg,
-                                        long   Fc_dir_wg,
-                                        long   g_0_tot_lay,
-                                        long   g_0_tot_int,
-                                        double g_0,
-                                        int    singlewalk,
-                                        double Rstar,
-                                        double a,
-                                        double f_factor,
-                                        double mu_star,
-                                        double epsi,
-                                        double w_0_limit,
-                                        double delta_tau_limit,
-                                        int    dir_beam,
-                                        int    clouds,
-                                        double albedo,
-                                        long   trans_wg_upper,
-                                        long   trans_wg_lower) {
-    return populate_spectral_flux_noniso((double*)F_down_wg,
-                                         (double*)F_up_wg,
-                                         (double*)Fc_down_wg,
-                                         (double*)Fc_up_wg,
-                                         (double*)F_dir_wg,
-                                         (double*)Fc_dir_wg,
-                                         (double*)g_0_tot_lay,
-                                         (double*)g_0_tot_int,
-                                         g_0,
-                                         singlewalk,
-                                         Rstar,
-                                         a,
-                                         f_factor,
-                                         mu_star,
-                                         epsi,
-                                         w_0_limit,
-                                         delta_tau_limit,
-                                         dir_beam,
-                                         clouds,
-                                         albedo,
-                                         (double*)trans_wg_upper,
-                                         (double*)trans_wg_lower);
-}
-
 
 void init_alfrodull() {
     printf("Create Alfrodull Engine\n");
