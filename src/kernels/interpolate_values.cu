@@ -11,7 +11,7 @@ __global__ void interpolate_temperature(double* tlay, double* tint, int numinter
         tint[i] = tlay[i - 1] + 0.5 * (tlay[i] - tlay[i - 1]);
     }
     if (i == 0) {
-        tint[i] = tlay[i] - 0.5 * (tlay[i + 1] - tlay[i]);
+            tint[i] = tlay[numinterfaces - 1]; // set equal to the surface/BOA temperature
     }
     if (i == numinterfaces - 1) {
         tint[i] = tlay[i - 1] + 0.5 * (tlay[i - 1] - tlay[i - 2]);
@@ -27,42 +27,48 @@ __global__ void planck_interpol_layer(double* temp,            // in
                                       int     realstar,
                                       int     numlayers,
                                       int     nwave,
-                                      double  T_surf,
                                       int     dim,
                                       int     step) {
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int i = threadIdx.y + blockIdx.y * blockDim.y;
-
-    if (x < nwave) {
-
-        if (i < numlayers) {
-
-            planckband_lay[i + x * (numlayers + 2)] = 0.0;
-
-            double t = (temp[i] - 1.0) / step;
-
-            t = max(0.001, min(dim - 1.001, t));
-
-            int tdown = floor(t);
-            int tup   = ceil(t);
-
-            if (tdown != tup) {
-                planckband_lay[i + x * (numlayers + 2)] =
-                    planck_grid[x + tdown * nwave] * (tup - t)
-                    + planck_grid[x + tup * nwave] * (t - tdown);
+    
+    if (x < nwave && i < numlayers + 2){
+        
+      planckband_lay[i + x * (numlayers + 2)] = 0.0;
+      
+      // getting the stellar flux --- is redundant to do it every interpolation, but probably has negligible costs ...
+      if (i == numlayers){
+            if(realstar==1){
+                planckband_lay[i + x * (numlayers + 2)] = starflux[x]/PI;
             }
-            if (tdown == tup) {
-                planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + tdown * nwave];
+            else{
+                planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + dim * nwave];
             }
         }
-        // taking stellar and internal temperatures
-        if (i == numlayers) {
-            if (realstar == 1) {
-                planckband_lay[i + x * (numlayers + 2)] = starflux[x] / PI;
+        else{
+            double t;
+            
+            // interpolating for layer temperatures
+            if (i < numlayers){
+                t = (temp[i] - 1.0) / step;
             }
-            else {
-                planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + dim * nwave];
+            // interpolating for below (surface/BOA) temperature
+            if (i == numlayers + 1){
+                t = (temp[numlayers] - 1.0) / step;
+            }
+            
+            t = max(0.001, min(dim - 1.001, t));
+            
+            int tdown = floor(t);
+            int tup = ceil(t);
+            
+            if(tdown != tup){
+                planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + tdown * nwave] * (tup - t)
+                + planck_grid[x + tup * nwave] * (t-tdown);
+            }
+            if(tdown == tup){
+                planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + tdown * nwave];
             }
         }
     }
@@ -82,8 +88,6 @@ __global__ void planck_interpol_interface(double* temp,             // in
     int i = threadIdx.y + blockIdx.y * blockDim.y;
 
     if (x < nwave && i < numinterfaces) {
-
-        planckband_int[i + x * numinterfaces] = 0.0;
 
         double t = (temp[i] - 1.0) / step;
 

@@ -1,6 +1,9 @@
 
 #include "atomic_add.h"
 #include "physics_constants.h"
+#include "calculate_physics.h"
+
+#include <stdio.h>
 
 // calculates the integrated upwards and downwards fluxes
 __global__ void integrate_flux_double(
@@ -24,31 +27,30 @@ __global__ void integrate_flux_double(
     int y = threadIdx.y;
     int i = threadIdx.z;
 
-    while(x < nbin && y < ny && i < numinterfaces){
-
-        while(x < nbin && y < ny && i < numinterfaces){
-
-            F_up_tot[i] = 0;
-            F_down_tot[i] = 0;
-
-            F_dir_band[x + nbin * i] = 0;
-            F_up_band[x + nbin * i] = 0;
-            F_down_band[x + nbin * i] = 0;
-
-            x += blockDim.x;
+    if(y==0){
+        while(i < numinterfaces){
+            while(x < nbin){
+                
+                F_up_tot[i] = 0;
+                F_down_tot[i] = 0;
+                
+                F_dir_band[x + nbin * i] = 0;
+                F_up_band[x + nbin * i] = 0;
+                F_down_band[x + nbin * i] = 0;
+                
+                x += blockDim.x;
+            }
+            x = threadIdx.x;
+            i += blockDim.z;	
         }
-        x = threadIdx.x;
-        i += blockDim.z;	
     }
     __syncthreads();
-
+    
     i = threadIdx.z;
-
-    while(x < nbin && y < ny && i < numinterfaces){
-
-        while(x < nbin && y < ny && i < numinterfaces){
-
-            while(x < nbin && y < ny && i < numinterfaces){
+    
+    while(i < numinterfaces){
+        while(y < ny){
+            while(x < nbin){
                 
                 atomicAdd_double(&(F_dir_band[x + nbin * i]), 0.5 * gauss_weight[y] * F_dir_wg[y + ny * x + ny * nbin * i]);
                 atomicAdd_double(&(F_up_band[x + nbin * i]), 0.5 * gauss_weight[y] * F_up_wg[y + ny * x + ny * nbin * i]);
@@ -65,29 +67,31 @@ __global__ void integrate_flux_double(
     __syncthreads();
     
     i = threadIdx.z;
+    
+    if(y == 0){
+        while(i < numinterfaces){
+            while(x < nbin){
+                
+                atomicAdd_double(&(F_up_tot[i]), F_up_band[x + nbin * i] * deltalambda[x]);
+                atomicAdd_double(&(F_down_tot[i]), (F_dir_band[x + nbin * i] + F_down_band[x + nbin * i]) * deltalambda[x]);
 
-    while(x < nbin && y == 0 && i < numinterfaces){
-        
-        while(x < nbin && y == 0 && i < numinterfaces){
-
-            atomicAdd_double(&(F_up_tot[i]), F_up_band[x + nbin * i] * deltalambda[x]);
-            atomicAdd_double(&(F_down_tot[i]), (F_dir_band[x + nbin * i] + F_down_band[x + nbin * i]) * deltalambda[x]);
-
-            x += blockDim.x;
+                x += blockDim.x;
+            }
+            x = threadIdx.x;
+            i += blockDim.z;
         }
-        x = threadIdx.x;
-        i += blockDim.z;	
     }
     __syncthreads();
-
+    
     i = threadIdx.z;
-
-    while(x < nbin && y < 1 && i < numinterfaces){
-        F_net[i] = F_up_tot[i] - F_down_tot[i];
-        i += blockDim.z;
+    
+    if(x == 0 && y == 0){
+        while(i < numinterfaces){
+            F_net[i] = F_up_tot[i] - F_down_tot[i];
+            i += blockDim.z;
+        }
     }
 }
-
 
 // calculates the direct beam flux with geometric zenith angle correction, isothermal version
 __global__ void fdir_iso(
@@ -200,7 +204,6 @@ __global__ void fband_iso_notabu(
 				 double* F_dir_wg, // in
 				 double* planckband_lay, // in
 				 double* w_0, // in
-				 double* delta_tau_wg, // in
 				 double* M_term, // in
 				 double* N_term, // in
 				 double* P_term, // in
@@ -217,112 +220,129 @@ __global__ void fband_iso_notabu(
 				 double 	mu_star,
 				 int 	ny, 
 				 double 	epsi,
-				 double 	w_0_limit,
 				 int 	dir_beam,
 				 int 	clouds,
-				 double   albedo
+				 int    scat_corr,
+				 double   albedo,
+				 int    debug,
+				 double i2s_transition
 ){
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-
     if (x < nbin && y < ny) {
         
+        double w0;
+        double M;
+        double N;
+        double P;
+        double G_pl;
+        double G_min;
+        double g0;	
+        
+        double E;
+                        
+        double flux_terms;
+        double planck_terms;
+        double direct_terms;
+        
+        // calculation of downward fluxes from TOA to BOA
         for (int i = numinterfaces - 1; i >= 0; i--){
-
+            
+            // TOA boundary -- incoming stellar flux
             if (i == numinterfaces - 1) {
-                
-                // flux at TOA (without direct irradiation beam)
                 F_down_wg[y + ny * x + ny * nbin * i] = (1.0 - dir_beam) * f_factor * ((Rstar / a)*(Rstar / a)) * PI * planckband_lay[i + x * (numinterfaces-1+2)];
             }
             else {
+                w0 = w_0[y+ny*x + ny*nbin*i];
+                M = M_term[y+ny*x + ny*nbin*i];
+                N = N_term[y+ny*x + ny*nbin*i];
+                P = P_term[y+ny*x + ny*nbin*i];
+                G_pl = G_plus[y+ny*x + ny*nbin*i];
+                G_min = G_minus[y+ny*x + ny*nbin*i];
+                g0 = g_0;
                 
-                double w0 = w_0[y+ny*x + ny*nbin*i];
-                double del_tau = delta_tau_wg[y+ny*x + ny*nbin*i];
-                double M = M_term[y+ny*x + ny*nbin*i];
-                double N = N_term[y+ny*x + ny*nbin*i];
-                double P = P_term[y+ny*x + ny*nbin*i];
-                double G_pl = G_plus[y+ny*x + ny*nbin*i];
-                double G_min = G_minus[y+ny*x + ny*nbin*i];
-                double g0 = g_0;	
+                // improved scattering correction factor E
+                E = 1.0;
+                if(scat_corr==1){
+                    E = E_parameter(w0, g0, i2s_transition);
+                }
+                
+                // experimental clouds functionality
                 if(clouds == 1){
                     g0 = g_0_tot_lay[x + nbin * i];
                 }
-                
-                if(w0 > w_0_limit){
-                    // w0 = 1 solution
-                    double first_fraction = (F_up_wg[y+ny*x+ny*nbin*i] - F_down_wg[y+ny*x+ny*nbin*(i+1)]) * 1.0/epsi * (1.0 - g0)*del_tau/(1.0/epsi * (1.0 - g0) * del_tau + 2.0);
-                            
-                    double large_bracket = (mu_star/epsi - 1.0) * F_dir_wg[y+ny*x+ny*nbin*(i+1)]/(-mu_star) + (1.0/epsi * (1.0 - g0) * del_tau - mu_star/epsi + 1.0) * F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star);
-                    
-                    double direct_terms = mu_star/(1.0/epsi * (1.0 - g0) * del_tau + 2.0) * large_bracket;
-                            
-                    F_down_wg[y+ny*x+ny*nbin*i] = F_down_wg[y+ny*x+ny*nbin*(i+1)] + first_fraction + direct_terms;
 
-                }
-                else{
-                    // isothermal solution
-                    double flux_terms = P * F_down_wg[y+ny*x+ny*nbin*(i+1)] - N * F_up_wg[y+ny*x+ny*nbin*i];
-                    
-                    double planck_terms = planckband_lay[i+x*(numinterfaces-1+2)] * (N + M - P);
-                    
-                    double direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min * M + G_pl * N) - F_dir_wg[y+ny*x+ny*nbin*(i+1)]/(-mu_star) * P * G_min;
-                    
-                    F_down_wg[y+ny*x+ny*nbin*i] = 1.0 / M * (flux_terms + 2.0 * PI * epsi * planck_terms + direct_terms);
+                // isothermal solution
+                flux_terms = P * F_down_wg[y+ny*x+ny*nbin*(i+1)] - N * F_up_wg[y+ny*x+ny*nbin*i];
+                
+                planck_terms = planckband_lay[i+x*(numinterfaces-1+2)] * (N + M - P);
+                
+                direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min * M + G_pl * N) - F_dir_wg[y+ny*x+ny*nbin*(i+1)]/(-mu_star) * P * G_min;
+                
+                direct_terms = min(0.0, direct_terms);
+
+                F_down_wg[y+ny*x+ny*nbin*i] = 1.0 / M * (flux_terms + 2.0 * PI * epsi *(1.0 - w0)/(E - w0) * planck_terms + direct_terms);
+
+                //feedback if flux becomes negative
+                if(debug == 1){
+                    if(F_down_wg[y+ny*x+ny*nbin*i] < 0) printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: %d, w-index: %d, y-index: %d !!! \n", i, x, y);
                 }
             }
         }
-
+        
+        // calculation of upward fluxes from BOA to TOA
         for (int i = 0; i < numinterfaces; i++){
-
+            
+            // BOA boundary -- surface emission and reflection
             if (i == 0){
                 
                 double reflected_part = albedo * (F_dir_wg[y+ny*x+ny*nbin*i] + F_down_wg[y+ny*x+ny*nbin* i]);
                 
-                // this is the surface emission. it now comes with the emissivity e = (1 - albedo)
-                double internal_part = (1.0 - albedo) * PI * planckband_lay[numinterfaces + x * (numinterfaces-1+2)];
+                // this is the surface/BOA emission. it correctly considers the emissivity e = (1 - albedo)
+                double BOA_part = (1.0 - albedo) * PI * (1.0 - w0)/(E - w0) * planckband_lay[numinterfaces + x * (numinterfaces-1+2)]; // remember: numinterfaces = numlayers + 1
                 
-                F_up_wg[y+ny*x+ny*nbin* i] = reflected_part + internal_part; // internal_part comprises the interior heat plus the surface emission
+                F_up_wg[y+ny*x+ny*nbin* i] = reflected_part + BOA_part; // internal_part consists of the internal heat flux plus the surface/BOA emission
             }
             else {
+                w0 = w_0[y+ny*x + ny*nbin*(i-1)];
+                M = M_term[y+ny*x + ny*nbin*(i-1)];
+                N = N_term[y+ny*x + ny*nbin*(i-1)];
+                P = P_term[y+ny*x + ny*nbin*(i-1)];
+                G_pl = G_plus[y+ny*x + ny*nbin*(i-1)];
+                G_min = G_minus[y+ny*x + ny*nbin*(i-1)];
+                g0 = g_0;
                 
-                double w0 = w_0[y+ny*x + ny*nbin*(i-1)];
-                double del_tau = delta_tau_wg[y+ny*x + ny*nbin*(i-1)];
-                double M = M_term[y+ny*x + ny*nbin*(i-1)];
-                double N = N_term[y+ny*x + ny*nbin*(i-1)];
-                double P = P_term[y+ny*x + ny*nbin*(i-1)];
-                double G_pl = G_plus[y+ny*x + ny*nbin*(i-1)];
-                double G_min = G_minus[y+ny*x + ny*nbin*(i-1)];
-                double g0 = g_0;
+                // improved scattering correction factor E
+                E = 1.0;
+                if(scat_corr==1){
+                    E = E_parameter(w0, g0, i2s_transition);
+                }
+                
+                // experimental clouds functionality
                 if(clouds == 1){
                     g0 = g_0_tot_lay[x + nbin * (i-1)];
                 }
 
-                if(w0 > w_0_limit){
-                    // w0 = 1 solution
-                    double first_fraction = (F_down_wg[y+ny*x+ny*nbin*i] - F_up_wg[y+ny*x+ny*nbin*(i-1)]) * 1.0/epsi * (1.0-g0)*del_tau / (1.0/epsi * (1.0-g0)*del_tau + 2.0);
-                    
-                    double large_bracket = (mu_star/epsi + 1.0) * F_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) - (1.0/epsi * (1.0 - g0) * del_tau + mu_star/epsi + 1.0) * F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star);
-                    
-                    double direct_terms = mu_star/(1.0/epsi * (1.0 - g0) * del_tau + 2.0) * large_bracket;
-                    
-                    F_up_wg[y+ny*x+ny*nbin*i] = F_up_wg[y+ny*x+ny*nbin*(i-1)] + first_fraction + direct_terms;
-                }
-                else{
-                    // isothermal solution
-                    double flux_terms = P * F_up_wg[y+ny*x+ny*nbin*(i-1)] - N * F_down_wg[y+ny*x+ny*nbin*i];
-                    
-                    double planck_terms = planckband_lay[(i-1)+x*(numinterfaces-1+2)] * (N + M - P);
-                    
-                    double direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min * N + G_pl * M) - F_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P * G_pl;
-                    
-                    F_up_wg[y+ny*x+ny*nbin*i] = 1.0 / M * (flux_terms + 2.0 * PI * epsi * planck_terms + direct_terms);
+                // isothermal solution
+                flux_terms = P * F_up_wg[y+ny*x+ny*nbin*(i-1)] - N * F_down_wg[y+ny*x+ny*nbin*i];
+                
+                planck_terms = planckband_lay[(i-1)+x*(numinterfaces-1+2)] * (N + M - P);
+                
+                direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min * N + G_pl * M) - F_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P * G_pl;
+                
+                direct_terms = min(0.0, direct_terms);
+                
+                F_up_wg[y+ny*x+ny*nbin*i] = 1.0 / M * (flux_terms + 2.0 * PI * epsi *(1.0 - w0)/(E - w0) * planck_terms + direct_terms);
+                
+                //feedback if flux becomes negative
+                if(debug == 1){
+                    if(F_up_wg[y+ny*x+ny*nbin*i] < 0) printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: %d, w-index: %d, y-index: %d !!! \n", i, x, y);
                 }
             }
         }
     }
 }
-
 
 // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
 __global__ void fband_noniso_notabu(
@@ -360,240 +380,238 @@ __global__ void fband_noniso_notabu(
         double 	mu_star,
         int 	ny,
         double 	epsi,
-        double 	w_0_limit,
         double 	delta_tau_limit,
         int 	dir_beam,
         int 	clouds,
+	int     scat_corr,
         double   albedo,
-        double*	trans_wg_upper,
-        double* trans_wg_lower
+	 int     debug,
+	double   i2s_transition
 ){
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
 
-    if (x < nbin && y < ny) {
-
+        if (x < nbin && y < ny) {
+        
+        double w0_up;
+        double del_tau_up;
+        double M_up;
+        double N_up;
+        double P_up;
+        double G_pl_up;
+        double G_min_up;
+        double g0_up;
+        double E_up;
+                
+        double w0_low;
+        double del_tau_low;
+        double M_low;
+        double N_low;
+        double P_low;
+        double G_pl_low;
+        double G_min_low;
+        double g0_low;
+        double E_low;
+        
+        double flux_terms;
+        double planck_terms;
+        double direct_terms;
+                
+        // calculation of downward fluxes from TOA to BOA
         for (int i = numinterfaces - 1; i >= 0; i--){
-
+            
+            // TOA boundary -- incoming stellar flux
             if (i == numinterfaces - 1) {
                 F_down_wg[y + ny * x + ny * nbin * i] = (1.0 - dir_beam) * f_factor * ((Rstar / a)*(Rstar / a)) * PI * planckband_lay[i + x * (numinterfaces-1+2)];
             }
             else {
-                // upper part of layer
-                double w0_up = w_0_upper[y+ny*x + ny*nbin*i];
-                double del_tau_up = delta_tau_wg_upper[y+ny*x + ny*nbin*i];
-                double M_up = M_upper[y+ny*x + ny*nbin*i];
-                double N_up = N_upper[y+ny*x + ny*nbin*i];
-                double P_up = P_upper[y+ny*x + ny*nbin*i];
-                double G_pl_up = G_plus_upper[y+ny*x + ny*nbin*i];
-                double G_min_up = G_minus_upper[y+ny*x + ny*nbin*i];
-                double g0_up = g_0;
-                if(clouds == 1){
-                    g0_up = (g_0_tot_lay[x + nbin * i] + g_0_tot_int[x + nbin * (i+1)]) / 2.0;
+                // upper part of layer quantities
+                w0_up = w_0_upper[y+ny*x + ny*nbin*i];
+                del_tau_up = delta_tau_wg_upper[y+ny*x + ny*nbin*i];
+                M_up = M_upper[y+ny*x + ny*nbin*i];
+                N_up = N_upper[y+ny*x + ny*nbin*i];
+                P_up = P_upper[y+ny*x + ny*nbin*i];
+                G_pl_up = G_plus_upper[y+ny*x + ny*nbin*i];
+                G_min_up = G_minus_upper[y+ny*x + ny*nbin*i];
+                g0_up = g_0;
+                
+                // lower part of layer quantities
+                w0_low = w_0_lower[y+ny*x + ny*nbin*i];
+                del_tau_low = delta_tau_wg_lower[y+ny*x + ny*nbin*i];
+                M_low = M_lower[y+ny*x + ny*nbin*i];
+                N_low = N_lower[y+ny*x + ny*nbin*i];
+                P_low = P_lower[y+ny*x + ny*nbin*i];
+                G_pl_low = G_plus_lower[y+ny*x + ny*nbin*i];
+                G_min_low = G_minus_lower[y+ny*x + ny*nbin*i];
+                g0_low = g_0;
+                
+                // improved scattering correction factor E
+                E_up = 1.0;
+                E_low = 1.0;
+                
+                // improved scattering correction disabled for the following terms -- at least for the moment   
+                if(scat_corr==1){
+                    E_up = E_parameter(w0_up, g0_up, i2s_transition);
+                    E_low = E_parameter(w0_low, g0_low, i2s_transition);
                 }
                 
-                // lower part of layer
-                double w0_low = w_0_lower[y+ny*x + ny*nbin*i];
-                double del_tau_low = delta_tau_wg_lower[y+ny*x + ny*nbin*i];
-                double M_low = M_lower[y+ny*x + ny*nbin*i];
-                double N_low = N_lower[y+ny*x + ny*nbin*i];
-                double P_low = P_lower[y+ny*x + ny*nbin*i];
-                double G_pl_low = G_plus_lower[y+ny*x + ny*nbin*i];
-                double G_min_low = G_minus_lower[y+ny*x + ny*nbin*i];
-                double g0_low = g_0;
+                // experimental clouds functionality
                 if(clouds == 1){
+                    g0_up = (g_0_tot_lay[x + nbin * i] + g_0_tot_int[x + nbin * (i+1)]) / 2.0;
                     g0_low = (g_0_tot_int[x + nbin * i] + g_0_tot_lay[x + nbin * i]) / 2.0;
                 }
 
-                if(w0_up > w_0_limit){
-                    // w0 = 1 solution
-                    double first_fraction = (Fc_up_wg[y+ny*x+ny*nbin*i] - F_down_wg[y+ny*x+ny*nbin*(i+1)]) * 1.0/epsi * (1.0-g0_up)*del_tau_up / (1.0/epsi * (1.0-g0_up)*del_tau_up + 2.0);
-
-                    double large_bracket = (mu_star/epsi - 1.0) * F_dir_wg[y+ny*x+ny*nbin*(i+1)]/(-mu_star) + (1.0/epsi * (1.0 - g0_up) * del_tau_up - mu_star/epsi + 1.0) * Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star);
-                                        
-                    double direct_terms = mu_star/(1.0/epsi * (1.0 - g0_up) * del_tau_up + 2.0) * large_bracket;
-
-                    Fc_down_wg[y+ny*x+ny*nbin*i] = F_down_wg[y+ny*x+ny*nbin*(i+1)] + first_fraction + direct_terms;
+                // upper part of layer calculations
+                if(del_tau_up < delta_tau_limit){
+                    // the isothermal solution -- taken if optical depth so small that numerical instabilities may occur
+                    planck_terms = (planckband_int[(i+1)+x*numinterfaces] + planckband_lay[i+x*(numinterfaces-1+2)])/2.0 * (N_up + M_up - P_up);
                 }
                 else{
-                    double flux_terms;
-                    double planck_terms;
-                    double direct_terms;
-
-                    if(del_tau_up < delta_tau_limit){
-                        // the isothermal solution
-                        flux_terms = P_up * F_down_wg[y+ny*x+ny*nbin*(i+1)] - N_up * Fc_up_wg[y+ny*x+ny*nbin*i];
-
-                        planck_terms = (planckband_int[(i+1)+x*numinterfaces] + planckband_lay[i+x*(numinterfaces-1+2)])/2.0 * (N_up + M_up - P_up);
-
-                        direct_terms = Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_up * M_up + G_pl_up * N_up) - F_dir_wg[y+ny*x+ny*nbin*(i+1)]/(-mu_star) * G_min_up * P_up;
-                    }
-                    else{
-                        // the non-isothermal solution
-                        double pgrad_up = (planckband_lay[i + x * (numinterfaces-1+2)] - planckband_int[(i + 1) + x * numinterfaces]) / del_tau_up;
-
-                        flux_terms = P_up * F_down_wg[y+ny*x+ny*nbin*(i+1)] - N_up * Fc_up_wg[y+ny*x+ny*nbin*i];
-
-                        planck_terms = planckband_lay[i+x*(numinterfaces-1+2)] * (M_up + N_up) - planckband_int[(i+1)+x*numinterfaces] * P_up + epsi/(1.0-w0_up*g0_up) * pgrad_up * (P_up - M_up + N_up);
-
-                        direct_terms = Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_up * M_up + G_pl_up * N_up) - F_dir_wg[y+ny*x+ny*nbin*(i+1)]/(-mu_star) * P_up * G_min_up;
-                    }
-                    Fc_down_wg[y+ny*x+ny*nbin*i] = 1.0 / M_up * (flux_terms + 2.0 * PI * epsi * planck_terms + direct_terms);
+                    // the non-isothermal solution -- standard case
+                    double pgrad_up = (planckband_lay[i + x * (numinterfaces-1+2)] - planckband_int[(i + 1) + x * numinterfaces]) / del_tau_up;
+                    
+                    planck_terms = planckband_lay[i+x*(numinterfaces-1+2)] * (M_up + N_up) - planckband_int[(i+1)+x*numinterfaces] * P_up + epsi / (E_up * (1.0-w0_up*g0_up))  * (P_up - M_up + N_up) * pgrad_up;
                 }
-
-                if(w0_low > w_0_limit){
-                    // w0 = 1 solution
-                    double first_fraction = (F_up_wg[y+ny*x+ny*nbin*i] - Fc_down_wg[y+ny*x+ny*nbin*i]) * 1.0/epsi * (1.0-g0_low)*del_tau_low / (1.0/epsi * (1.0-g0_low)*del_tau_low + 2.0);
-
-                    double large_bracket = (mu_star/epsi - 1.0) * Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) + (1.0/epsi * (1.0 - g0_low) * del_tau_low - mu_star/epsi + 1.0) * F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star);
-                                                            
-                    double direct_terms = mu_star/(1.0/epsi * (1.0 - g0_low) * del_tau_low + 2.0) * large_bracket;
-
-                    F_down_wg[y+ny*x+ny*nbin*i] = Fc_down_wg[y+ny*x+ny*nbin*i] + first_fraction + direct_terms;
+                flux_terms = P_up * F_down_wg[y+ny*x+ny*nbin*(i+1)] - N_up * Fc_up_wg[y+ny*x+ny*nbin*i];
+                
+                direct_terms = Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_up * M_up + G_pl_up * N_up) - F_dir_wg[y+ny*x+ny*nbin*(i+1)]/(-mu_star) * G_min_up * P_up;
+                
+                direct_terms = min(0.0, direct_terms);
+                
+                Fc_down_wg[y+ny*x+ny*nbin*i] = 1.0 / M_up * (flux_terms + 2.0*PI*epsi*(1.0 - w0_up)/(E_up - w0_up)*planck_terms + direct_terms);
+                
+                //feedback if flux becomes negative
+                if(debug == 1){
+                    if(Fc_down_wg[y+ny*x+ny*nbin*i] < 0) printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: %d, w-index: %d, y-index: %d !!! \n", i, x, y);
+                }
+                
+                // lower part of layer calculations
+                if(del_tau_low < delta_tau_limit){
+                    // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
+                    planck_terms = (planckband_int[i+x*numinterfaces] + planckband_lay[i+x*(numinterfaces-1+2)])/2.0 * (N_low + M_low - P_low);
                 }
                 else{
-                    double flux_terms;
-                    double planck_terms;
-                    double direct_terms;
+                    // non-isothermal solution -- standard case
+                    double pgrad_low = (planckband_int[i + x * numinterfaces] - planckband_lay[i + x * (numinterfaces-1+2)]) / del_tau_low;
 
-                    if(del_tau_low < delta_tau_limit){
-                        // isothermal solution
-                        flux_terms = P_low * Fc_down_wg[y+ny*x+ny*nbin*i] - N_low * F_up_wg[y+ny*x+ny*nbin*i];
-
-                        planck_terms = (planckband_int[i+x*numinterfaces] + planckband_lay[i+x*(numinterfaces-1+2)])/2.0 * (N_low + M_low - P_low);
-
-                        direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_low * M_low + G_pl_low * N_low) - Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * P_low * G_min_low;
-                    }
-                    else{
-                        // non-isothermal solution
-                        double pgrad_low = (planckband_int[i + x * numinterfaces] - planckband_lay[i + x * (numinterfaces-1+2)]) / del_tau_low;
-
-                        flux_terms = P_low * Fc_down_wg[y+ny*x+ny*nbin*i] - N_low * F_up_wg[y+ny*x+ny*nbin*i];
-
-                        planck_terms = planckband_int[i+x*numinterfaces] * (M_low + N_low) - planckband_lay[i+x*(numinterfaces-1+2)] * P_low + epsi/(1.0-w0_low*g0_low) * pgrad_low * (P_low - M_low + N_low) ;
-
-                        direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_low * M_low + G_pl_low * N_low) - Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * P_low * G_min_low;						
-                    }
-                    F_down_wg[y+ny*x+ny*nbin*i] = 1.0 / M_low * (flux_terms + 2.0*PI*epsi*planck_terms + direct_terms);
+                    planck_terms = planckband_int[i+x*numinterfaces] * (M_low + N_low) - planckband_lay[i+x*(numinterfaces-1+2)] * P_low + epsi / (E_low * (1.0-w0_low*g0_low)) * (P_low - M_low + N_low) * pgrad_low;
+                }
+                flux_terms = P_low * Fc_down_wg[y+ny*x+ny*nbin*i] - N_low * F_up_wg[y+ny*x+ny*nbin*i];
+                
+                direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_low * M_low + G_pl_low * N_low) - Fc_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * P_low * G_min_low;
+                
+                direct_terms = min(0.0, direct_terms);
+                
+                F_down_wg[y+ny*x+ny*nbin*i] = 1.0 / M_low * (flux_terms + 2.0*PI*epsi*(1.0 - w0_low)/(E_low - w0_low)*planck_terms + direct_terms);
+                
+                //feedback if flux becomes negative
+                if(debug == 1){
+                    if(F_down_wg[y+ny*x+ny*nbin*i] < 0) printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: %d, w-index: %d, y-index: %d !!! \n", i, x, y);
                 }
             }
         }
-
+        
         __syncthreads();
         
+        // calculation of upward fluxes from BOA to TOA
         for (int i = 0; i < numinterfaces; i++){
             
+            // BOA boundary -- surface emission and reflection
             if (i == 0){
                 
                 double reflected_part = albedo * (F_dir_wg[y+ny*x+ny*nbin*i] + F_down_wg[y+ny*x+ny*nbin* i]);
+
+                // this is the surface/BOA emission. it correctly includes the emissivity e = (1 - albedo)
+                double BOA_part = (1.0 - albedo) * PI * (1.0 - w0_low)/(E_low - w0_low) * planckband_lay[numinterfaces + x * (numinterfaces-1+2)];
                 
-                // this is the surface emission. it now comes with the emissivity e = (1 - albedo)
-                double internal_part = (1.0 - albedo) * PI * planckband_lay[numinterfaces + x * (numinterfaces-1+2)];
-                
-                F_up_wg[y+ny*x+ny*nbin* i] = reflected_part + internal_part; // internal_part comprises the interior heat plus the surface emission
+                F_up_wg[y+ny*x+ny*nbin* i] = reflected_part + BOA_part; // internal_part consists of the internal heat flux plus the surface/BOA emission
             }
             else {
-                // lower part of layer
-                double w0_low = w_0_lower[y+ny*x + ny*nbin*(i-1)];
-                double del_tau_low = delta_tau_wg_lower[y+ny*x + ny*nbin*(i-1)];
-                double M_low = M_lower[y+ny*x + ny*nbin*(i-1)];
-                double N_low = N_lower[y+ny*x + ny*nbin*(i-1)];
-                double P_low = P_lower[y+ny*x + ny*nbin*(i-1)];
-                double G_pl_low = G_plus_lower[y+ny*x + ny*nbin*(i-1)];
-                double G_min_low = G_minus_lower[y+ny*x + ny*nbin*(i-1)];
-                double g0_low = g_0;
+                // lower part of layer quantities
+                w0_low = w_0_lower[y+ny*x + ny*nbin*(i-1)];
+                del_tau_low = delta_tau_wg_lower[y+ny*x + ny*nbin*(i-1)];
+                M_low = M_lower[y+ny*x + ny*nbin*(i-1)];
+                N_low = N_lower[y+ny*x + ny*nbin*(i-1)];
+                P_low = P_lower[y+ny*x + ny*nbin*(i-1)];
+                G_pl_low = G_plus_lower[y+ny*x + ny*nbin*(i-1)];
+                G_min_low = G_minus_lower[y+ny*x + ny*nbin*(i-1)];
+                g0_low = g_0;
+                
+                // upper part of layer quantities
+                w0_up = w_0_upper[y+ny*x + ny*nbin*(i-1)];
+                del_tau_up = delta_tau_wg_upper[y+ny*x + ny*nbin*(i-1)];
+                M_up = M_upper[y+ny*x + ny*nbin*(i-1)];
+                N_up = N_upper[y+ny*x + ny*nbin*(i-1)];
+                P_up = P_upper[y+ny*x + ny*nbin*(i-1)];
+                G_pl_up = G_plus_upper[y+ny*x + ny*nbin*(i-1)];
+                G_min_up = G_minus_upper[y+ny*x + ny*nbin*(i-1)];
+                g0_up = g_0;
+                
+                // improved scattering correction factor E
+                E_low = 1.0;
+                E_up = 1.0;
+                    
+             // improved scattering correction disabled for the following terms -- at least for the moment   
+                if(scat_corr==1){
+                    E_up = E_parameter(w0_up, g0_up, i2s_transition);
+                    E_low = E_parameter(w0_low, g0_low, i2s_transition);
+                }
+                
+                // experimental clouds functionanlity
                 if(clouds == 1){
                     g0_low = (g_0_tot_int[x + nbin * (i-1)] + g_0_tot_lay[x + nbin * (i-1)]) / 2.0;
-                }
-                                
-                // upper part of layer
-                double w0_up = w_0_upper[y+ny*x + ny*nbin*(i-1)];
-                double del_tau_up = delta_tau_wg_upper[y+ny*x + ny*nbin*(i-1)];
-                double M_up = M_upper[y+ny*x + ny*nbin*(i-1)];
-                double N_up = N_upper[y+ny*x + ny*nbin*(i-1)];
-                double P_up = P_upper[y+ny*x + ny*nbin*(i-1)];
-                double G_pl_up = G_plus_upper[y+ny*x + ny*nbin*(i-1)];
-                double G_min_up = G_minus_upper[y+ny*x + ny*nbin*(i-1)];
-                double g0_up = g_0;
-                if(clouds == 1){
                     g0_up = (g_0_tot_lay[x + nbin * (i-1)] + g_0_tot_int[x + nbin * i]) / 2.0;
                 }
-
-                if(w0_low > w_0_limit){
-                    // w0 = 1 solution
-                    double first_fraction = (Fc_down_wg[y+ny*x+ny*nbin*(i-1)] - F_up_wg[y+ny*x+ny*nbin*(i-1)]) * 1.0/epsi * (1.0-g0_low)*del_tau_low / (1.0/epsi * (1.0-g0_low)*del_tau_low + 2.0);
-
-                    double large_bracket = (mu_star/epsi + 1.0) * F_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) - (1.0/epsi * (1.0 - g0_low) * del_tau_low + mu_star/epsi + 1.0) * Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star);
+                
+                // lower part of layer calculations
+                if(del_tau_low < delta_tau_limit){
+                    // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
+                    planck_terms = ( (planckband_int[(i-1)+x*numinterfaces] + planckband_lay[(i-1)+x*(numinterfaces-1+2)])/2.0 * (N_low + M_low - P_low) );
+                }
+                else{
+                    // non-isothermal solution -- standard case
+                    double pgrad_low = (planckband_int[(i-1) + x * numinterfaces] - planckband_lay[(i-1) + x * (numinterfaces-1+2)]) / del_tau_low;
                     
-                    double direct_terms = mu_star/(1.0/epsi * (1.0 - g0_low) * del_tau_low + 2.0) * large_bracket;
-
-                    Fc_up_wg[y+ny*x+ny*nbin*(i-1)] = F_up_wg[y+ny*x+ny*nbin*(i-1)] + first_fraction + direct_terms;
+                    planck_terms = planckband_lay[(i-1)+x*(numinterfaces-1+2)] * (M_low + N_low) - planckband_int[(i-1)+x*numinterfaces] * P_low + epsi/(E_low*(1.0-w0_low*g0_low)) * pgrad_low * (M_low - P_low - N_low);
+                }
+                flux_terms = P_low * F_up_wg[y+ny*x+ny*nbin*(i-1)] - N_low * Fc_down_wg[y+ny*x+ny*nbin*(i-1)];
+                
+                direct_terms = Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * (G_min_low * N_low + G_pl_low * M_low) - F_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P_low * G_pl_low;
+                
+                direct_terms = min(0.0, direct_terms);
+                
+                Fc_up_wg[y+ny*x+ny*nbin*(i-1)] = 1.0 / M_low * (flux_terms + 2.0*PI*epsi*(1.0 - w0_low)/(E_low - w0_low)*planck_terms + direct_terms);
+                
+                //feedback if flux becomes negative
+                if(debug == 1){
+                    if(Fc_up_wg[y+ny*x+ny*nbin*(i-1)] < 0) printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: %d, w-index: %d, y-index: %d !!! \n", i-1, x, y);
+                }
+                
+                // upper part of layer calculations
+                if(del_tau_up < delta_tau_limit){
+                    // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
+                    planck_terms = (planckband_int[i+x*numinterfaces] + planckband_lay[(i-1)+x*(numinterfaces-1+2)])/2.0 * (N_up + M_up - P_up);
                 }
                 else{
-                    double flux_terms;
-                    double planck_terms;
-                    double direct_terms;
-
-                    if(del_tau_low < delta_tau_limit){
-                        // isothermal solution
-                        flux_terms = P_low * F_up_wg[y+ny*x+ny*nbin*(i-1)] - N_low * Fc_down_wg[y+ny*x+ny*nbin*(i-1)];
-
-                        planck_terms = ( (planckband_int[(i-1)+x*numinterfaces] + planckband_lay[(i-1)+x*(numinterfaces-1+2)])/2.0 * (N_low + M_low - P_low) ) ;
-
-                        direct_terms = Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * (G_min_low * N_low + G_pl_low * M_low) - F_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P_low * G_pl_low;
-
-                    }
-                    else{
-                        // non-isothermal solution
-                        double pgrad_low = (planckband_int[(i-1) + x * numinterfaces] - planckband_lay[(i-1) + x * (numinterfaces-1+2)]) / del_tau_low;
-
-                        flux_terms = P_low * F_up_wg[y+ny*x+ny*nbin*(i-1)] - N_low * Fc_down_wg[y+ny*x+ny*nbin*(i-1)];
-
-                        planck_terms = planckband_lay[(i-1)+x*(numinterfaces-1+2)] * (M_low + N_low) - planckband_int[(i-1)+x*numinterfaces] * P_low + epsi/(1.0-w0_low*g0_low) * pgrad_low * (M_low - P_low - N_low);
-
-                        direct_terms = Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * (G_min_low * N_low + G_pl_low * M_low) - F_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P_low * G_pl_low;
-                    }
-                    Fc_up_wg[y+ny*x+ny*nbin*(i-1)] = 1.0 / M_low * (flux_terms + 2.0*PI*epsi*planck_terms + direct_terms);
+                    // non-isothermal solution -- standard case
+                    double pgrad_up = (planckband_lay[(i-1) + x * (numinterfaces-1+2)] - planckband_int[i + x * numinterfaces]) / del_tau_up;
+                    
+                    planck_terms = planckband_int[i+x*numinterfaces] * (M_up + N_up) - planckband_lay[(i-1)+x*(numinterfaces-1+2)] * P_up + epsi/(E_up*(1.0-w0_up*g0_up)) * pgrad_up * (M_up - P_up - N_up);
                 }
-
-                if(w0_up > w_0_limit){
-                    // w0 = 1 solution
-                    double first_fraction = (F_down_wg[y+ny*x+ny*nbin*i] - Fc_up_wg[y+ny*x+ny*nbin*(i-1)]) * 1.0/epsi * (1.0-g0_up)*del_tau_up / (1.0/epsi * (1.0-g0_up)*del_tau_up + 2.0);
-
-                    double large_bracket = (mu_star/epsi + 1.0) * Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) - (1.0/epsi * (1.0 - g0_up) * del_tau_up + mu_star/epsi + 1.0) * F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star);
-                                        
-                    double direct_terms = mu_star/(1.0/epsi * (1.0 - g0_up) * del_tau_up + 2.0) * large_bracket;
-
-                    F_up_wg[y+ny*x+ny*nbin*i] = Fc_up_wg[y+ny*x+ny*nbin*(i-1)] + first_fraction + direct_terms;
-                }
-                else{
-                    double flux_terms;
-                    double planck_terms;
-                    double direct_terms;
-
-                    if(del_tau_up < delta_tau_limit){
-                        // isothermal solution
-                        flux_terms = P_up * Fc_up_wg[y+ny*x+ny*nbin*(i-1)] - N_up * F_down_wg[y+ny*x+ny*nbin*i];
-
-                        planck_terms = (planckband_int[i+x*numinterfaces] + planckband_lay[(i-1)+x*(numinterfaces-1+2)])/2.0 * (N_up + M_up - P_up);
-
-                        direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_up * N_up + G_pl_up * M_up) - Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P_up * G_pl_up;
-                    }
-                    else{
-                        // non-isothermal solution
-                        double pgrad_up = (planckband_lay[(i-1) + x * (numinterfaces-1+2)] - planckband_int[i + x * numinterfaces]) / del_tau_up;
-
-                        flux_terms = P_up * Fc_up_wg[y+ny*x+ny*nbin*(i-1)] - N_up * F_down_wg[y+ny*x+ny*nbin*i];
-
-                        planck_terms = planckband_int[i+x*numinterfaces] * (M_up + N_up) - planckband_lay[(i-1)+x*(numinterfaces-1+2)] * P_up + epsi/(1.0-w0_up*g0_up) * pgrad_up * (M_up - P_up - N_up);
-
-                        direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_up * N_up + G_pl_up * M_up) - Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P_up * G_pl_up;	
-                    }
-                    F_up_wg[y+ny*x+ny*nbin*i] = 1.0 / M_up * (flux_terms + 2.0*PI*epsi*planck_terms + direct_terms);
+                flux_terms = P_up * Fc_up_wg[y+ny*x+ny*nbin*(i-1)] - N_up * F_down_wg[y+ny*x+ny*nbin*i];
+                
+                direct_terms = F_dir_wg[y+ny*x+ny*nbin*i]/(-mu_star) * (G_min_up * N_up + G_pl_up * M_up) - Fc_dir_wg[y+ny*x+ny*nbin*(i-1)]/(-mu_star) * P_up * G_pl_up;
+                
+                direct_terms = min(0.0, direct_terms);
+                
+                F_up_wg[y+ny*x+ny*nbin*i] = 1.0 / M_up * (flux_terms + 2.0*PI*epsi*(1.0 - w0_up)/(E_up - w0_up)*planck_terms + direct_terms);
+                
+                //feedback if flux becomes negative
+                if(debug == 1){
+                    if(F_up_wg[y+ny*x+ny*nbin*i] < 0) printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: %d, w-index: %d, y-index: %d !!! \n", i, x, y);
                 }
             }
         }
     }
 }
-

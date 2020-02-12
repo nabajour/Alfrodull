@@ -1,5 +1,9 @@
 
-
+__device__ double E_parameter(
+        double w0, 
+        double g0,
+        double i2s_transition
+			      );
 
 __global__ void trans_iso(
         double* 	trans_wg,
@@ -20,12 +24,15 @@ __global__ void trans_iso(
         double   g_0,
         double 	epsi,
         double 	mu_star,
+	double        w_0_limit,
         int 	scat,
         int 	nbin,
         int 	ny,
         int 	nlayer,
         int 	clouds,
-        int 	scat_corr
+        int 	scat_corr,
+	int     debug,
+	double  i2s_transition
 			       );
 
 __global__ void trans_noniso(
@@ -62,11 +69,14 @@ __global__ void trans_noniso(
         double	g_0,
         double 	epsi,
         double 	mu_star,
+	double          w_0_limit,
         int 	scat,
         int 	nbin,
         int 	ny,
         int 	nlayer,
         int 	clouds,
-        int 	scat_corr
+        int 	scat_corr,
+        int     debug,
+        double  i2s_transition
 				  );
 

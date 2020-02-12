@@ -58,7 +58,6 @@ __global__ void fband_iso_notabu(
         double* F_dir_wg, 
         double* planckband_lay,
         double* w_0,
-        double* delta_tau_wg,
         double* M_term,
         double* N_term,
         double* P_term,
@@ -75,10 +74,12 @@ __global__ void fband_iso_notabu(
         double 	mu_star,
         int 	ny, 
         double 	epsi,
-        double 	w_0_limit,
         int 	dir_beam,
         int 	clouds,
-        double   albedo
+	int     scat_corr,
+        double   albedo,
+	int    debug,
+	double i2s_transition
 				 );
 
 
@@ -118,11 +119,11 @@ __global__ void fband_noniso_notabu(
         double 	mu_star,
         int 	ny,
         double 	epsi,
-        double 	w_0_limit,
         double 	delta_tau_limit,
         int 	dir_beam,
         int 	clouds,
+	int     scat_corr,
         double   albedo,
-        double*	trans_wg_upper,
-        double* trans_wg_lower
+	int     debug,
+	double   i2s_transition
 				    );

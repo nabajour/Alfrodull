@@ -38,7 +38,9 @@ void alfrodull_engine::set_parameters(const int & nlayer_,
 				      const bool&   geom_zenith_corr_,
 				      const double& f_factor_,
 				      const double& w_0_limit_,
-				      const double& albedo_)
+				      const double& albedo_,
+				      const double& i2s_transition_,
+				      const bool&   debug_)
 {
   nlayer = nlayer_;
   ninterface = nlayer + 1;
@@ -63,6 +65,8 @@ void alfrodull_engine::set_parameters(const int & nlayer_,
   w_0_limit = w_0_limit_;
   albedo = albedo_;
   
+  i2s_transition = i2s_transition;
+  debug = debug_;
   // TODO: maybe should stay in opacities object
   nbin = opacities.nbin;
 

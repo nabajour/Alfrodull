@@ -14,7 +14,6 @@ __global__ void planck_interpol_layer(
 				      int 	realstar, 
 				      int 	numlayers, 
 				      int 	nwave,
-				      double   T_surf,
 				      int     dim,
 				      int     step
 				      );

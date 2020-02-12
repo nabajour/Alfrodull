@@ -33,7 +33,9 @@ public:
                         const bool&   geom_zenith_corr,
                         const double& f_factor,
                         const double& w_0_limit,
-                        const double& albedo );
+                        const double& albedo,
+			const double& i2s_transition,
+			const bool&   debug );
 
     bool   real_star   = false;
     double fake_opac   = false;
@@ -54,6 +56,10 @@ public:
     double f_factor  = 0.0;
     double w_0_limit = 0.0;
     double albedo    = 0.0;
+
+  
+    double i2s_transition = 0.0;
+    bool   debug = false;
 
     // call if using clouds, to set data array pointers
     void set_clouds_data(const bool& clouds,
