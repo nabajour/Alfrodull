@@ -9,7 +9,6 @@ void wrap_compute_radiative_transfer(
 				     long       dev_T_int,           // in: it, pii, ioi, mmmi, kii  
 				     long       dev_p_lay,           // in: io, mmm, kil
 				     long       dev_p_int,           // in: ioi, mmmi, kii
-				     const bool&   correct_surface_emissions,
 				     const bool&   interp_and_calc_flux_step,
 				     // direct_beam_flux
 				     long z_lay,
