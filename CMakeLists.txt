@@ -7,60 +7,63 @@ set(SM "0" CACHE STRING "GPU SM value")
 #SET(CMAKE_CXX_COMPILER g++-8)
 #SET(CMAKE_C_COMPILER gcc-8)
 
+if (DEFINED THOR_MODULE)
+  message(STATUS "Building as THOR module")
 
-project (Alfrodull CUDA CXX)
-# some C++ flags
-set (CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set ( COMPILE_FLAGS --compiler-options;-Wall)
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-set(THOR_BASE_FOLDER "../")
-
-
-include(CheckLanguage)
-check_language(CUDA)
-
-set(CMAKE_CUDA_STANDARD 14)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-
-# Find CUDA
-#find_package(CUDA REQUIRED)
-#if (CUDA_FOUND AND SM MATCHES "0")
-#  CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS Auto)
-#else()
-#  message(STATUS "CUDA Architecture manually set to: -arch=sm_${SM}")
-#  set(ARCH_FLAGS "-arch=sm_${SM}")
-#endif()
-
-#SET(CUDA_SEPARABLE_COMPILATION ON)
-
-# build flags
-#LIST(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
-#LIST(APPEND CUDA_NVCC_FLAGS ${COMPILE_FLAGS})
-#LIST(APPEND CUDA_NVCC_FLAGS "-std c++11")
-
-#string (APPEND CMAKE_CUDA_FLAGS " -dc -cudart shared -rdc=true -lcudart -lcudadevrt -lcuda" )
-
-find_package(pybind11 REQUIRED)
-#find_package(PythonLibs REQUIRED)
-
-
-######################################################################
-# FIND HDF5
-find_package(HDF5 REQUIRED COMPONENTS CXX)
-if(HDF5_FOUND)
-        include_directories(${HDF5_INCLUDE_DIR})
-	set(HDF5_LIBS hdf5 hdf5_cpp)
+else()
+  message(STATUS "Building as python library module")
+  project (Alfrodull CUDA CXX)
+  # some C++ flags
+  set (CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set ( COMPILE_FLAGS --compiler-options;-Wall)
+  
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+  
+  set(THOR_BASE_FOLDER "../")
+  
+  
+  include(CheckLanguage)
+  check_language(CUDA)
+  
+  set(CMAKE_CUDA_STANDARD 14)
+  set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  
+  # Find CUDA
+  #find_package(CUDA REQUIRED)
+  #if (CUDA_FOUND AND SM MATCHES "0")
+  #  CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS Auto)
+  #else()
+  #  message(STATUS "CUDA Architecture manually set to: -arch=sm_${SM}")
+  #  set(ARCH_FLAGS "-arch=sm_${SM}")
+  #endif()
+  
+  #SET(CUDA_SEPARABLE_COMPILATION ON)
+  
+  # build flags
+  #LIST(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
+  #LIST(APPEND CUDA_NVCC_FLAGS ${COMPILE_FLAGS})
+  #LIST(APPEND CUDA_NVCC_FLAGS "-std c++11")
+  
+  #string (APPEND CMAKE_CUDA_FLAGS " -dc -cudart shared -rdc=true -lcudart -lcudadevrt -lcuda" )
+  
+  find_package(pybind11 REQUIRED)
+  #find_package(PythonLibs REQUIRED)
+  
+  
+  ######################################################################
+  # FIND HDF5
+  find_package(HDF5 REQUIRED COMPONENTS CXX)
+  if(HDF5_FOUND)
+    include_directories(${HDF5_INCLUDE_DIR})
+    set(HDF5_LIBS hdf5 hdf5_cpp)
+  endif()
+  
+  message(STATUS "HDF5 include dir: " ${HDF5_INCLUDE_DIR})
+  message(STATUS "HDF5 C++libraries: " ${HDF5_LIBRARIES})
+  ######################################################################
 endif()
 
-message(STATUS "HDF5 include dir: " ${HDF5_INCLUDE_DIR})
-message(STATUS "HDF5 C++libraries: " ${HDF5_LIBRARIES})
-######################################################################
-
-set(SRC_PYMODULE
-	pylfrodull/src/pylfrodull.cpp)
 
 set(SRC_ALFRODULLIB
 	src/alfrodullib.cu
@@ -73,43 +76,82 @@ set(SRC_ALFRODULLIB
 	src/kernels/atomic_add.cu
 	src/kernels/integrate_flux.cu)
 
-set(SRC_THOR_UTILS
-	${THOR_BASE_FOLDER}/src/utils/storage.cpp)
+
 	
 include_directories(src/inc)
-include_directories(pylfrodull/src/inc)
 
-include_directories(${THOR_BASE_FOLDER}/src/headers/ )
+
 
 
 ######################################################################
 # build and link binaries
-add_library(alfrodull STATIC ${SRC_ALFRODULLIB} ${SRC_THOR_UTILS})
+add_library(alfrodull STATIC ${SRC_ALFRODULLIB})
 set_target_properties(alfrodull PROPERTIES 
     POSITION_INDEPENDENT_CODE ON
     CUDA_VISIBILITY_PRESET "hidden"
     CUDA_SEPARABLE_COMPILATION ON
 )
 
+if (DEFINED THOR_MODULE)
+  include_directories(thor_module/inc)
+  include_directories(${THOR_ROOT_INCLUDES} ${SHARED_PHY_MODULES_INC_DIR})
 
-add_library(pylfrodull SHARED ${SRC_PYMODULE})
-#target_link_libraries (pylfrodull alfrodullib)
+  
+  # build as THOR module
+  set(SRC_THOR_MODULE
+    thor_module/src/phy_modules.cu
+    thor_module/src/two_streams_radiative_transfer.cu)
 
-set_target_properties(pylfrodull PROPERTIES 
-				     CXX_VISIBILITY_PRESET "hidden"
-				         INTERPROCEDURAL_OPTIMIZATION TRUE
-					     PREFIX "${PYTHON_MODULE_PREFIX}"
-					         SUFFIX "${PYTHON_MODULE_EXTENSION}"
-)
+  
+  set(LIBRARY_OUTPUT_PATH)
 
-target_link_libraries(pylfrodull PRIVATE alfrodull)
-target_link_libraries(pylfrodull PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
+  
+  add_library(phy_modules STATIC ${SRC_THOR_MODULE})
+  set_target_properties(phy_modules PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_VISIBILITY_PRESET "hidden"
+    CUDA_SEPARABLE_COMPILATION ON
+    )
+  target_link_libraries(phy_modules PRIVATE alfrodull)
+else()
+  # build as independent python library
+  include_directories(${THOR_BASE_FOLDER}/src/headers/ )
+  include_directories(pylfrodull/src/inc)
+  set(SRC_PYMODULE
+    pylfrodull/src/pylfrodull.cpp)
 
-target_link_libraries(pylfrodull PRIVATE pybind11::module )
-#target_link_libraries(pylfrodull PRIVATE ${PYTHON_LIBRARIES} ${CUDA_LIBRARIES})
-# set_target_properties(pylfrodull PROPERTIES
-# 				 POSITION_INDEPENDENT_CODE ON
-# #				 CUDA_VISIBILITY_PRESET "hidden"
-# 				 CXX_VISIBILITY_PRESET "hidden"
-# 				 PREFIX "${PYTHON_MODULE_PREFIX}"
-#                                  SUFFIX "${PYTHON_MODULE_EXTENSION}")
+  # THOR utilities
+  set(SRC_THOR_UTILS
+    ${THOR_BASE_FOLDER}/src/utils/storage.cpp)
+
+  add_library(thor_utils STATIC ${SRC_THOR_UTILS})
+
+  set_target_properties(thor_utils PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_VISIBILITY_PRESET "hidden"
+    CUDA_SEPARABLE_COMPILATION ON
+    )
+
+  
+  add_library(pylfrodull SHARED ${SRC_PYMODULE})
+  #target_link_libraries (pylfrodull alfrodullib)
+  
+  set_target_properties(pylfrodull PROPERTIES 
+    CXX_VISIBILITY_PRESET "hidden"
+    #				         INTERPROCEDURAL_OPTIMIZATION TRUE
+    PREFIX "${PYTHON_MODULE_PREFIX}"
+    SUFFIX "${PYTHON_MODULE_EXTENSION}"
+    )
+  
+  target_link_libraries(pylfrodull PRIVATE alfrodull)
+  target_link_libraries(pylfrodull PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
+  target_link_libraries(pylfrodull PRIVATE thor_utils)
+  target_link_libraries(pylfrodull PRIVATE pybind11::module )
+  #target_link_libraries(pylfrodull PRIVATE ${PYTHON_LIBRARIES} ${CUDA_LIBRARIES})
+  # set_target_properties(pylfrodull PROPERTIES
+  # 				 POSITION_INDEPENDENT_CODE ON
+  # #				 CUDA_VISIBILITY_PRESET "hidden"
+  # 				 CXX_VISIBILITY_PRESET "hidden"
+  # 				 PREFIX "${PYTHON_MODULE_PREFIX}"
+  #                                  SUFFIX "${PYTHON_MODULE_EXTENSION}")
+endif()
