@@ -243,10 +243,10 @@ __host__ bool calculate_transmission_iso(double* trans_wg,             // out
 
     int ny = Alf_ptr->opacities.ny;
 
-    bool scat_corr = Alf_ptr->scat_corr;
-    bool debug = Alf_ptr->debug;
+    bool   scat_corr      = Alf_ptr->scat_corr;
+    bool   debug          = Alf_ptr->debug;
     double i2s_transition = Alf_ptr->i2s_transition;
-    double w_0_limit = Alf_ptr->w_0_limit;
+    double w_0_limit      = Alf_ptr->w_0_limit;
 
 
     dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
@@ -269,15 +269,15 @@ __host__ bool calculate_transmission_iso(double* trans_wg,             // out
                                g_0,
                                epsi,
                                mu_star,
-			       w_0_limit,
+                               w_0_limit,
                                scat,
                                nbin,
                                ny,
                                Alf_ptr->nlayer,
                                clouds,
                                scat_corr,
-			       debug,
-			       i2s_transition);
+                               debug,
+                               i2s_transition);
 
     cudaDeviceSynchronize();
     return true;
@@ -302,14 +302,14 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                             double  mu_star,
                                             int     scat,
                                             int     clouds) {
-    int nbin   = Alf_ptr->opacities.nbin;
-    int nlayer = Alf_ptr->nlayer;
-    int ny     = Alf_ptr->opacities.ny;
-    bool scat_corr = Alf_ptr->scat_corr;
-    bool debug = Alf_ptr->debug;
+    int    nbin           = Alf_ptr->opacities.nbin;
+    int    nlayer         = Alf_ptr->nlayer;
+    int    ny             = Alf_ptr->opacities.ny;
+    bool   scat_corr      = Alf_ptr->scat_corr;
+    bool   debug          = Alf_ptr->debug;
     double i2s_transition = Alf_ptr->i2s_transition;
-    double w_0_limit = Alf_ptr->w_0_limit;
-    
+    double w_0_limit      = Alf_ptr->w_0_limit;
+
     dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
     dim3 block(16, 4, 4);
 
@@ -346,15 +346,15 @@ __host__ bool calculate_transmission_noniso(double* trans_wg_upper,
                                   g_0,
                                   epsi,
                                   mu_star,
-				  w_0_limit,
+                                  w_0_limit,
                                   scat,
                                   nbin,
                                   ny,
                                   Alf_ptr->nlayer,
                                   clouds,
                                   scat_corr,
-				  debug,
-				  i2s_transition);
+                                  debug,
+                                  i2s_transition);
     cudaDeviceSynchronize();
     return true;
 }
@@ -443,8 +443,8 @@ bool populate_spectral_flux_iso(double* F_down_wg,   // out
 
     int ninterface = Alf_ptr->ninterface;
 
-    bool scat_corr = Alf_ptr->scat_corr;
-    bool debug = Alf_ptr->debug;
+    bool   scat_corr      = Alf_ptr->scat_corr;
+    bool   debug          = Alf_ptr->debug;
     double i2s_transition = Alf_ptr->i2s_transition;
 
     dim3 block(16, 16, 1);
@@ -472,10 +472,10 @@ bool populate_spectral_flux_iso(double* F_down_wg,   // out
                                       epsi,
                                       dir_beam,
                                       clouds,
-				      scat_corr,
+                                      scat_corr,
                                       albedo,
-				      debug,
-				      i2s_transition);
+                                      debug,
+                                      i2s_transition);
 
     return true;
 }
@@ -508,9 +508,9 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
 
     int ninterface = Alf_ptr->ninterface;
 
-    
-    bool scat_corr = Alf_ptr->scat_corr;
-    bool debug = Alf_ptr->debug;
+
+    bool   scat_corr      = Alf_ptr->scat_corr;
+    bool   debug          = Alf_ptr->debug;
     double i2s_transition = Alf_ptr->i2s_transition;
 
 
@@ -559,10 +559,10 @@ __host__ bool populate_spectral_flux_noniso(double* F_down_wg,
                                          delta_tau_limit,
                                          dir_beam,
                                          clouds,
-					 scat_corr,
+                                         scat_corr,
                                          albedo,
-					 debug,
-					 i2s_transition);
+                                         debug,
+                                         i2s_transition);
 
     return true;
 }
@@ -587,56 +587,55 @@ void deinit_alfrodull() {
     Alf_ptr = nullptr;
 }
 
-void init_parameters(const int& nlayer_,
-		     const bool& iso_,
-		     const double& Tstar_,
-		     const bool&   real_star,
-		     const double& fake_opac,
-		     const double& T_surf,
-		     const double& surf_albedo,
-		     const double& g_0,
-		     const double& epsi,
-		     const double& mu_star,
-		     const bool&   scat,
-		     const bool&   scat_corr,
-		     const double& R_planet,
-		     const double& R_star,
-		     const double& a,
-		     const bool&   dir_beam,
-		     const bool&   geom_zenith_corr,
-		     const double& f_factor,
-		     const double& w_0_limit,
-		     const double& albedo,
-		     const double& i2s_transition,
-		     const bool&   debug ) {
+void init_parameters(const int&    nlayer_,
+                     const bool&   iso_,
+                     const double& Tstar_,
+                     const bool&   real_star,
+                     const double& fake_opac,
+                     const double& T_surf,
+                     const double& surf_albedo,
+                     const double& g_0,
+                     const double& epsi,
+                     const double& mu_star,
+                     const bool&   scat,
+                     const bool&   scat_corr,
+                     const double& R_planet,
+                     const double& R_star,
+                     const double& a,
+                     const bool&   dir_beam,
+                     const bool&   geom_zenith_corr,
+                     const double& f_factor,
+                     const double& w_0_limit,
+                     const double& albedo,
+                     const double& i2s_transition,
+                     const bool&   debug) {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
         return;
     }
 
     Alf_ptr->set_parameters(nlayer_,
-			    iso_,
-			    Tstar_,
-			    real_star,
-			    fake_opac,
-			    T_surf,
-			    surf_albedo,
-			    g_0,
-			    epsi,
-			    mu_star,
-			    scat,
-			    scat_corr,
-			    R_planet,
-			    R_star,
-			    a,
-			    dir_beam,
-			    geom_zenith_corr,
-			    f_factor,
-			    w_0_limit,
-			    albedo,
-			    i2s_transition,
-			    debug
-			    );
+                            iso_,
+                            Tstar_,
+                            real_star,
+                            fake_opac,
+                            T_surf,
+                            surf_albedo,
+                            g_0,
+                            epsi,
+                            mu_star,
+                            scat,
+                            scat_corr,
+                            R_planet,
+                            R_star,
+                            a,
+                            dir_beam,
+                            geom_zenith_corr,
+                            f_factor,
+                            w_0_limit,
+                            albedo,
+                            i2s_transition,
+                            debug);
 }
 
 void allocate() {
@@ -849,20 +848,20 @@ void compute_radiative_transfer(
 
     double* deltalambda = *Alf_ptr->opacities.dev_opac_deltawave;
 
-    bool   real_star   = Alf_ptr->real_star;
-    double fake_opac   = Alf_ptr->fake_opac;
-    double T_surf      = Alf_ptr->T_surf;
-    double surf_albedo = Alf_ptr->surf_albedo;
-    double g_0         = Alf_ptr->g_0;
-    double epsi        = Alf_ptr->epsi;
-    double mu_star     = Alf_ptr->mu_star;
-    bool   scat        = Alf_ptr->scat;
-    double R_planet    = Alf_ptr->R_planet;
-    double R_star      = Alf_ptr->R_star;
-    double a           = Alf_ptr->a;
-    bool   dir_beam    = Alf_ptr->dir_beam;
+    bool   real_star        = Alf_ptr->real_star;
+    double fake_opac        = Alf_ptr->fake_opac;
+    double T_surf           = Alf_ptr->T_surf;
+    double surf_albedo      = Alf_ptr->surf_albedo;
+    double g_0              = Alf_ptr->g_0;
+    double epsi             = Alf_ptr->epsi;
+    double mu_star          = Alf_ptr->mu_star;
+    bool   scat             = Alf_ptr->scat;
+    double R_planet         = Alf_ptr->R_planet;
+    double R_star           = Alf_ptr->R_star;
+    double a                = Alf_ptr->a;
+    bool   dir_beam         = Alf_ptr->dir_beam;
     bool   scat_corr        = Alf_ptr->scat_corr;
-    bool geom_zenith_corr = Alf_ptr->geom_zenith_corr;
+    bool   geom_zenith_corr = Alf_ptr->geom_zenith_corr;
 
     double f_factor  = Alf_ptr->f_factor;
     double w_0_limit = Alf_ptr->w_0_limit;
@@ -1012,13 +1011,14 @@ void wrap_compute_radiative_transfer(
     // prepare_compute_flux
     long dev_starflux, // in: pil
     // state variables
-    long          dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
-    long          dev_T_int,   // in: it, pii, ioi, mmmi, kii
-    long          dev_p_lay,   // in: io, mmm, kil
-    long          dev_p_int,   // in: ioi, mmmi, kii
-    const bool&   interp_and_calc_flux_step,
+    long
+                dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+    long        dev_T_int, // in: it, pii, ioi, mmmi, kii
+    long        dev_p_lay, // in: io, mmm, kil
+    long        dev_p_int, // in: ioi, mmmi, kii
+    const bool& interp_and_calc_flux_step,
     // direct_beam_flux
-    long   z_lay,
+    long z_lay,
     // spectral flux loop
     bool single_walk,
     // populate_spectral_flux_noniso
@@ -1069,33 +1069,31 @@ void wrap_compute_radiative_transfer(
 }
 
 void set_clouds_data(const bool& clouds_,
-		     const long& cloud_opac_lay_,
-		     const long& cloud_opac_int_,
-		     const long& cloud_scat_cross_lay_,
-		     const long& cloud_scat_cross_int_,
-		     const long& g_0_tot_lay_,
-		     const long& g_0_tot_int_)
-{
-   if (Alf_ptr == nullptr) {
+                     const long& cloud_opac_lay_,
+                     const long& cloud_opac_int_,
+                     const long& cloud_scat_cross_lay_,
+                     const long& cloud_scat_cross_int_,
+                     const long& g_0_tot_lay_,
+                     const long& g_0_tot_int_) {
+    if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
         return;
     }
 
-   Alf_ptr->set_clouds_data( clouds_,
-			     (double*)cloud_opac_lay_,
-			     (double*)cloud_opac_int_,
-			     (double*)cloud_scat_cross_lay_,
-			     (double*)cloud_scat_cross_int_,
-			     (double*)g_0_tot_lay_,
-			     (double*)g_0_tot_int_);
+    Alf_ptr->set_clouds_data(clouds_,
+                             (double*)cloud_opac_lay_,
+                             (double*)cloud_opac_int_,
+                             (double*)cloud_scat_cross_lay_,
+                             (double*)cloud_scat_cross_int_,
+                             (double*)g_0_tot_lay_,
+                             (double*)g_0_tot_int_);
 }
 
-void set_surface_temperature(		     const double& T_surf)
-{
-  if (Alf_ptr == nullptr) {
+void set_surface_temperature(const double& T_surf) {
+    if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
         return;
     }
 
-  Alf_ptr->T_surf = T_surf;
+    Alf_ptr->T_surf = T_surf;
 }

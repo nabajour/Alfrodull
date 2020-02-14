@@ -25,7 +25,7 @@ public:
                         const double& epsi,
                         const double& mu_star,
                         const bool&   scat,
-			const bool&   scat_corr,
+                        const bool&   scat_corr,
                         const double& R_planet,
                         const double& R_star,
                         const double& a,
@@ -34,8 +34,8 @@ public:
                         const double& f_factor,
                         const double& w_0_limit,
                         const double& albedo,
-			const double& i2s_transition,
-			const bool&   debug );
+                        const double& i2s_transition,
+                        const bool&   debug);
 
     bool   real_star   = false;
     double fake_opac   = false;
@@ -45,7 +45,7 @@ public:
     double epsi        = 0.0;
     double mu_star     = 0.0;
     bool   scat        = false;
-    bool   scat_corr        = false;
+    bool   scat_corr   = false;
     double R_planet    = 0.0;
     double R_star      = 0.0;
     double a           = 0.0;
@@ -57,9 +57,9 @@ public:
     double w_0_limit = 0.0;
     double albedo    = 0.0;
 
-  
+
     double i2s_transition = 0.0;
-    bool   debug = false;
+    bool   debug          = false;
 
     // call if using clouds, to set data array pointers
     void set_clouds_data(const bool& clouds,

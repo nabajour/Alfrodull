@@ -9,4 +9,3 @@ typedef float utype;
 #else
 typedef double utype;
 #endif
-
