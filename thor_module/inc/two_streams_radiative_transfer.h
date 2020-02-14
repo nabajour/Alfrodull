@@ -91,6 +91,30 @@ public:
 
     virtual bool free_memory();
 
+    int    nlayer;
+    bool   iso;
+    double T_star;
+    bool   real_star;
+    double fake_opac;
+    double T_surf;
+    double albedo;
+    double g_0;
+    double epsi;
+    double mu_star; // not a config
+    bool   scat;
+    bool   scat_corr;
+    double R_planet;
+    double R_star;
+    double a; // ?
+    bool   dir_beam;
+    bool   geom_zenith_corr;
+    double f_factor; // still needed?
+    double w_0_limit;
+
+    double i2s_transition;
+
+    string opacities_file;
+
     //void print_config();
 
 private:
