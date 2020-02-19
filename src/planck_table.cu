@@ -14,9 +14,10 @@ __global__ void plancktable(double* planck_grid,
                             int     p_iter,
                             int     dim,
                             int     step) {
-
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int t = threadIdx.y + blockIdx.y * blockDim.y;
+  // Wavenumber
+  int x = threadIdx.x + blockIdx.x * blockDim.x;
+  // temperature
+  int t = threadIdx.y + blockIdx.y * blockDim.y;
 
     if (x < nwave && t < (dim / 10 + 1)) {
 
