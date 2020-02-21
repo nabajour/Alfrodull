@@ -157,6 +157,17 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_dir_band.allocate(ninterface_nbin);
     F_net.allocate(ninterface);
     F_net_diff.allocate(nlayer);
+
+    // TODO: abstract this away into an interpolation class
+
+    std::unique_ptr<double[]> weights = std::make_unique<double[]>(100);
+    for (int i = 0; i < ny; i++)
+      weights[i] = gauss_legendre_weights[ny][i];
+    
+    gauss_weight.allocate(ny);
+
+    
+    gauss_weight.put(weights);
     
     return true;
 }
