@@ -91,6 +91,9 @@ bool two_streams_radiative_transfer::initialise_memory(
     // what needs to be passed outside or stored should be global, others can be per column
 
     float mu_star = 0.0;
+
+    // TODO load star flux.
+    real_star = false;
     
     alf.set_parameters(nlayer,           // const int&    nlayer_,
 		       iso,              // const bool&   iso_,
@@ -137,6 +140,9 @@ bool two_streams_radiative_transfer::initialise_memory(
     int ny = alf.opacities.ny;
     int ninterface_nbin = ninterface*nbin;
     int ninterface_wg_nbin = ninterface*ny*nbin;
+
+    // TODO: allocate here. Should be read in in case of real_star == true
+    star_flux.allocate(nbin);
     
     F_down_wg.allocate(ninterface_wg_nbin);
     F_up_wg.allocate(ninterface_wg_nbin);

@@ -135,5 +135,6 @@ private:
   
   cuda_device_memory<double> F_net;
   cuda_device_memory<double> F_net_diff;
-  
+
+  cuda_device_memory<double> star_flux;
 };
