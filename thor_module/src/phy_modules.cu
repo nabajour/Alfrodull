@@ -18,7 +18,8 @@
 two_streams_radiative_transfer tsrt;
 
 // define all the modules we want to use
-
+bool two_streams_radiative_transfer_enabled;
+const bool two_streams_radiative_transfer_enabled_default = false;
 
 // called at initialisation to store name of module used in output file, for reference.
 std::string phy_modules_get_name() {
@@ -29,13 +30,10 @@ std::string phy_modules_get_name() {
 void phy_modules_print_config() {
     log::printf("  Alfrodull physics module \n");
     log::printf("   Two Stream Radiative Transfer module.\n");
+    log::printf("   Module enabled: %s\n", two_streams_radiative_transfer_enabled?"True":"False");
 
-
-    // if (radiative_transfer_enabled)
-    //     rt.print_config();
-
-    // if (boundary_layer_enabled)
-    //     bl.print_config();
+    if (two_streams_radiative_transfer_enabled)
+      tsrt.print_config();
 }
 
 
@@ -46,17 +44,12 @@ void phy_modules_print_config() {
 bool phy_modules_generate_config(config_file& config_reader) {
     bool out = true;
 
-    // config_reader.append_config_var(
-    //     "radiative_transfer", radiative_transfer_enabled, radiative_transfer_enabled_default);
-
+    config_reader.append_config_var(
+				    "two_streams_radiative_transfer",
+				    two_streams_radiative_transfer_enabled,
+				    two_streams_radiative_transfer_enabled_default);
+    
     tsrt.configure(config_reader);
-
-    // rt.configure(config_reader);
-
-    // config_reader.append_config_var(
-    //     "boundary_layer", boundary_layer_enabled, boundary_layer_enabled_default);
-
-    // bl.configure(config_reader);
 
     return out;
 }
@@ -70,12 +63,8 @@ bool phy_modules_init_mem(const ESP& esp, device_RK_array_manager& phy_modules_c
 
     bool out = true;
 
-    tsrt.initialise_memory(esp, phy_modules_core_arrays);
-    // if (radiative_transfer_enabled)
-    //     rt.initialise_memory(esp, phy_modules_core_arrays);
-
-    // if (boundary_layer_enabled)
-    //     bl.initialise_memory(esp, phy_modules_core_arrays);
+    if (two_streams_radiative_transfer_enabled)
+      tsrt.initialise_memory(esp, phy_modules_core_arrays);
 
     return out;
 }
@@ -94,13 +83,9 @@ bool phy_modules_init_data(const ESP& esp, const SimulationSetup& sim, storage* 
     // if (s != nullptr) {
     //     // load initialisation data from storage s
     // }
-
-    out &= tsrt.initial_conditions(esp, sim, s);
-    // if (radiative_transfer_enabled)
-    //     out &= rt.initial_conditions(esp, sim, s);
-
-    // if (boundary_layer_enabled)
-    //     out &= bl.initial_conditions(esp, sim, s);
+    
+    if (two_streams_radiative_transfer_enabled)
+      out &= tsrt.initial_conditions(esp, sim, s);
 
     return out;
 }
@@ -144,13 +129,9 @@ bool phy_modules_phy_loop(ESP& esp, const SimulationSetup& sim, int nstep, doubl
     // run all the modules main loop
     bool out = true;
 
-    tsrt.phy_loop(esp, sim, nstep, time_step);
-    // if (radiative_transfer_enabled)
-    //     rt.phy_loop(esp, sim, nstep, time_step);
-
-    // if (boundary_layer_enabled)
-    //     bl.phy_loop(esp, sim, nstep, time_step);
-
+    if (two_streams_radiative_transfer_enabled)
+      tsrt.phy_loop(esp, sim, nstep, time_step);
+    
     return out;
 }
 
@@ -176,12 +157,8 @@ bool phy_modules_store_init(storage& s) {
 // called at end of N step to store data from integration.
 bool phy_modules_store(const ESP& esp, storage& s) {
 
+  if (two_streams_radiative_transfer_enabled)
     tsrt.store(esp, s);
-    // if (radiative_transfer_enabled)
-    //     rt.store(esp, s);
-
-    // if (boundary_layer_enabled)
-    //     bl.store(esp, s);
 
     return true;
 }
@@ -190,14 +167,9 @@ bool phy_modules_store(const ESP& esp, storage& s) {
 bool phy_modules_free_mem() {
     // generate all the modules config
     bool out = true;
-
-    tsrt.free_memory();
-
-    // if (radiative_transfer_enabled)
-    //     rt.free_memory();
-
-    // if (boundary_layer_enabled)
-    //     bl.free_memory();
+    
+    if (two_streams_radiative_transfer_enabled)
+      tsrt.free_memory();
 
     return out;
 }

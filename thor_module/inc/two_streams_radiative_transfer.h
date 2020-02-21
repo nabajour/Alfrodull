@@ -47,16 +47,16 @@
 #include "alfrodull_engine.h"
 #include "alfrodullib.h"
 #include "phy_module_base.h"
-
+#include "cudaDeviceMemory.h"
 
 class two_streams_radiative_transfer : public phy_module_base
 {
 public:
-    two_streams_radiative_transfer();
-    ~two_streams_radiative_transfer();
-
-    bool initialise_memory(const ESP &esp, device_RK_array_manager &phy_modules_core_arrays);
-    bool initial_conditions(const ESP &esp, const SimulationSetup &sim, storage *s);
+  two_streams_radiative_transfer();
+  ~two_streams_radiative_transfer();
+  
+  bool initialise_memory(const ESP &esp, device_RK_array_manager &phy_modules_core_arrays);
+  bool initial_conditions(const ESP &esp, const SimulationSetup &sim, storage *s);
 
     // virtual bool dyn_core_loop_init(const ESP& esp) {
     //     return true;
@@ -115,8 +115,25 @@ public:
 
     string opacities_file;
 
-    //void print_config();
+  void print_config();
+
 
 private:
-    alfrodull_engine alf;
+  alfrodull_engine alf;
+  
+  cuda_device_memory<double> F_down_wg;
+  cuda_device_memory<double> F_up_wg;
+  cuda_device_memory<double> Fc_down_wg;
+  cuda_device_memory<double> Fc_up_wg;
+  cuda_device_memory<double> F_dir_wg;
+  cuda_device_memory<double> Fc_dir_wg;
+  cuda_device_memory<double> F_down_tot;
+  cuda_device_memory<double> F_up_tot;
+  cuda_device_memory<double> F_down_band;
+  cuda_device_memory<double> F_up_band;
+  cuda_device_memory<double> F_dir_band;
+  
+  cuda_device_memory<double> F_net;
+  cuda_device_memory<double> F_net_diff;
+  
 };
