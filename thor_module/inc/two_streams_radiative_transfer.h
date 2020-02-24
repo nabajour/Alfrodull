@@ -48,7 +48,6 @@
 #include "alfrodullib.h"
 #include "phy_module_base.h"
 #include "cudaDeviceMemory.h"
-#include "gauss_legendre_weights.h"
 
 class two_streams_radiative_transfer : public phy_module_base
 {
@@ -137,9 +136,5 @@ private:
   cuda_device_memory<double> F_net;
   cuda_device_memory<double> F_net_diff;
 
-  cuda_device_memory<double> star_flux;
-
-  // TODO: shove this stuff into an integration class. 
-  cuda_device_memory<double> gauss_weight;
-  
+  cuda_device_memory<double> star_flux;  
 };

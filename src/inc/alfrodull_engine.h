@@ -155,6 +155,7 @@ public:
     cuda_device_memory<double> trans_wg_upper;
     cuda_device_memory<double> trans_wg_lower;
 
+    cuda_device_memory<double> gauss_weights;
     // Flux computation quantities
     // computed in trans_iso/trans_noniso
     // used in populate_spectral_flux (iso/non_iso)

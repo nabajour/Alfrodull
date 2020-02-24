@@ -11,7 +11,6 @@
 #include "calculate_physics.h"
 
 #include "alfrodull_engine.h"
-#include "gauss_legendre_weights.h"
 
 #include <cstdio>
 #include <memory>
@@ -990,7 +989,8 @@ void compute_radiative_transfer(
         }
     }
 
-    double * gauss_weight = gauss_legendre_weights[ny];
+    
+    double * gauss_weight = *Alf_ptr->gauss_weights;
     integrate_flux(deltalambda,
                    F_down_tot,
                    F_up_tot,

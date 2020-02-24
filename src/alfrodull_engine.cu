@@ -1,4 +1,5 @@
 #include "alfrodull_engine.h"
+#include "gauss_legendre_weights.h"
 
 alfrodull_engine::alfrodull_engine() {
     printf("Creating Alfrodull engine\n");
@@ -140,6 +141,16 @@ void alfrodull_engine::allocate_internal_variables() {
         trans_wg_upper.allocate(nlayer_wg_nbin);
         trans_wg_lower.allocate(nlayer_wg_nbin);
     }
+
+    // TODO: abstract this away into an interpolation class
+
+    std::unique_ptr<double[]> weights = std::make_unique<double[]>(100);
+    for (int i = 0; i < opacities.ny; i++)
+      weights[i] = gauss_legendre_weights[opacities.ny - 1][i];
+    
+    gauss_weights.allocate(opacities.ny);
+    gauss_weights.put(weights);
+
 }
 
 // return device pointers for helios data save
