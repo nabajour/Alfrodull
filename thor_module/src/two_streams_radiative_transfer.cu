@@ -141,6 +141,11 @@ bool two_streams_radiative_transfer::initialise_memory(
     int ninterface_nbin = ninterface*nbin;
     int ninterface_wg_nbin = ninterface*ny*nbin;
 
+    // allocate interface state variables to be interpolated
+
+    pressure_int.allocate(ninterface);
+    temperature_int.allocate(ninterface);
+    
     // TODO: allocate here. Should be read in in case of real_star == true
     star_flux.allocate(nbin);
     
@@ -179,7 +184,27 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
+  // loop on columns
+  // TODO: get column offset
+  int column_offset = idx;
+  // fetch column values
+
+  // TODO: check that I got the correct ones between slow and fast modes
+  double * column_layer_temperature = &(esp.temperature_d[column_offset]);
+  double * column_layer_pressure = &(esp.pressure_d[column_offset]);
+  double * column_density = &(esp.Rho_d[column_offset]);
   // initialise interpolated T and P
+    
+  interpolate_temperature_and_pressure<<< >>>(column_layer_temperature,
+					      *temperature_int,
+					      column_layer_pressure,
+					      *pressure_int,
+					      column_density,
+					      Altitude_d,
+					      Altitudeh_d,
+					      
+					      
+  
 
   // get z_lay
 
@@ -197,7 +222,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     //   (long)*delta_col_upper,
     //   (long)*delta_col_lower,
 
-  // loop on columns
+
 
   // compute fluxes
   
