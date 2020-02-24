@@ -11,6 +11,7 @@
 #include "calculate_physics.h"
 
 #include "alfrodull_engine.h"
+#include "gauss_legendre_weights.h"
 
 #include <cstdio>
 #include <memory>
@@ -828,8 +829,8 @@ void compute_radiative_transfer(
     //double* F_dir_wg,
     double* F_down_band,
     double* F_up_band,
-    double* F_dir_band,
-    double* gauss_weight
+    double* F_dir_band
+    // double* gauss_weight
     //int num_interfaces, -> ninterface
     //int ny
 ) {
@@ -876,7 +877,8 @@ void compute_radiative_transfer(
 
     bool clouds = Alf_ptr->clouds;
 
-
+    int ny = Alf_ptr->opacities.ny;
+    
     prepare_compute_flux(
         dev_starflux,
         dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
@@ -987,6 +989,8 @@ void compute_radiative_transfer(
                                           trans_wg_lower);
         }
     }
+
+    double * gauss_weight = gauss_legendre_weights[ny];
     integrate_flux(deltalambda,
                    F_down_tot,
                    F_up_tot,
@@ -1035,8 +1039,7 @@ void wrap_compute_radiative_transfer(
     long F_net,
     long F_down_band,
     long F_up_band,
-    long F_dir_band,
-    long gauss_weight) {
+    long F_dir_band) {
     compute_radiative_transfer(
         (double*)dev_starflux, // in: pil
         (double*)
@@ -1064,8 +1067,7 @@ void wrap_compute_radiative_transfer(
         (double*)F_net,
         (double*)F_down_band,
         (double*)F_up_band,
-        (double*)F_dir_band,
-        (double*)gauss_weight);
+        (double*)F_dir_band);
 }
 
 void set_clouds_data(const bool& clouds_,

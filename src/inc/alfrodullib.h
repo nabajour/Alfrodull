@@ -29,8 +29,7 @@ void wrap_compute_radiative_transfer(
     long F_net,
     long F_down_band,
     long F_up_band,
-    long F_dir_band,
-    long gauss_weight);
+    long F_dir_band);
 
 bool prepare_compute_flux(double*       dev_starflux,        // pil
                           double*       dev_T_lay,           // it, pil, io, mmm, kil
