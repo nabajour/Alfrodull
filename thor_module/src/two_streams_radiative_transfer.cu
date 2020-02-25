@@ -44,6 +44,8 @@
 
 #include "two_streams_radiative_transfer.h"
 
+#include "alfrodullib.h"
+
 two_streams_radiative_transfer::two_streams_radiative_transfer() {
 }
 
@@ -179,53 +181,164 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
   return true;
 }
 
+// initialise delta_colmass arrays from pressure
+// same as helios.source.host_functions.construct_grid
+__global__ void initialise_delta_colmass(double * delta_col_mass,
+					 double * delta_col_mass_upper,
+					 double * delta_col_mass_lower,
+					 double * pressure_lay,
+					 double * pressure_int,
+					 double gravit,
+					 int num_layers)
+{
+  int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  
+  if (layer_idx < num_layers) {
+    delta_col_mass[layer_idx]       = (pressure_int[layer_idx] - pressure_int[layer_idx + 1])/gravit;
+    delta_col_mass_upper[layer_idx] = (pressure_lay[layer_idx] - pressure_int[layer_idx + 1])/gravit;
+    delta_col_mass_lower[layer_idx] = (pressure_int[layer_idx] - pressure_lay[layer_idx])/gravit;
+  }
+}
+					 
+
+// single column pressure and temperature interpolation from layers to interfaces
+// needs to loop from 0 to number of interfaces (nvi = nv+1)
+// same as profX_RT
+__global__ void interpolate_temperature_and_pressure(double * temperature_lay,
+						     double * temperature_int,
+						     double * pressure_lay,
+						     double * pressure_int,
+						     double * density,
+						     double * altitude_lay,
+						     double * altitude_int,
+						     double gravit, 
+						     int num_layers)
+{
+  int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if (layer_idx == 0) {
+      // extrapolate to lower boundary
+      double psm = pressure_lay[1]
+	- density[0] * gravit * (2 * altitude_int[0] - altitude_lay[0] - altitude_lay[1]);
+      
+      double ps = 0.5 * (pressure_lay[0] + psm);
+      
+      pressure_int[0] = ps;
+      temperature_int[0] = temperature_lay[0];
+    }
+    else if (layer_idx == num_layers) {
+      // extrapolate to top boundary
+      double pp = pressure_lay[num_layers - 2]
+	+ (pressure_lay[num_layers - 1] - pressure_lay[num_layers - 2])
+	/ (altitude_lay[num_layers - 1] - altitude_lay[num_layers - 2])
+	* (2 * altitude_int[num_layers] - altitude_lay[num_layers - 1] - altitude_lay[num_layers - 2]);
+      if (pp < 0.0)
+	pp = 0.0; //prevents pressure at the top from becoming negative
+      double ptop = 0.5 * (pressure_lay[num_layers - 1] + pp);
+      
+      pressure_int[num_layers] = ptop;
+      temperature_int[num_layers] = temperature_lay[num_layers - 1];
+    }
+    else if (layer_idx < num_layers) {
+      // interpolation between layers
+      // linear interpolation
+      double xi                   = altitude_int[layer_idx];
+      double xi_minus             = altitude_lay[layer_idx - 1];
+      double xi_plus              = altitude_lay[layer_idx];
+      double a                    = (xi - xi_plus) / (xi_minus - xi_plus);
+      double b                    = (xi - xi_minus) / (xi_plus - xi_minus);
+      
+      pressure_int[layer_idx] =
+	pressure_lay[layer_idx - 1] * a + pressure_lay[layer_idx] * b;
+      temperature_int[layer_idx] =
+	temperature_lay[layer_idx - 1] * a + temperature_lay[layer_idx] * b;
+    }  
+}
+
+  
+
 bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               const SimulationSetup& sim,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
-  // loop on columns
-  // TODO: get column offset
-  int column_offset = idx;
-  // fetch column values
+  for (int column_idx = 0; column_idx < esp.point_num; column_idx++)
+    {
+      // loop on columns
+      // TODO: get column offset
+      int column_offset = column_idx;
 
-  // TODO: check that I got the correct ones between slow and fast modes
-  double * column_layer_temperature = &(esp.temperature_d[column_offset]);
-  double * column_layer_pressure = &(esp.pressure_d[column_offset]);
-  double * column_density = &(esp.Rho_d[column_offset]);
-  // initialise interpolated T and P
-    
-  interpolate_temperature_and_pressure<<< >>>(column_layer_temperature,
-					      *temperature_int,
-					      column_layer_pressure,
-					      *pressure_int,
-					      column_density,
-					      Altitude_d,
-					      Altitudeh_d,
-					      
-					      
-  
+      int num_layers =  esp.nv;
+      double gravit = sim.Gravit;
+      // fetch column values
+      
+      // TODO: check that I got the correct ones between slow and fast modes
+      double * column_layer_temperature = &(esp.temperature_d[column_offset]);
+      double * column_layer_pressure = &(esp.pressure_d[column_offset]);
+      double * column_density = &(esp.Rho_d[column_offset]);
+      // initialise interpolated T and P
 
-  // get z_lay
+      const int num_blocks = 256;
+      interpolate_temperature_and_pressure<<<(esp.point_num / num_blocks) +1,
+	num_blocks>>>(column_layer_temperature,
+		      *temperature_int,
+		      column_layer_pressure,
+		      *pressure_int,
+		      column_density,
+		      esp.Altitude_d,
+		      esp.Altitudeh_d,
+		      gravit,
+		      num_layers);
 
-  // compute mu_star per column
-
-  // initialise delta_col_mass
-  // internal to alfrodull_engine
-  
-  // TODO: define star_flux
-
-  
-    // TODO: check - those seem to be preset in the new version,
-    // but probably only as DeltaP/g
-    // (long)*delta_col_mass,
-    //   (long)*delta_col_upper,
-    //   (long)*delta_col_lower,
-
-
-
-  // compute fluxes
-  
+      // initialise delta_col_mass
+      // TODO: should this go inside alf?
+      initialise_delta_colmass<<<(esp.point_num / num_blocks) +1,
+	num_blocks>>>(*alf.delta_col_mass,
+		      *alf.delta_col_upper,
+		      *alf.delta_col_lower,
+		      column_layer_pressure,
+		      *pressure_int,
+		      gravit,
+		      num_layers);
+	
+	// get z_lay
+	// TODO: z_lay for beam computation
+	// TODO: check how it is used and check that it doesn't interpolate to interface
+	//        in which case we need to pass z_int
+	double * z_lay = esp.Altitude_d;
+      // compute mu_star per column
+	// TODO: compute mu_star for each column
+      
+      // internal to alfrodull_engine
+      
+      // TODO: define star_flux     
+      double * dev_starflux = nullptr;
+      // TODO: check where to define this and how this is used
+      double delta_tau_limit = 1e-4;
+      // TODO: add code to skip internal interpolation
+	// compute fluxes
+	compute_radiative_transfer(dev_starflux,               // dev_starflux
+				   column_layer_temperature,   // dev_T_lay
+				   *temperature_int,           // dev_T_int
+				   column_layer_pressure,      // dev_p_lay
+				   *pressure_int,              // dev_p_int
+				   true,                       // interp_and_calc_flux_step
+				   z_lay,                      // z_lay
+				   false,                      // singlewalk
+				   *F_down_wg,
+				   *F_up_wg,
+				   *Fc_down_wg,
+				   *Fc_up_wg,
+				   *F_dir_wg,
+				   *Fc_dir_wg,
+				   delta_tau_limit,
+				   *F_down_tot,
+				   *F_up_tot,
+				   *F_net,
+				   *F_down_band,
+				   *F_up_band,
+				   *F_dir_band);
+				   
     // Check in here, some values from initial setup might change per column: e.g. mu_star;
     // compute_radiative_transfer(
     //     double* dev_starflux, // in: pil
@@ -255,7 +368,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     // compute Delta flux
 
     // set Qheat
-    
+    }
+  
     return true;
 }
 

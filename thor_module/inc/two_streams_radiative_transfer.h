@@ -113,7 +113,7 @@ public:
 
     double i2s_transition;
 
-    string opacities_file;
+  string opacities_file;
 
   void print_config();
 
@@ -123,6 +123,8 @@ private:
 
   cuda_device_memory<double> pressure_int;
   cuda_device_memory<double> temperature_int;
+  
+ 
   
   cuda_device_memory<double> F_down_wg;
   cuda_device_memory<double> F_up_wg;

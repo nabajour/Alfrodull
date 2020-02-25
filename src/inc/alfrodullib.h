@@ -31,6 +31,28 @@ void wrap_compute_radiative_transfer(
     long F_up_band,
     long F_dir_band);
 
+void compute_radiative_transfer(double* dev_starflux,
+				double*     dev_T_lay, 
+				double*     dev_T_int, 
+				double*     dev_p_lay, 
+				double*     dev_p_int, 
+				const bool& interp_and_calc_flux_step,
+				double* z_lay,
+				bool single_walk,
+				double* F_down_wg,
+				double* F_up_wg,
+				double* Fc_down_wg,
+				double* Fc_up_wg,
+				double* F_dir_wg,
+				double* Fc_dir_wg,
+				double delta_tau_limit,
+				double* F_down_tot,
+				double* F_up_tot,
+				double* F_net,
+				double* F_down_band,
+				double* F_up_band,
+				double* F_dir_band);
+
 bool prepare_compute_flux(double*       dev_starflux,        // pil
                           double*       dev_T_lay,           // it, pil, io, mmm, kil
                           double*       dev_T_int,           // it, pii, ioi, mmmi, kii
