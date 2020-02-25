@@ -255,7 +255,17 @@ __global__ void interpolate_temperature_and_pressure(double * temperature_lay,
     }  
 }
 
-  
+__global__ void increment_column_Qheat(double * F_net,  // net flux, layer
+				       double * z_int,
+				       double * Qheat,
+				       int num_layers)
+{
+  int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (layer_idx < num_layers) {
+    // delta_flux/delta_z
+    Qheat[layer_idx] += -(F_net[layer_idx + 1] - F_net[layer_idx])/(z_int[layer_idx + 1] - z_int[layer_idx]);
+  }
+}
 
 bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               const SimulationSetup& sim,
@@ -264,6 +274,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 {
   for (int column_idx = 0; column_idx < esp.point_num; column_idx++)
     {
+      printf("two_stream_rt::phy_loop, step: %d, column: %d\n", nstep, column_idx);
       // loop on columns
       // TODO: get column offset
       int column_offset = column_idx;
@@ -306,6 +317,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 	// TODO: check how it is used and check that it doesn't interpolate to interface
 	//        in which case we need to pass z_int
 	double * z_lay = esp.Altitude_d;
+	double * z_int = esp.Altitudeh_d;
       // compute mu_star per column
 	// TODO: compute mu_star for each column
       
@@ -317,57 +329,42 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
       double delta_tau_limit = 1e-4;
       // TODO: add code to skip internal interpolation
 	// compute fluxes
-	compute_radiative_transfer(dev_starflux,               // dev_starflux
-				   column_layer_temperature,   // dev_T_lay
-				   *temperature_int,           // dev_T_int
-				   column_layer_pressure,      // dev_p_lay
-				   *pressure_int,              // dev_p_int
-				   true,                       // interp_and_calc_flux_step
-				   z_lay,                      // z_lay
-				   false,                      // singlewalk
-				   *F_down_wg,
-				   *F_up_wg,
-				   *Fc_down_wg,
-				   *Fc_up_wg,
-				   *F_dir_wg,
-				   *Fc_dir_wg,
-				   delta_tau_limit,
-				   *F_down_tot,
-				   *F_up_tot,
-				   *F_net,
-				   *F_down_band,
-				   *F_up_band,
-				   *F_dir_band);
-				   
-    // Check in here, some values from initial setup might change per column: e.g. mu_star;
-    // compute_radiative_transfer(
-    //     double* dev_starflux, // in: pil
-    //     double*
-    //                 dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
-    //     double*     dev_T_int,                 // in: it, pii, ioi, mmmi, kii
-    //     double*     dev_p_lay,                 // in: io, mmm, kil
-    //     double*     dev_p_int,                 // in: ioi, mmmi, kii
-    //     const bool& interp_and_calc_flux_step, // done at each step
-    //     double*     z_lay,
-    //     bool        single_walk, // (?) - TODO: check
-    //     double*     F_down_wg,
-    //     double*     F_up_wg,
-    //     double*     Fc_down_wg,
-    //     double*     Fc_up_wg,
-    //     double*     F_dir_wg,
-    //     double*     Fc_dir_wg,
-    //     double      delta_tau_limit,
-    //     double*     F_down_tot,
-    //     double*     F_up_tot,
-    //     double*     F_net,
-    //     double*     F_down_band,
-    //     double*     F_up_band,
-    //     double*     F_dir_band,
-    //     double*     gauss_weight);
+
+      // Check in here, some values from initial setup might change per column: e.g. mu_star;
+      compute_radiative_transfer(dev_starflux,               // dev_starflux
+				 column_layer_temperature,   // dev_T_lay
+				 *temperature_int,           // dev_T_int
+				 column_layer_pressure,      // dev_p_lay
+				 *pressure_int,              // dev_p_int
+				 true,                       // interp_and_calc_flux_step
+				 z_lay,                      // z_lay
+				 false,                      // singlewalk
+				 *F_down_wg,
+				 *F_up_wg,
+				 *Fc_down_wg,
+				 *Fc_up_wg,
+				 *F_dir_wg,
+				 *Fc_dir_wg,
+				 delta_tau_limit,
+				 *F_down_tot,
+				 *F_up_tot,
+				 *F_net,
+				 *F_down_band,
+				 *F_up_band,
+				 *F_dir_band);
+      
+
+
 
     // compute Delta flux
 
     // set Qheat
+
+      increment_column_Qheat<<<(esp.point_num / num_blocks) +1,
+	num_blocks>>>(*F_net,  // net flux, layer
+		      z_int,
+		      esp.profx_Qheat_d,
+		      num_layers);
     }
   
     return true;
