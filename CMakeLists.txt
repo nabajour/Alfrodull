@@ -123,7 +123,9 @@ else()
 
   # THOR utilities
   set(SRC_THOR_UTILS
-    ${THOR_BASE_FOLDER}/src/utils/storage.cpp)
+    ${THOR_BASE_FOLDER}/src/utils/storage.cpp
+    ${THOR_BASE_FOLDER}/src/utils/cuda_device_memory.cu
+    )
 
   add_library(thor_utils STATIC ${SRC_THOR_UTILS})
 

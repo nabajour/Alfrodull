@@ -1,4 +1,4 @@
-#include "cudaDeviceMemory.h"
+#include "cuda_device_memory.h"
 #include "opacities.h"
 #include "planck_table.h"
 

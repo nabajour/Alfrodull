@@ -1,4 +1,4 @@
-#include "cudaDeviceMemory.h"
+#include "cuda_device_memory.h"
 
 // adjust the incident flux to correspond to the correct brightness temperature
 __global__ void corr_inc_energy(double* planck_grid,

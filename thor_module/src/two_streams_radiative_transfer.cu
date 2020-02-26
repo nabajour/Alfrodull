@@ -434,12 +434,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
     // set Qheat
       printf("increment_column_Qheat\n");
-      increment_column_Qheat<<<(esp.point_num / num_blocks) +1,
-	num_blocks>>>(*F_net,  // net flux, layer
-		      z_int,
-		      esp.profx_Qheat_d,
-		      num_layers);
-      cudaDeviceSynchronize();
+      // increment_column_Qheat<<<(esp.point_num / num_blocks) +1,
+      // 	num_blocks>>>(*F_net,  // net flux, layer
+      // 		      z_int,
+      // 		      esp.profx_Qheat_d,
+      // 		      num_layers);
+      // cudaDeviceSynchronize();
       cuda_check_status_or_exit();
     }
   

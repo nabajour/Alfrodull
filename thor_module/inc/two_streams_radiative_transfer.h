@@ -47,7 +47,7 @@
 #include "alfrodull_engine.h"
 #include "alfrodullib.h"
 #include "phy_module_base.h"
-#include "cudaDeviceMemory.h"
+#include "cuda_device_memory.h"
 
 class two_streams_radiative_transfer : public phy_module_base
 {

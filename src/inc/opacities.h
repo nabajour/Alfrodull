@@ -2,7 +2,7 @@
 #include <string>
 
 
-#include "cudaDeviceMemory.h"
+#include "cuda_device_memory.h"
 #include "storage.h"
 
 // class to handle opacities and meanmolmass from k_table
