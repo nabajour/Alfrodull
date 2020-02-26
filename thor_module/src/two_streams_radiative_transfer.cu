@@ -53,7 +53,28 @@ two_streams_radiative_transfer::~two_streams_radiative_transfer() {
 }
 
 void two_streams_radiative_transfer::print_config() {
+  printf("Alf_Tstar: %f\n", T_star );
+  printf("Alf_iso: %s\n", iso?"true":"false" );
+  printf("Alf_real_star: %s\n", real_star?"true":"false" );
+  printf("Alf_fake_opac: %f\n", fake_opac );
 
+  printf("Alf_T_surf: %f\n", T_surf );
+  printf("Alf_albedo: %f\n", albedo );
+  printf("Alf_g_0: %f\n", g_0 );
+  printf("Alf_diffusivity: %d\n", epsi );
+
+  printf("Alf_scat: %s\n", scat?"true":"false" );
+  printf("Alf_scat_corr: %s\n", scat_corr?"true":"false" );
+  printf("Alf_R_planet: %f\n", R_planet );
+  printf("Alf_a: %f\n", a );
+  
+  printf("Alf_dir_beam: %s\n", dir_beam?"true":"false" );
+  printf("Alf_geom_zenith_corr: %s\n", geom_zenith_corr?"true":"false" );
+
+  printf("Alf_f_factor: %f\n", f_factor );
+  printf("Alf_w_0_limit: %f\n", w_0_limit );
+  printf("Alf_i2s_transition: %f\n", i2s_transition );
+  printf("Alf_opacities_file: %s\n", opacities_file.c_str() );
 }
 
 bool two_streams_radiative_transfer::configure(config_file& config_reader) {
