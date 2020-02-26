@@ -288,6 +288,20 @@ __global__ void increment_column_Qheat(double * F_net,  // net flux, layer
   }
 }
 
+void cuda_check_status_or_exit()
+{
+  cudaError_t err = cudaGetLastError();
+
+  // Check device query
+  if (err != cudaSuccess) {
+    log::printf("[%s:%d] CUDA error check reports error: %s\n",
+		__FILE__,
+		__LINE__,
+		cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+}
+
 bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               const SimulationSetup& sim,
                                               int                    nstep, // Step number
@@ -310,6 +324,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
       double * column_density = &(esp.Rho_d[column_offset]);
       // initialise interpolated T and P
 
+      printf("interpolate_temperature\n");
       const int num_blocks = 256;
       interpolate_temperature_and_pressure<<<(esp.point_num / num_blocks) +1,
 	num_blocks>>>(column_layer_temperature,
@@ -321,9 +336,11 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      esp.Altitudeh_d,
 		      gravit,
 		      num_layers);
+      cuda_check_status_or_exit()
 
       // initialise delta_col_mass
       // TODO: should this go inside alf?
+      printf("initialise_delta_colmass\n");
       initialise_delta_colmass<<<(esp.point_num / num_blocks) +1,
 	num_blocks>>>(*alf.delta_col_mass,
 		      *alf.delta_col_upper,
@@ -332,6 +349,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      *pressure_int,
 		      gravit,
 		      num_layers);
+      cuda_check_status_or_exit()
 	
 	// get z_lay
 	// TODO: z_lay for beam computation
@@ -352,6 +370,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 	// compute fluxes
 
       // Check in here, some values from initial setup might change per column: e.g. mu_star;
+      printf("compute_radiative_transfer\n");
+	    
       alf.compute_radiative_transfer(dev_starflux,               // dev_starflux
 				 column_layer_temperature,   // dev_T_lay
 				 *temperature_int,           // dev_T_int
@@ -373,6 +393,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 				 *F_down_band,
 				 *F_up_band,
 				 *F_dir_band);
+      cuda_check_status_or_exit()
       
 
 
@@ -380,12 +401,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     // compute Delta flux
 
     // set Qheat
-
+      printf("increment_column_Qheat\n");
       increment_column_Qheat<<<(esp.point_num / num_blocks) +1,
 	num_blocks>>>(*F_net,  // net flux, layer
 		      z_int,
 		      esp.profx_Qheat_d,
 		      num_layers);
+      cuda_check_status_or_exit()
     }
   
     return true;
