@@ -193,16 +193,28 @@ bool two_streams_radiative_transfer::initialise_memory(
     cloud_opac_int.allocate(ninterface);
     cloud_scat_cross_lay.allocate(nlayer_nbin);
     cloud_scat_cross_int.allocate(ninterface_nbin);
-  
+
+    // TODO: currently, realstar = false, no spectrum
     star_flux.zero();
 
+    // TODO: currently, all clouds set to zero. Not used.
+    
     g_0_tot_lay.zero();
     g_0_tot_int.zero();
     cloud_opac_lay.zero();
     cloud_opac_int.zero();
     cloud_scat_cross_lay.zero();
     cloud_scat_cross_int.zero();
-  
+
+    bool clouds = false;
+    
+    alf.set_clouds_data(clouds,
+			*cloud_opac_lay,
+			*cloud_opac_int,
+			*cloud_scat_cross_lay,
+			*cloud_scat_cross_int,
+			*g_0_tot_lay,
+			*g_0_tot_int);
     
     return true;
 }
