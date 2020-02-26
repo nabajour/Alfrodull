@@ -161,6 +161,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     int ninterface = nlayer + 1;
     int nbin = alf.opacities.nbin;
     int ny = alf.opacities.ny;
+    int nlayer_nbin = nlayer * nbin;
     int ninterface_nbin = ninterface*nbin;
     int ninterface_wg_nbin = ninterface*ny*nbin;
 
@@ -185,6 +186,23 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_dir_band.allocate(ninterface_nbin);
     F_net.allocate(ninterface);
     F_net_diff.allocate(nlayer);
+
+    g_0_tot_lay.allocate(nlayer_nbin);
+    g_0_tot_int.allocate(ninterface_nbin);
+    cloud_opac_lay.allocate(nlayer);
+    cloud_opac_int.allocate(ninterface);
+    cloud_scat_cross_lay.allocate(nlayer_nbin);
+    cloud_scat_cross_int.allocate(ninterface_nbin);
+  
+    star_flux.zero();
+
+    g_0_tot_lay.zero();
+    g_0_tot_int.zero();
+    cloud_opac_lay.zero();
+    cloud_opac_int.zero();
+    cloud_scat_cross_lay.zero();
+    cloud_scat_cross_int.zero();
+  
     
     return true;
 }
