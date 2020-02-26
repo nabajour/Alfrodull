@@ -331,7 +331,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 	// compute fluxes
 
       // Check in here, some values from initial setup might change per column: e.g. mu_star;
-      compute_radiative_transfer(dev_starflux,               // dev_starflux
+      alf.compute_radiative_transfer(dev_starflux,               // dev_starflux
 				 column_layer_temperature,   // dev_T_lay
 				 *temperature_int,           // dev_T_int
 				 column_layer_pressure,      // dev_p_lay
