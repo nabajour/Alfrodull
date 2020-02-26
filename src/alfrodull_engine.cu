@@ -5,6 +5,20 @@
 #include "integrate_flux.h"
 #include "interpolate_values.h"
 
+
+void cuda_check_status_or_exit(const char* filename, int line) {
+    cudaError_t err = cudaGetLastError();
+
+    // Check device query
+    if (err != cudaSuccess) {
+        log::printf("[%s:%d] CUDA error check reports error: %s\n",
+                    filename,
+                    line,
+                    cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+}
+
 alfrodull_engine::alfrodull_engine() {
     printf("Creating Alfrodull engine\n");
 }
@@ -414,6 +428,8 @@ void alfrodull_engine::compute_radiative_transfer(
         surf_albedo,      // cse
         interp_and_calc_flux_step);
 
+    cuda_check_status_or_exit(__FILE__, __LINE__);
+
 
     if (interp_and_calc_flux_step) {
         if (iso) {
@@ -452,11 +468,13 @@ void alfrodull_engine::compute_radiative_transfer(
                                           clouds);
         }
 
-
+        cuda_check_status_or_exit(__FILE__, __LINE__);
         call_z_callback();
 
         direct_beam_flux(
             F_dir_wg, Fc_dir_wg, z_lay, mu_star, R_planet, R_star, a, dir_beam, geom_zenith_corr);
+
+        cuda_check_status_or_exit(__FILE__, __LINE__);
     }
 
     int nscat_step = 0;
@@ -507,6 +525,8 @@ void alfrodull_engine::compute_radiative_transfer(
                                           *trans_wg_upper,
                                           *trans_wg_lower);
         }
+
+        cuda_check_status_or_exit(__FILE__, __LINE__);
     }
 
 
@@ -523,6 +543,8 @@ void alfrodull_engine::compute_radiative_transfer(
                    F_dir_band,
                    gauss_weight);
 
+
+    cuda_check_status_or_exit(__FILE__, __LINE__);
 
     cudaError_t err = cudaGetLastError();
 
