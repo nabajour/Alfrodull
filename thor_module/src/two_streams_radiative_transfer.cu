@@ -336,7 +336,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      esp.Altitudeh_d,
 		      gravit,
 		      num_layers);
-      cuda_check_status_or_exit()
+      cuda_check_status_or_exit();
 
       // initialise delta_col_mass
       // TODO: should this go inside alf?
@@ -349,7 +349,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      *pressure_int,
 		      gravit,
 		      num_layers);
-      cuda_check_status_or_exit()
+      cuda_check_status_or_exit();
 	
 	// get z_lay
 	// TODO: z_lay for beam computation
@@ -393,7 +393,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 				 *F_down_band,
 				 *F_up_band,
 				 *F_dir_band);
-      cuda_check_status_or_exit()
+      cuda_check_status_or_exit();
       
 
 
@@ -407,7 +407,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      z_int,
 		      esp.profx_Qheat_d,
 		      num_layers);
-      cuda_check_status_or_exit()
+      cuda_check_status_or_exit();
     }
   
     return true;
