@@ -336,6 +336,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      esp.Altitudeh_d,
 		      gravit,
 		      num_layers);
+      cudaDeviceSynchronize();
       cuda_check_status_or_exit();
 
       // initialise delta_col_mass
@@ -349,6 +350,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      *pressure_int,
 		      gravit,
 		      num_layers);
+      cudaDeviceSynchronize();
       cuda_check_status_or_exit();
 	
 	// get z_lay
@@ -407,6 +409,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 		      z_int,
 		      esp.profx_Qheat_d,
 		      num_layers);
+      cudaDeviceSynchronize();
       cuda_check_status_or_exit();
     }
   
