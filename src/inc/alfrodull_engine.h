@@ -179,4 +179,135 @@ public:
     cuda_device_memory<double> G_minus_lower;
     cuda_device_memory<double> w_0_upper;
     cuda_device_memory<double> w_0_lower;
+
+  void compute_radiative_transfer(double* dev_starflux, 
+				  double*     dev_T_lay,
+				  double*     dev_T_int,
+				  double*     dev_p_lay,
+				  double*     dev_p_int,
+				  const bool& interp_and_calc_flux_step,
+				  double* z_lay,
+				  bool single_walk,
+				  double* F_down_wg,
+				  double* F_up_wg,
+				  double* Fc_down_wg,
+				  double* Fc_up_wg,
+				  double* F_dir_wg,
+				  double* Fc_dir_wg,
+				  double delta_tau_limit,
+				  double* F_down_tot,
+				  double* F_up_tot,
+				  double* F_net,
+				  double* F_down_band,
+				  double* F_up_band,
+				  double* F_dir_band );
+  
+  bool prepare_compute_flux(double* dev_starflux, 
+			    double* dev_T_lay, 
+			    double*       dev_T_int,           
+			    double*       dev_p_lay,           
+			    double*       dev_p_int,           
+			    double*       dev_opac_wg_lay,     
+			    double*       dev_opac_wg_int,     
+			    double*       dev_meanmolmass_lay, 
+			    double*       dev_meanmolmass_int, 
+			    const int&    real_star,           
+			    const double& fake_opac,           
+			    const double& T_surf,              
+			    const double& surf_albedo,         
+			    const bool&   interp_and_calc_flux_step);
+  
+  void integrate_flux(double* deltalambda,
+		      double* F_down_tot,
+		      double* F_up_tot,
+		      double* F_net,
+		      double* F_down_wg,
+		      double* F_up_wg,
+		      double* F_dir_wg,
+		      double* F_down_band,
+		      double* F_up_band,
+		      double* F_dir_band,
+		      double* gauss_weight);
+    
+  bool calculate_transmission_iso(double* trans_wg,             // out
+				  double* delta_colmass,        // in
+				  double* opac_wg_lay,          // in
+				  double* cloud_opac_lay,       // in
+				  double* meanmolmass_lay,      // in
+				  double* cloud_scat_cross_lay, // in
+				  double* g_0_tot_lay,          // in
+				  double  g_0,
+				  double  epsi,
+				  double  mu_star,
+				  int     scat,
+				  int     clouds);
+  
+  bool calculate_transmission_noniso(double* trans_wg_upper,
+				     double* trans_wg_lower,
+				     double* delta_col_upper,
+				     double* delta_col_lower,
+				     double* opac_wg_lay,
+				     double* opac_wg_int,
+				     double* cloud_opac_lay,
+				     double* cloud_opac_int,
+				     double* meanmolmass_lay,
+				     double* meanmolmass_int,
+				     double* cloud_scat_cross_lay,
+				     double* cloud_scat_cross_int,
+				     double* g_0_tot_lay,
+				     double* g_0_tot_int,
+				     double  g_0,
+				     double  epsi,
+				     double  mu_star,
+				     int     scat,
+				     int     clouds);
+
+  bool direct_beam_flux(double* F_dir_wg,
+			double* Fc_dir_wg,
+			double* z_lay,
+			double  mu_star,
+			double  R_planet,
+			double  R_star,
+			double  a,
+			int     dir_beam,
+			int     geom_zenith_corr);
+  
+  bool populate_spectral_flux_iso(double* F_down_wg,   // out
+				  double* F_up_wg,     // out
+				  double* F_dir_wg,    // in
+				  double* g_0_tot_lay, // in
+				  double  g_0,
+				  int     singlewalk,
+				  double  Rstar,
+				  double  a,
+				  double  f_factor,
+				  double  mu_star,
+				  double  epsi,
+				  double  w_0_limit,
+				  int     dir_beam,
+				  int     clouds,
+				  double  albedo);
+
+  bool populate_spectral_flux_noniso(double* F_down_wg,
+				     double* F_up_wg,
+				     double* Fc_down_wg,
+				     double* Fc_up_wg,
+				     double* F_dir_wg,
+				     double* Fc_dir_wg,
+				     double* g_0_tot_lay,
+				     double* g_0_tot_int,
+				     double  g_0,
+				     int     singlewalk,
+				     double  Rstar,
+				     double  a,
+				     double  f_factor,
+				     double  mu_star,
+				     double  epsi,
+				     double  w_0_limit,
+				     double  delta_tau_limit,
+				     int     dir_beam,
+				     int     clouds,
+				     double  albedo,
+				     double* trans_wg_upper,
+				     double* trans_wg_lower);
 };
