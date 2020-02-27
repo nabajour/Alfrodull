@@ -54,7 +54,7 @@ opacity_table::opacity_table() {
 }
 
 bool opacity_table::load_opacity_table(const string& filename) {
-  #ifdef CGS_UNIT
+  #ifdef CGS_UNITS
   const double temperatures_unit_conv = 1.0;
   const double pressures_unit_conv = 1.0;
   const double wavelength_unit_conv = 1.0;
