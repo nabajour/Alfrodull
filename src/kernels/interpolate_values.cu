@@ -24,7 +24,7 @@ __global__ void planck_interpol_layer(double* temp,           // in
                                       double* planckband_lay, // out
                                       double* planck_grid,    // in
                                       double* starflux,       // in
-                                      int     realstar,
+                                      bool    realstar,
                                       int     numlayers,
                                       int     nwave,
                                       int     dim,
@@ -39,7 +39,7 @@ __global__ void planck_interpol_layer(double* temp,           // in
 
         // getting the stellar flux --- is redundant to do it every interpolation, but probably has negligible costs ...
         if (i == numlayers) {
-            if (realstar == 1) {
+            if (realstar) {
                 planckband_lay[i + x * (numlayers + 2)] = starflux[x] / PI;
             }
             else {

@@ -570,7 +570,7 @@ bool alfrodull_engine::prepare_compute_flux(
     double*       dev_opac_wg_int,     // out: ioi
     double*       dev_meanmolmass_lay, // out: mmm
     double*       dev_meanmolmass_int, // out: mmmi
-    const int&    real_star,           // pil
+    const bool&    real_star,           // pil
     const double& fake_opac,           // io
     const double& T_surf,              // csp, cse, pil
     const double& surf_albedo,         // cse
@@ -763,8 +763,8 @@ bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                                   double  g_0,
                                                   double  epsi,
                                                   double  mu_star,
-                                                  int     scat,
-                                                  int     clouds) {
+                                                  bool    scat,
+                                                  bool    clouds) {
     int nbin = opacities.nbin;
 
     int ny = opacities.ny;
@@ -821,8 +821,8 @@ bool alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                                      double  g_0,
                                                      double  epsi,
                                                      double  mu_star,
-                                                     int     scat,
-                                                     int     clouds) {
+                                                     bool    scat,
+                                                     bool    clouds) {
     int nbin = opacities.nbin;
 
     int ny = opacities.ny;
@@ -883,8 +883,8 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                         double  R_planet,
                                         double  R_star,
                                         double  a,
-                                        int     dir_beam,
-                                        int     geom_zenith_corr) {
+                                        bool    dir_beam,
+                                        bool    geom_zenith_corr) {
 
     int nbin = opacities.nbin;
 
@@ -941,15 +941,15 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
                                                   double* F_dir_wg,    // in
                                                   double* g_0_tot_lay, // in
                                                   double  g_0,
-                                                  int     singlewalk,
+                                                  bool    singlewalk,
                                                   double  Rstar,
                                                   double  a,
                                                   double  f_factor,
                                                   double  mu_star,
                                                   double  epsi,
                                                   double  w_0_limit,
-                                                  int     dir_beam,
-                                                  int     clouds,
+                                                  bool    dir_beam,
+                                                  bool    clouds,
                                                   double  albedo) {
 
     int nbin = opacities.nbin;
@@ -1000,7 +1000,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double* g_0_tot_lay,
                                                      double* g_0_tot_int,
                                                      double  g_0,
-                                                     int     singlewalk,
+                                                     bool    singlewalk,
                                                      double  Rstar,
                                                      double  a,
                                                      double  f_factor,
@@ -1008,8 +1008,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double  epsi,
                                                      double  w_0_limit,
                                                      double  delta_tau_limit,
-                                                     int     dir_beam,
-                                                     int     clouds,
+                                                     bool    dir_beam,
+                                                     bool    clouds,
                                                      double  albedo,
                                                      double* trans_wg_upper,
                                                      double* trans_wg_lower) {

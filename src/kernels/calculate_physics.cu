@@ -44,13 +44,13 @@ __device__ double trans_func(double epsi,
                              double delta_tau,
                              double w0,
                              double g0,
-                             int    scat_corr,
+                             bool   scat_corr,
                              double i2s_transition) {
 
     double E = 1.0;
 
     // improved scattering correction disabled for the following terms -- at least for the moment
-    if (scat_corr == 1) {
+    if (scat_corr) {
         E = E_parameter(w0, g0, i2s_transition);
     }
 
@@ -62,13 +62,13 @@ __device__ double G_plus_func(double w0,
                               double g0,
                               double epsi,
                               double mu_star,
-                              int    scat_corr,
+                              bool   scat_corr,
                               double i2s_transition) {
 
     double E = 1.0;
 
     // improved scattering correction disabled for the following terms -- at least for the moment
-    if (scat_corr == 1) {
+    if (scat_corr) {
         E = E_parameter(w0, g0, i2s_transition);
     }
 
@@ -92,13 +92,13 @@ __device__ double G_minus_func(double w0,
                                double g0,
                                double epsi,
                                double mu_star,
-                               int    scat_corr,
+                               bool   scat_corr,
                                double i2s_transition) {
 
     double E = 1.0;
 
     // improved scattering correction disabled for the following terms -- at least for the moment
-    if (scat_corr == 1) {
+    if (scat_corr) {
         E = E_parameter(w0, g0, i2s_transition);
     }
 
@@ -120,13 +120,13 @@ __device__ double G_minus_func(double w0,
 
 // limiting the values of the G_plus and G_minus coefficients to 1e8.
 // This value is somewhat ad hoc from visual analysis. To justify, results are quite insensitive to this value.
-__device__ double G_limiter(double G, int debug) {
+__device__ double G_limiter(double G, bool debug) {
 
     if (abs(G) < 1e8) {
         return G;
     }
     else {
-        if (debug == 1) {
+        if (debug) {
             printf("WARNING: G_functions are being artificially limited!!! \n");
         }
         return 1e8 * G / abs(G);
@@ -142,10 +142,10 @@ single_scat_alb(double scat_cross, double opac_abs, double meanmolmass, double w
 }
 
 // calculates the two-stream coupling coefficient Zeta_minus with the scattering coefficient E
-__device__ double zeta_minus(double w0, double g0, int scat_corr, double i2s_transition) {
+__device__ double zeta_minus(double w0, double g0, bool scat_corr, double i2s_transition) {
     double E = 1.0;
 
-    if (scat_corr == 1) {
+    if (scat_corr) {
         E = E_parameter(w0, g0, i2s_transition);
     }
 
@@ -154,10 +154,10 @@ __device__ double zeta_minus(double w0, double g0, int scat_corr, double i2s_tra
 
 
 // calculates the two-stream coupling coefficient Zeta_plus with the scattering coefficient E
-__device__ double zeta_plus(double w0, double g0, int scat_corr, double i2s_transition) {
+__device__ double zeta_plus(double w0, double g0, bool scat_corr, double i2s_transition) {
     double E = 1.0;
 
-    if (scat_corr == 1) {
+    if (scat_corr) {
         E = E_parameter(w0, g0, i2s_transition);
     }
 
@@ -166,7 +166,6 @@ __device__ double zeta_plus(double w0, double g0, int scat_corr, double i2s_tran
 
 
 // calculation of transmission, w0, zeta-functions, and capital letters for the layer centers in the isothermal case
-// TODO: check ny meaning
 // kernel runs per wavelength bin, per wavelength sampling (?) and per layer
 __global__ void trans_iso(double* trans_wg,             // out
                           double* delta_tau_wg,         // out
@@ -187,13 +186,13 @@ __global__ void trans_iso(double* trans_wg,             // out
                           double  epsi,
                           double  mu_star,
                           double  w_0_limit,
-                          int     scat,
+                          bool    scat,
                           int     nbin,
                           int     ny,
                           int     nlayer,
-                          int     clouds,
-                          int     scat_corr,
-                          int     debug,
+                          bool    clouds,
+                          bool    scat_corr,
+                          bool    debug,
                           double  i2s_transition) {
     // indices
     // wavelength bin
@@ -209,11 +208,11 @@ __global__ void trans_iso(double* trans_wg,             // out
         double cloud_cross;
         double g0 = g_0;
 
-        if (clouds == 1) {
+        if (clouds) {
             g0 = g_0_tot_lay[x + nbin * i];
         }
 
-        if (scat == 1) {
+        if (scat) {
             ray_cross   = scat_cross_lay[x + nbin * i];
             cloud_cross = cloud_scat_cross_lay[x + nbin * i];
         }
@@ -288,13 +287,13 @@ __global__ void trans_noniso(double* trans_wg_upper,
                              double  epsi,
                              double  mu_star,
                              double  w_0_limit,
-                             int     scat,
+                             bool    scat,
                              int     nbin,
                              int     ny,
                              int     nlayer,
-                             int     clouds,
-                             int     scat_corr,
-                             int     debug,
+                             bool    clouds,
+                             bool    scat_corr,
+                             bool    debug,
                              double  i2s_transition) {
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -310,12 +309,12 @@ __global__ void trans_noniso(double* trans_wg_upper,
         utype g0_up  = g_0;
         utype g0_low = g_0;
 
-        if (clouds == 1) {
+        if (clouds) {
             g0_up  = (g_0_tot_lay[x + nbin * i] + g_0_tot_int[x + nbin * (i + 1)]) / 2.0;
             g0_low = (g_0_tot_int[x + nbin * i] + g_0_tot_lay[x + nbin * i]) / 2.0;
         }
 
-        if (scat == 1) {
+        if (scat) {
             ray_cross_up =
                 (scat_cross_lay[x + nbin * i] + scat_cross_int[x + nbin * (i + 1)]) / 2.0;
             ray_cross_low = (scat_cross_int[x + nbin * i] + scat_cross_lay[x + nbin * i]) / 2.0;

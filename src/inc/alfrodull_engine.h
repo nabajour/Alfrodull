@@ -213,7 +213,7 @@ public:
 			    double*       dev_opac_wg_int,     
 			    double*       dev_meanmolmass_lay, 
 			    double*       dev_meanmolmass_int, 
-			    const int&    real_star,           
+			    const bool&    real_star,           
 			    const double& fake_opac,           
 			    const double& T_surf,              
 			    const double& surf_albedo,
@@ -242,8 +242,8 @@ public:
 				  double  g_0,
 				  double  epsi,
 				  double  mu_star,
-				  int     scat,
-				  int     clouds);
+				  bool    scat,
+				  bool    clouds);
   
   bool calculate_transmission_noniso(double* trans_wg_upper,
 				     double* trans_wg_lower,
@@ -262,8 +262,8 @@ public:
 				     double  g_0,
 				     double  epsi,
 				     double  mu_star,
-				     int     scat,
-				     int     clouds);
+				     bool    scat,
+				     bool    clouds);
 
   bool direct_beam_flux(double* F_dir_wg,
 			double* Fc_dir_wg,
@@ -272,23 +272,23 @@ public:
 			double  R_planet,
 			double  R_star,
 			double  a,
-			int     dir_beam,
-			int     geom_zenith_corr);
+			bool    dir_beam,
+			bool    geom_zenith_corr);
   
   bool populate_spectral_flux_iso(double* F_down_wg,   // out
 				  double* F_up_wg,     // out
 				  double* F_dir_wg,    // in
 				  double* g_0_tot_lay, // in
 				  double  g_0,
-				  int     singlewalk,
+				  bool    singlewalk,
 				  double  Rstar,
 				  double  a,
 				  double  f_factor,
 				  double  mu_star,
 				  double  epsi,
 				  double  w_0_limit,
-				  int     dir_beam,
-				  int     clouds,
+				  bool    dir_beam,
+				  bool    clouds,
 				  double  albedo);
 
   bool populate_spectral_flux_noniso(double* F_down_wg,
@@ -300,7 +300,7 @@ public:
 				     double* g_0_tot_lay,
 				     double* g_0_tot_int,
 				     double  g_0,
-				     int     singlewalk,
+				     bool    singlewalk,
 				     double  Rstar,
 				     double  a,
 				     double  f_factor,
@@ -308,8 +308,8 @@ public:
 				     double  epsi,
 				     double  w_0_limit,
 				     double  delta_tau_limit,
-				     int     dir_beam,
-				     int     clouds,
+				     bool    dir_beam,
+				     bool    clouds,
 				     double  albedo,
 				     double* trans_wg_upper,
 				     double* trans_wg_lower);

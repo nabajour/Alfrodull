@@ -105,8 +105,8 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                          double  R_planet,
                          double  R_star,
                          double  a,
-                         int     dir_beam,
-                         int     geom_zenith_corr,
+                         bool    dir_beam,
+                         bool    geom_zenith_corr,
                          int     ninterface,
                          int     nbin,
                          int     ny) {
@@ -122,14 +122,16 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-        F_dir_wg[y + ny * x + ny * nbin * i] = -dir_beam * mu_star * I_dir;
-
+	if (dir_beam)
+	  F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+	else
+	  F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
         double mu_star_layer_j;
 
         // flux values lower that TOA will now be attenuated depending on their location
         for (int j = ninterface - 2; j >= i; j--) {
 
-            if (geom_zenith_corr == 1) {
+            if (geom_zenith_corr) {
                 mu_star_layer_j = -sqrt(1.0
                                         - pow((R_planet + z_lay[i]) / (R_planet + z_lay[j]), 2.0)
                                               * (1.0 - pow(mu_star, 2.0)));
@@ -157,8 +159,8 @@ __global__ void fdir_noniso(double* F_dir_wg,
                             double  R_planet,
                             double  R_star,
                             double  a,
-                            int     dir_beam,
-                            int     geom_zenith_corr,
+                            bool    dir_beam,
+                            bool    geom_zenith_corr,
                             int     ninterface,
                             int     nbin,
                             int     ny) {
@@ -174,14 +176,17 @@ __global__ void fdir_noniso(double* F_dir_wg,
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-        F_dir_wg[y + ny * x + ny * nbin * i] = -dir_beam * mu_star * I_dir;
+	if (dir_beam)
+	  F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+	else
+	  F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
 
         double mu_star_layer_j;
 
         // flux values lower that TOA will now be attenuated depending on their location
         for (int j = ninterface - 2; j >= i; j--) {
 
-            if (geom_zenith_corr == 1) {
+            if (geom_zenith_corr) {
                 mu_star_layer_j = -sqrt(1.0
                                         - pow((R_planet + z_lay[i]) / (R_planet + z_lay[j]), 2.0)
                                               * (1.0 - pow(mu_star, 2.0)));
@@ -216,7 +221,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                                  double* G_minus,        // in
                                  double* g_0_tot_lay,    // in (clouds)
                                  double  g_0,
-                                 int     singlewalk,
+                                 bool    singlewalk,
                                  double  Rstar,
                                  double  a,
                                  int     numinterfaces,
@@ -225,11 +230,11 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                                  double  mu_star,
                                  int     ny,
                                  double  epsi,
-                                 int     dir_beam,
-                                 int     clouds,
-                                 int     scat_corr,
+                                 bool    dir_beam,
+                                 bool    clouds,
+                                 bool    scat_corr,
                                  double  albedo,
-                                 int     debug,
+                                 bool    debug,
                                  double  i2s_transition) {
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -255,9 +260,13 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
 
             // TOA boundary -- incoming stellar flux
             if (i == numinterfaces - 1) {
-                F_down_wg[y + ny * x + ny * nbin * i] =
-                    (1.0 - dir_beam) * f_factor * ((Rstar / a) * (Rstar / a)) * PI
-                    * planckband_lay[i + x * (numinterfaces - 1 + 2)];
+	      if (dir_beam)		
+		F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
+	      else
+		F_down_wg[y + ny * x + ny * nbin * i] =
+		  f_factor * ((Rstar / a) * (Rstar / a)) * PI
+		* planckband_lay[i + x * (numinterfaces - 1 + 2)];
+
             }
             else {
                 w0    = w_0[y + ny * x + ny * nbin * i];
@@ -270,12 +279,12 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
 
                 // improved scattering correction factor E
                 E = 1.0;
-                if (scat_corr == 1) {
+                if (scat_corr) {
                     E = E_parameter(w0, g0, i2s_transition);
                 }
 
                 // experimental clouds functionality
-                if (clouds == 1) {
+                if (clouds) {
                     g0 = g_0_tot_lay[x + nbin * i];
                 }
 
@@ -297,7 +306,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                        + direct_terms);
 
                 //feedback if flux becomes negative
-                if (debug == 1) {
+                if (debug) {
                     if (F_down_wg[y + ny * x + ny * nbin * i] < 0)
                         printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: "
                                "%d, w-index: %d, y-index: %d !!! \n",
@@ -341,12 +350,12 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
 
                 // improved scattering correction factor E
                 E = 1.0;
-                if (scat_corr == 1) {
+                if (scat_corr) {
                     E = E_parameter(w0, g0, i2s_transition);
                 }
 
                 // experimental clouds functionality
-                if (clouds == 1) {
+                if (clouds) {
                     g0 = g_0_tot_lay[x + nbin * (i - 1)];
                 }
 
@@ -368,7 +377,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                        + direct_terms);
 
                 //feedback if flux becomes negative
-                if (debug == 1) {
+                if (debug) {
                     if (F_up_wg[y + ny * x + ny * nbin * i] < 0)
                         printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: "
                                "%d, w-index: %d, y-index: %d !!! \n",
@@ -407,7 +416,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                     double* g_0_tot_lay,
                                     double* g_0_tot_int,
                                     double  g_0,
-                                    int     singlewalk,
+                                    bool    singlewalk,
                                     double  Rstar,
                                     double  a,
                                     int     numinterfaces,
@@ -417,11 +426,11 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                     int     ny,
                                     double  epsi,
                                     double  delta_tau_limit,
-                                    int     dir_beam,
-                                    int     clouds,
-                                    int     scat_corr,
+                                    bool    dir_beam,
+                                    bool    clouds,
+                                    bool    scat_corr,
                                     double  albedo,
-                                    int     debug,
+                                    bool    debug,
                                     double  i2s_transition) {
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -458,8 +467,11 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
 
             // TOA boundary -- incoming stellar flux
             if (i == numinterfaces - 1) {
+	      if (dir_beam)
+		F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
+	      else
                 F_down_wg[y + ny * x + ny * nbin * i] =
-                    (1.0 - dir_beam) * f_factor * ((Rstar / a) * (Rstar / a)) * PI
+                    f_factor * ((Rstar / a) * (Rstar / a)) * PI
                     * planckband_lay[i + x * (numinterfaces - 1 + 2)];
             }
             else {
@@ -488,13 +500,13 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 E_low = 1.0;
 
                 // improved scattering correction disabled for the following terms -- at least for the moment
-                if (scat_corr == 1) {
+                if (scat_corr) {
                     E_up  = E_parameter(w0_up, g0_up, i2s_transition);
                     E_low = E_parameter(w0_low, g0_low, i2s_transition);
                 }
 
                 // experimental clouds functionality
-                if (clouds == 1) {
+                if (clouds) {
                     g0_up  = (g_0_tot_lay[x + nbin * i] + g_0_tot_int[x + nbin * (i + 1)]) / 2.0;
                     g0_low = (g_0_tot_int[x + nbin * i] + g_0_tot_lay[x + nbin * i]) / 2.0;
                 }
@@ -533,7 +545,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                        + direct_terms);
 
                 //feedback if flux becomes negative
-                if (debug == 1) {
+                if (debug) {
                     if (Fc_down_wg[y + ny * x + ny * nbin * i] < 0)
                         printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: "
                                "%d, w-index: %d, y-index: %d !!! \n",
@@ -577,7 +589,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                        + direct_terms);
 
                 //feedback if flux becomes negative
-                if (debug == 1) {
+                if (debug) {
                     if (F_down_wg[y + ny * x + ny * nbin * i] < 0)
                         printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: "
                                "%d, w-index: %d, y-index: %d !!! \n",
@@ -634,13 +646,13 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 E_up  = 1.0;
 
                 // improved scattering correction disabled for the following terms -- at least for the moment
-                if (scat_corr == 1) {
+                if (scat_corr) {
                     E_up  = E_parameter(w0_up, g0_up, i2s_transition);
                     E_low = E_parameter(w0_low, g0_low, i2s_transition);
                 }
 
                 // experimental clouds functionanlity
-                if (clouds == 1) {
+                if (clouds) {
                     g0_low =
                         (g_0_tot_int[x + nbin * (i - 1)] + g_0_tot_lay[x + nbin * (i - 1)]) / 2.0;
                     g0_up = (g_0_tot_lay[x + nbin * (i - 1)] + g_0_tot_int[x + nbin * i]) / 2.0;
@@ -682,7 +694,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                        + direct_terms);
 
                 //feedback if flux becomes negative
-                if (debug == 1) {
+                if (debug) {
                     if (Fc_up_wg[y + ny * x + ny * nbin * (i - 1)] < 0)
                         printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: "
                                "%d, w-index: %d, y-index: %d !!! \n",
@@ -725,7 +737,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                        + direct_terms);
 
                 //feedback if flux becomes negative
-                if (debug == 1) {
+                if (debug) {
                     if (F_up_wg[y + ny * x + ny * nbin * i] < 0)
                         printf("WARNING WARNING WARNING WARNING -- negative flux found at layer: "
                                "%d, w-index: %d, y-index: %d !!! \n",
