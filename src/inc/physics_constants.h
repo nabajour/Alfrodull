@@ -1,7 +1,9 @@
 
 #include "definitions.h"
 
-
+#ifdef CGS_UNITS
+// To check what units are used. Is pretty noisy
+// #warning "Compiling with CGS units"
 // physical constants
 const utype PI         = 3.141592653589793;
 const utype HCONST     = 6.62607004e-27;
@@ -30,3 +32,8 @@ const double R_EARTH = 637810000.0;            // radius Earth in cm, old value
 const double M_EARTH = 5.972167867791379e+27;  // mass Earth
 const double G       = 6.674299999999999e-08;  // gravitational constant (cgs)
 const double GAMMA   = 0.5772156649;           // Euler-Mascheroni constant
+#else
+// To check what units are used. Is pretty noisy
+// #warning "Compiling with SI units"
+#include "physics_constants_si.h"
+#endif // CGS_constants

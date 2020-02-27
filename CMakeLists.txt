@@ -115,6 +115,8 @@ if (DEFINED THOR_MODULE)
     )
   target_link_libraries(phy_modules PRIVATE alfrodull)
 else()
+  # specify CGS units
+  target_compile_definitions(alfrodull PRIVATE "CGS_UNITS")
   # build as independent python library
   include_directories(${THOR_BASE_FOLDER}/src/headers/ )
   include_directories(pylfrodull/src/inc)
