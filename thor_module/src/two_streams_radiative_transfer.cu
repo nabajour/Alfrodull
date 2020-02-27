@@ -397,8 +397,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 	double * z_int = esp.Altitudeh_d;
       // compute mu_star per column
 	// TODO: compute mu_star for each column
-      
-      // internal to alfrodull_engine
+	double mu_star = 0.0;
+	// internal to alfrodull_engine
       
       // TODO: define star_flux     
       double * dev_starflux = nullptr;
@@ -432,7 +432,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 				     *F_net,
 				     *F_down_band,
 				     *F_up_band,
-				     *F_dir_band);
+				     *F_dir_band,
+				     mu_star);
       cuda_check_status_or_exit();
       
 

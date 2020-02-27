@@ -402,10 +402,11 @@ void alfrodull_engine::compute_radiative_transfer(
     //double* F_dir_wg,
     double* F_down_band,
     double* F_up_band,
-    double* F_dir_band
+    double* F_dir_band,
     // double* gauss_weight
     //int num_interfaces, -> ninterface
     //int ny
+    double mu_star
 ) {
 
     double* delta_colmass = *delta_col_mass;

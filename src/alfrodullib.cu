@@ -224,7 +224,8 @@ void wrap_compute_radiative_transfer(
         (double*)F_net,
         (double*)F_down_band,
         (double*)F_up_band,
-        (double*)F_dir_band);
+        (double*)F_dir_band,
+	Alf_ptr->mu_star);
   else
     printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");
 }

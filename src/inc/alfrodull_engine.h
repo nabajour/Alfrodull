@@ -201,7 +201,8 @@ public:
 				  double* F_net,
 				  double* F_down_band,
 				  double* F_up_band,
-				  double* F_dir_band );
+				  double* F_dir_band,
+				  double mu_star);
   
   bool prepare_compute_flux(double* dev_starflux, 
 			    double* dev_T_lay, 
