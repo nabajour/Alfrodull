@@ -94,7 +94,6 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_dir_beam", dir_beam, dir_beam);
     config_reader.append_config_var("Alf_geom_zenith_corr", geom_zenith_corr, geom_zenith_corr);
     config_reader.append_config_var("Alf_f_factor", f_factor, f_factor);
-    config_reader.append_config_var("Alf_w_0_limit", w_0_limit, w_0_limit);
     config_reader.append_config_var("Alf_i2s_transition", i2s_transition, i2s_transition);
 
     config_reader.append_config_var("Alf_opacities_file", opacities_file, opacities_file);
@@ -114,6 +113,10 @@ bool two_streams_radiative_transfer::initialise_memory(
     // what needs to be passed outside or stored should be global, others can be per column
 
     float mu_star = 0.0;
+
+    // as set in host_functions.set_up_numerical_parameters
+    // w_0_limit
+    w_0_limit = 1.0 - 1e-10; 
 
     // TODO load star flux.
     real_star = false;
@@ -396,7 +399,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
       
       // TODO: define star_flux     
       double * dev_starflux = nullptr;
-      // TODO: check where to define this and how this is used
+      // limit where to switch from noniso to iso equations to keep model stable
+      // as defined in host_functions.set_up_numerical_parameters
       double delta_tau_limit = 1e-4;
       // TODO: add code to skip internal interpolation
 	// compute fluxes
@@ -409,6 +413,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 				 *temperature_int,           // dev_T_int
 				 column_layer_pressure,      // dev_p_lay
 				 *pressure_int,              // dev_p_int
+				     false,                  // interp_press_and_temp
 				 true,                       // interp_and_calc_flux_step
 				 z_lay,                      // z_lay
 				 false,                      // singlewalk
