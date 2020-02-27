@@ -340,14 +340,17 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
+  // loop on columns
   for (int column_idx = 0; column_idx < esp.point_num; column_idx++)
     {
       printf("two_stream_rt::phy_loop, step: %d, column: %d\n", nstep, column_idx);
-      // loop on columns
-      // TODO: get column offset
-      int column_offset = column_idx;
-
       int num_layers =  esp.nv;
+
+      
+      // TODO: get column offset
+      int column_offset = column_idx*num_layers;
+      
+
       double gravit = sim.Gravit;
       // fetch column values
       
@@ -409,27 +412,27 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
       printf("compute_radiative_transfer\n");
 	    
       alf.compute_radiative_transfer(dev_starflux,               // dev_starflux
-				 column_layer_temperature,   // dev_T_lay
-				 *temperature_int,           // dev_T_int
-				 column_layer_pressure,      // dev_p_lay
-				 *pressure_int,              // dev_p_int
+				     column_layer_temperature,   // dev_T_lay
+				     *temperature_int,           // dev_T_int
+				     column_layer_pressure,      // dev_p_lay
+				     *pressure_int,              // dev_p_int
 				     false,                  // interp_press_and_temp
-				 true,                       // interp_and_calc_flux_step
-				 z_lay,                      // z_lay
-				 false,                      // singlewalk
-				 *F_down_wg,
-				 *F_up_wg,
-				 *Fc_down_wg,
-				 *Fc_up_wg,
-				 *F_dir_wg,
-				 *Fc_dir_wg,
-				 delta_tau_limit,
-				 *F_down_tot,
-				 *F_up_tot,
-				 *F_net,
-				 *F_down_band,
-				 *F_up_band,
-				 *F_dir_band);
+				     true,                       // interp_and_calc_flux_step
+				     z_lay,                      // z_lay
+				     false,                      // singlewalk
+				     *F_down_wg,
+				     *F_up_wg,
+				     *Fc_down_wg,
+				     *Fc_up_wg,
+				     *F_dir_wg,
+				     *Fc_dir_wg,
+				     delta_tau_limit,
+				     *F_down_tot,
+				     *F_up_tot,
+				     *F_net,
+				     *F_down_band,
+				     *F_up_band,
+				     *F_dir_band);
       cuda_check_status_or_exit();
       
 
