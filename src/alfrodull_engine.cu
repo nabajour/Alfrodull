@@ -300,6 +300,7 @@ void alfrodull_engine::compute_radiative_transfer(
     double*     dev_T_int, // in: it, pii, ioi, mmmi, kii
     double*     dev_p_lay, // in: io, mmm, kil
     double*     dev_p_int, // in: ioi, mmmi, kii
+    const bool & interpolate_temp_and_pres, 
     const bool& interp_and_calc_flux_step,
     // calculate_transmission_iso
     //double* trans_wg,        // out
@@ -426,6 +427,7 @@ void alfrodull_engine::compute_radiative_transfer(
         fake_opac,        // io
         T_surf,           // csp, cse, pil
         surf_albedo,      // cse
+	interpolate_temp_and_pres, 
         interp_and_calc_flux_step);
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -571,6 +573,7 @@ bool alfrodull_engine::prepare_compute_flux(
     const double& fake_opac,           // io
     const double& T_surf,              // csp, cse, pil
     const double& surf_albedo,         // cse
+    const bool&   interpolate_temp_and_pres,
     const bool&   interp_and_calc_flux_step) {
 
     int nbin = opacities.nbin;
@@ -582,16 +585,17 @@ bool alfrodull_engine::prepare_compute_flux(
     int plancktable_dim  = plancktable.dim;
     int plancktable_step = plancktable.step;
 
-
-    // it
-    dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
-    dim3 it_block(16, 1, 1);
-
-    interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, // out
-                                                   dev_T_int, // in
-                                                   ninterface);
-    cudaDeviceSynchronize();
-
+    if (interpolate_temp_and_pres) {
+      // it
+      dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
+      dim3 it_block(16, 1, 1);
+      
+      interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, // out
+						     dev_T_int, // in
+						     ninterface);
+      cudaDeviceSynchronize();
+    }
+    
     // pil
     dim3 pil_grid(int((nbin + 15) / 16), int(((nlayer + 2) + 15)) / 16, 1);
     dim3 pil_block(16, 16, 1);

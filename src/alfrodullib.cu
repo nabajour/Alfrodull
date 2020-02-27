@@ -203,6 +203,7 @@ void wrap_compute_radiative_transfer(
         (double*)dev_T_int, // in: it, pii, ioi, mmmi, kii
         (double*)dev_p_lay, // in: io, mmm, kil
         (double*)dev_p_int, // in: ioi, mmmi, kii
+	true,
         interp_and_calc_flux_step,
 
         // direct_beam_flux

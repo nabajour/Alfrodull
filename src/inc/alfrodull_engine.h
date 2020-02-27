@@ -185,6 +185,7 @@ public:
 				  double*     dev_T_int,
 				  double*     dev_p_lay,
 				  double*     dev_p_int,
+				  const bool& interp_temp_and_pres,
 				  const bool& interp_and_calc_flux_step,
 				  double* z_lay,
 				  bool single_walk,
@@ -214,7 +215,8 @@ public:
 			    const int&    real_star,           
 			    const double& fake_opac,           
 			    const double& T_surf,              
-			    const double& surf_albedo,         
+			    const double& surf_albedo,
+			    const bool& interp_temp_and_pres,
 			    const bool&   interp_and_calc_flux_step);
   
   void integrate_flux(double* deltalambda,
