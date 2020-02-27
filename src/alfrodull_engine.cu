@@ -11,7 +11,7 @@ void cuda_check_status_or_exit(const char* filename, int line) {
 
     // Check device query
     if (err != cudaSuccess) {
-        log::printf("[%s:%d] CUDA error check reports error: %s\n",
+        printf("[%s:%d] CUDA error check reports error: %s\n",
                     filename,
                     line,
                     cudaGetErrorString(err));
