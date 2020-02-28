@@ -88,7 +88,6 @@ void two_streams_radiative_transfer::print_config() {
     printf("Alf_dir_beam: %s\n", dir_beam ? "true" : "false");
     printf("Alf_geom_zenith_corr: %s\n", geom_zenith_corr ? "true" : "false");
 
-    printf("Alf_f_factor: %f\n", f_factor);
     printf("Alf_w_0_limit: %f\n", w_0_limit);
     printf("Alf_i2s_transition: %f\n", i2s_transition);
     printf("Alf_opacities_file: %s\n", opacities_file.c_str());
@@ -120,7 +119,6 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_a", planet_star_dist_config, planet_star_dist_config);
     config_reader.append_config_var("Alf_dir_beam", dir_beam, dir_beam);
     config_reader.append_config_var("Alf_geom_zenith_corr", geom_zenith_corr, geom_zenith_corr);
-    config_reader.append_config_var("Alf_f_factor", f_factor, f_factor);
     config_reader.append_config_var("Alf_i2s_transition", i2s_transition, i2s_transition);
 
     config_reader.append_config_var("Alf_opacities_file", opacities_file, opacities_file);
@@ -164,6 +162,8 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     // TODO load star flux.
     real_star = false;
+
+    double f_factor = 1.0;
 
     alf.set_parameters(nlayer,              // const int&    nlayer_,
                        iso,                 // const bool&   iso_,

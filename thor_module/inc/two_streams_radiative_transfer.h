@@ -120,7 +120,6 @@ public:
   
     bool   dir_beam;
     bool   geom_zenith_corr;
-    double f_factor; // still needed?
     double w_0_limit;
 
     double i2s_transition;
