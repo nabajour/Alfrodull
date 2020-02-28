@@ -103,9 +103,21 @@ public:
     double mu_star; // not a config
     bool   scat;
     bool   scat_corr;
-    double R_planet;
-    double R_star;
-    double a; // ?
+  
+    // double R_planet;
+    // double R_star;
+    // double a; // ?
+  // config
+  double R_planet_config; // [R_earth]
+  double R_star_config; // [R_sun]
+  double planet_star_dist_config; // [AU]
+  double R_planet_SI; // [m]
+  double R_star_SI; // [m]
+  double planet_star_dist_SI; // [m] 
+  
+  
+  //    double a; // ?
+  
     bool   dir_beam;
     bool   geom_zenith_corr;
     double f_factor; // still needed?
@@ -117,6 +129,30 @@ public:
 
   void print_config();
 
+  // insolation computation vars from rt module
+   // orbit/insolation properties
+    bool   sync_rot       = true;     // is planet syncronously rotating?
+    double mean_motion    = 1.991e-7; // orbital mean motion (rad/s)
+    double mean_anomaly_i = 0;        // initial mean anomaly at start (rad)
+    double mean_anomaly   = 0;        // current mean anomaly of planet (rad)
+    double true_long_i    = 0;        // initial true longitude of planet (rad)
+    double ecc            = 0;        // orbital eccentricity
+    double obliquity      = 0;        // obliquity (tilt of spin axis) (rad)
+    double r_orb          = 1;        // orbital distance/semi-major axis
+    double sin_decl       = 0;        // declination of host star (relative to equator)
+    double cos_decl       = 1;
+    double alpha_i        = 0; // initial right asc of host star (relative to long = 0)
+    double alpha          = 0; // right asc of host star (relative to long = 0)
+    double longp          = 0; // longitude of periastron (rad)
+
+    bool   sync_rot_config    = true;     // is planet syncronously rotating?
+    double mean_motion_config = 1.991e-7; // orbital mean motion (rad/s)
+    double true_long_i_config = 0;        // initial true longitude of planet (rad)
+    double ecc_config         = 0;        // orbital eccentricity
+    double obliquity_config   = 0;        // obliquity (tilt of spin axis) (rad)
+    double alpha_i_config     = 0;        // initial right asc of host star (relative to long = 0)
+    double longp_config       = 0;        // longitude of periastron (rad)
+
 
 private:
   alfrodull_engine alf;
@@ -125,6 +161,7 @@ private:
   cuda_device_memory<double> temperature_int;
   
  
+  cuda_device_memory<double> col_mu_star;
   
   cuda_device_memory<double> F_down_wg;
   cuda_device_memory<double> F_up_wg;
@@ -148,5 +185,6 @@ private:
   cuda_device_memory<double> cloud_opac_int;
   cuda_device_memory<double> cloud_scat_cross_lay;
   cuda_device_memory<double> cloud_scat_cross_int;
-  
+
+  void update_spin_orbit(double time, double Omega);
 };

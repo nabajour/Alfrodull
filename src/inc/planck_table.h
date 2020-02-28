@@ -1,3 +1,5 @@
+#pragma once
+
 #include "cuda_device_memory.h"
 
 // adjust the incident flux to correspond to the correct brightness temperature

@@ -1,3 +1,5 @@
+
+
 __host__ double sign(double val) {
     if (val < 0.0)
         return -1.0;
