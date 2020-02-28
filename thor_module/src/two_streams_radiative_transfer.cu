@@ -459,6 +459,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     std::unique_ptr<double[]> loc_col_mu_star = std::make_unique<double[]>(esp.point_num);
     col_mu_star.fetch(loc_col_mu_star);
 
+    printf("\r\n");
     // loop on columns
     for (int column_idx = 0; column_idx < esp.point_num; column_idx++) {
         print_progress((column_idx + 1.0) / double(esp.point_num));
