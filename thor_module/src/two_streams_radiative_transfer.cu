@@ -461,7 +461,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
     // loop on columns
     for (int column_idx = 0; column_idx < esp.point_num; column_idx++) {
-        print_progress(column_idx / double(esp.point_num));
+        print_progress((column_idx + 1.0) / double(esp.point_num));
         //printf("two_stream_rt::phy_loop, step: %d, column: %d\n", nstep, column_idx);
         int num_layers = esp.nv;
 
@@ -575,6 +575,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     //     annual_insol<<<NBRT, NTH>>>(insol_ann_d, insol_d, nstep, esp.point_num);
     // }
 
+    printf("\r\n");
     return true;
 }
 
