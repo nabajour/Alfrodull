@@ -50,6 +50,18 @@
 
 #include "physics_constants.h"
 
+
+const char PBSTR[] = "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||";
+const int  PBWIDTH = 60;
+
+void print_progress(double percentage) {
+    int val  = (int)(percentage * 100);
+    int lpad = (int)(percentage * PBWIDTH);
+    int rpad = PBWIDTH - lpad;
+    printf("\r%3d%% [%.*s%*s]", val, lpad, PBSTR, rpad, "");
+    fflush(stdout);
+}
+
 two_streams_radiative_transfer::two_streams_radiative_transfer() {
 }
 
@@ -449,7 +461,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
     // loop on columns
     for (int column_idx = 0; column_idx < esp.point_num; column_idx++) {
-        printf("two_stream_rt::phy_loop, step: %d, column: %d\n", nstep, column_idx);
+        print_progress(column_idx / double(esp.point_num));
+        //printf("two_stream_rt::phy_loop, step: %d, column: %d\n", nstep, column_idx);
         int num_layers = esp.nv;
 
 
@@ -466,7 +479,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         double* column_density           = &(esp.Rho_d[column_offset]);
         // initialise interpolated T and P
 
-        printf("interpolate_temperature\n");
+        //printf("interpolate_temperature\n");
 
         interpolate_temperature_and_pressure<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(
             column_layer_temperature,
@@ -483,7 +496,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
         // initialise delta_col_mass
         // TODO: should this go inside alf?
-        printf("initialise_delta_colmass\n");
+        //printf("initialise_delta_colmass\n");
         initialise_delta_colmass<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(
             *alf.delta_col_mass,
             *alf.delta_col_upper,
@@ -515,7 +528,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         // compute fluxes
 
         // Check in here, some values from initial setup might change per column: e.g. mu_star;
-        printf("compute_radiative_transfer\n");
+        //printf("compute_radiative_transfer\n");
 
         alf.compute_radiative_transfer(dev_starflux,             // dev_starflux
                                        column_layer_temperature, // dev_T_lay
@@ -546,7 +559,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         // compute Delta flux
 
         // set Qheat
-        printf("increment_column_Qheat\n");
+        //printf("increment_column_Qheat\n");
         increment_column_Qheat<<<(esp.point_num / num_blocks) + 1,
                                  num_blocks>>>(*F_net, // net flux, layer
                                                z_int,

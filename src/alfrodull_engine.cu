@@ -734,7 +734,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
     int nbin = opacities.nbin;
     int ny   = opacities.ny;
 
-    printf("Running Alfrodull Wrapper for integrate flux\n");
+    //printf("Running Alfrodull Wrapper for integrate flux\n");
     integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
                                                           F_down_tot,
                                                           F_up_tot,
