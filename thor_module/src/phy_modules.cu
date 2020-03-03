@@ -131,20 +131,22 @@ bool phy_modules_phy_loop(ESP& esp, const SimulationSetup& sim, int nstep, doubl
 
     if (two_streams_radiative_transfer_enabled)
       tsrt.phy_loop(esp, sim, nstep, time_step);
-    
+
     return out;
 }
 
 
 // called at initalisation to save parameters of physics module
 bool phy_modules_store_init(storage& s) {
-    // radiative transfer option
-    // s.append_value(radiative_transfer_enabled ? 1.0 : 0.0,
-    //                "/radiative_transfer",
-    //                "-",
-    //                "Using radiative transfer");
+  
+  // two strams radiative transfer option
+  s.append_value(two_streams_radiative_transfer_enabled ? 1.0 : 0.0,
+		 "/two_streams_radiative_transfer",
+		 "-",
+		 "Using two stream radiative transfer");
 
-    // rt.store_init(s);
+  if (two_streams_radiative_transfer_enabled)
+    tsrt.store_init(s);
 
     // s.append_value(
     //     boundary_layer_enabled ? 1.0 : 0.0, "/boundary_layer", "-", "Using boundary layer");

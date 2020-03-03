@@ -46,17 +46,17 @@
 
 #include "alfrodull_engine.h"
 #include "alfrodullib.h"
-#include "phy_module_base.h"
 #include "cuda_device_memory.h"
+#include "phy_module_base.h"
 
 class two_streams_radiative_transfer : public phy_module_base
 {
 public:
-  two_streams_radiative_transfer();
-  ~two_streams_radiative_transfer();
-  
-  bool initialise_memory(const ESP &esp, device_RK_array_manager &phy_modules_core_arrays);
-  bool initial_conditions(const ESP &esp, const SimulationSetup &sim, storage *s);
+    two_streams_radiative_transfer();
+    ~two_streams_radiative_transfer();
+
+    bool initialise_memory(const ESP &esp, device_RK_array_manager &phy_modules_core_arrays);
+    bool initial_conditions(const ESP &esp, const SimulationSetup &sim, storage *s);
 
     // virtual bool dyn_core_loop_init(const ESP& esp) {
     //     return true;
@@ -87,6 +87,8 @@ public:
 
     bool store(const ESP &esp, storage &s);
 
+    bool store_init(storage &s);
+
     bool configure(config_file &config_reader);
 
     virtual bool free_memory();
@@ -103,33 +105,28 @@ public:
     double mu_star; // not a config
     bool   scat;
     bool   scat_corr;
-  
-    // double R_planet;
-    // double R_star;
-    // double a; // ?
-  // config
-  double R_planet_config; // [R_earth]
-  double R_star_config; // [R_sun]
-  double planet_star_dist_config; // [AU]
-  double R_planet_SI; // [m]
-  double R_star_SI; // [m]
-  double planet_star_dist_SI; // [m] 
-  
-  
-  //    double a; // ?
-  
+
+    // config
+    double R_star_config;           // [R_sun]
+    double planet_star_dist_config; // [AU]
+    double R_star_SI;               // [m]
+    double planet_star_dist_SI;     // [m]
+
+
+    //    double a; // ?
+
     bool   dir_beam;
     bool   geom_zenith_corr;
     double w_0_limit;
 
     double i2s_transition;
 
-  string opacities_file;
+    string opacities_file;
 
-  void print_config();
+    void print_config();
 
-  // insolation computation vars from rt module
-   // orbit/insolation properties
+    // insolation computation vars from rt module
+    // orbit/insolation properties
     bool   sync_rot       = true;     // is planet syncronously rotating?
     double mean_motion    = 1.991e-7; // orbital mean motion (rad/s)
     double mean_anomaly_i = 0;        // initial mean anomaly at start (rad)
@@ -152,38 +149,51 @@ public:
     double alpha_i_config     = 0;        // initial right asc of host star (relative to long = 0)
     double longp_config       = 0;        // longitude of periastron (rad)
 
+    int compute_every_n_iteration = 1;
+
+    // TODO: check this. if we are starting up and not at iteration 0,
+    // we need either to reload the Qheat or something to compute it (net flux) or recompute it.
+    // or we'll have discrepancies between loading initial conditions and running cases
+    bool start_up = true;
+
+    bool store_weight_flux = true;
+    bool store_band_flux   = true;
+    bool store_updown_flux = true;
+    bool store_net_flux    = true;
 
 private:
-  alfrodull_engine alf;
+    alfrodull_engine alf;
 
-  cuda_device_memory<double> pressure_int;
-  cuda_device_memory<double> temperature_int;
-  
- 
-  cuda_device_memory<double> col_mu_star;
-  
-  cuda_device_memory<double> F_down_wg;
-  cuda_device_memory<double> F_up_wg;
-  cuda_device_memory<double> Fc_down_wg;
-  cuda_device_memory<double> Fc_up_wg;
-  cuda_device_memory<double> F_dir_wg;
-  cuda_device_memory<double> Fc_dir_wg;
-  cuda_device_memory<double> F_down_tot;
-  cuda_device_memory<double> F_up_tot;
-  cuda_device_memory<double> F_down_band;
-  cuda_device_memory<double> F_up_band;
-  cuda_device_memory<double> F_dir_band;
-  
-  cuda_device_memory<double> F_net;
-  cuda_device_memory<double> F_net_diff;
+    cuda_device_memory<double> pressure_int;
+    cuda_device_memory<double> temperature_int;
 
-  cuda_device_memory<double> star_flux;
-  cuda_device_memory<double> g_0_tot_lay;
-  cuda_device_memory<double> g_0_tot_int;
-  cuda_device_memory<double> cloud_opac_lay;
-  cuda_device_memory<double> cloud_opac_int;
-  cuda_device_memory<double> cloud_scat_cross_lay;
-  cuda_device_memory<double> cloud_scat_cross_int;
 
-  void update_spin_orbit(double time, double Omega);
+    cuda_device_memory<double> col_mu_star;
+
+    cuda_device_memory<double> F_down_wg;
+    cuda_device_memory<double> F_up_wg;
+    cuda_device_memory<double> Fc_down_wg;
+    cuda_device_memory<double> Fc_up_wg;
+    cuda_device_memory<double> F_dir_wg;
+    cuda_device_memory<double> Fc_dir_wg;
+    cuda_device_memory<double> F_down_tot;
+    cuda_device_memory<double> F_up_tot;
+    cuda_device_memory<double> F_down_band;
+    cuda_device_memory<double> F_up_band;
+    cuda_device_memory<double> F_dir_band;
+
+    cuda_device_memory<double> F_net;
+    cuda_device_memory<double> F_net_diff;
+
+    cuda_device_memory<double> star_flux;
+    cuda_device_memory<double> g_0_tot_lay;
+    cuda_device_memory<double> g_0_tot_int;
+    cuda_device_memory<double> cloud_opac_lay;
+    cuda_device_memory<double> cloud_opac_int;
+    cuda_device_memory<double> cloud_scat_cross_lay;
+    cuda_device_memory<double> cloud_scat_cross_int;
+
+    cuda_device_memory<double> Qheat;
+
+    void update_spin_orbit(double time, double Omega);
 };
