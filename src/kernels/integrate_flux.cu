@@ -175,8 +175,8 @@ __global__ void integrate_flux_tot(double* deltalambda,  // in
 
     for (int bin = 0; bin < nbin; bin++) {
       int band_idx = interface_idx*nbin + bin;
-      F_up_tot[interface_idx] = F_up_band[band_idx] * deltalambda[bin];
-      F_down_tot[interface_idx] = F_down_band[band_idx] * deltalambda[bin] + F_dir_band[band_idx];
+      F_up_tot[interface_idx] += F_up_band[band_idx] * deltalambda[bin];
+      F_down_tot[interface_idx] += F_down_band[band_idx] * deltalambda[bin] + F_dir_band[band_idx];
     }
     
     __syncthreads();
