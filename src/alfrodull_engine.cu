@@ -727,12 +727,54 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
                                       double* F_up_band,
                                       double* F_dir_band,
                                       double* gauss_weight) {
+  bool opt = true;
+  
+  int nbin = opacities.nbin;
+  int ny   = opacities.ny;
+  
+  if (opt) {
+    {
+      int num_levels_per_block = 256/ny;
+      dim3 gridsize(ninterface/num_levels_per_block + 1);
+      dim3 blocksize(num_levels_per_block, ny);
+      
+      integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
+						   F_up_wg,
+						   F_dir_wg,
+						   F_down_band,
+						   F_up_band,
+						   F_dir_band,
+						   gauss_weight,
+						   nbin,
+						   ninterface,
+						   ny);
 
+      cudaDeviceSynchronize();
+    }
+
+    {
+      int num_levels_per_block = 256/nbin;
+      dim3 gridsize(ninterface/num_levels_per_block + 1);
+      dim3 blocksize(num_levels_per_block, nbin);
+      integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
+						  F_down_tot,
+						  F_up_tot,
+						  F_net,
+						  F_down_band,
+						  F_up_band,
+						  F_dir_band,
+						  nbin,
+						  ninterface);
+    }
+    
+    
+  }
+  else {
+      
     dim3 threadsPerBlock(1, 1, 1);
     dim3 numBlocks(32, 4, 8);
 
-    int nbin = opacities.nbin;
-    int ny   = opacities.ny;
+
 
     //printf("Running Alfrodull Wrapper for integrate flux\n");
     integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
@@ -751,6 +793,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
                                                           ny);
 
     cudaDeviceSynchronize();
+  }
 }
 
 bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out

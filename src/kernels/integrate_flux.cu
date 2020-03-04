@@ -6,6 +6,18 @@
 #include <stdio.h>
 
 // calculates the integrated upwards and downwards fluxes
+/*
+  NOTE: called as this:
+
+    dim3 threadsPerBlock(1, 1, 1); <- grid dim, defines BlockIdx
+    dim3 numBlocks(32, 4, 8);      <- threads in a block, -> defines blockDim and threadIdx
+
+    int nbin = opacities.nbin;
+    int ny   = opacities.ny;
+
+    //printf("Running Alfrodull Wrapper for integrate flux\n");
+    integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
+*/
 __global__ void integrate_flux_double(double* deltalambda,  // in
                                       double* F_down_tot,   // out
                                       double* F_up_tot,     // out
@@ -25,6 +37,8 @@ __global__ void integrate_flux_double(double* deltalambda,  // in
     int y = threadIdx.y;
     int i = threadIdx.z;
 
+    // set memory to 0.
+    
     if (y == 0) {
         while (i < numinterfaces) {
             while (x < nbin) {
@@ -95,6 +109,81 @@ __global__ void integrate_flux_double(double* deltalambda,  // in
         }
     }
 }
+
+/* 
+numinterfaces: levels
+nbin:          frequency bins
+ny:            weights in frequency bins
+
+must sum:
+* over weighted ny into frequency bins (down_band, up_band. dir_band)
+* over frequency bins into total flux per levels (up_tot, down_tot, net)
+*/
+// first simple integration over weights
+__global__ void integrate_flux_band(double* F_down_wg,    // in
+				    double* F_up_wg,      // in
+				    double* F_dir_wg,     // in
+				    double* F_down_band,  // out
+				    double* F_up_band,    // out
+				    double* F_dir_band,   // out
+				    double* gauss_weight, // in
+				    int     nbin,
+				    int     numinterfaces,
+				    int     ny) {
+
+  int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int bin_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  
+
+  if (interface_idx < numinterfaces && bin_idx < nbin) {
+    // set memory to 0.
+    F_dir_band[bin_idx + nbin * interface_idx]  = 0;
+    F_up_band[bin_idx + nbin * interface_idx]   = 0;
+    F_down_band[bin_idx + nbin * interface_idx] = 0;
+    
+    int bin_offset = bin_idx + nbin * interface_idx;
+    
+    for (int y = 0; y < ny; y++) {
+      double w = gauss_weight[y];
+      int weight_offset = y + ny * bin_idx + ny * nbin * interface_idx;
+      
+      F_dir_band[bin_offset] += 0.5 * w * F_dir_wg[weight_offset];
+      F_up_band[bin_offset] += 0.5 * w * F_up_wg[weight_offset];
+      F_down_band[bin_offset] += 0.5 * w * F_down_wg[weight_offset];
+    }
+  }
+}
+
+// simple integration over bins/bands
+__global__ void integrate_flux_tot(double* deltalambda,  // in
+				   double* F_down_tot,   // out
+				   double* F_up_tot,     // out
+				   double* F_net,        // out
+				   double* F_down_band,  // out
+				   double* F_up_band,    // out
+				   double* F_dir_band,   // out
+				   int     nbin,
+				   int     numinterfaces) {
+
+  
+  int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (interface_idx < numinterfaces) {
+    
+    F_up_tot[interface_idx]   = 0;
+    F_down_tot[interface_idx] = 0;
+
+    for (int bin = 0; bin < nbin; bin++) {
+      int band_idx = interface_idx*nbin + bin;
+      F_up_tot[interface_idx] = F_up_band[band_idx] * deltalambda[bin];
+      F_down_tot[interface_idx] = F_down_band[band_idx] * deltalambda[bin] + F_dir_band[band_idx];
+    }
+    
+    __syncthreads();
+    F_net[interface_idx] = F_up_tot[interface_idx] - F_down_tot[interface_idx];
+  }
+}
+
 
 // calculates the direct beam flux with geometric zenith angle correction, isothermal version
 __global__ void fdir_iso(double* F_dir_wg,       // out
