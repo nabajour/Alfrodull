@@ -731,12 +731,13 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
   
   int nbin = opacities.nbin;
   int ny   = opacities.ny;
-
+  
   if (opt) {
     {
-      int num_levels_per_block = 256/nbin;
+      int num_levels_per_block = 256/nbin + 1;
       dim3 gridsize(ninterface/num_levels_per_block + 1);
       dim3 blocksize(num_levels_per_block, nbin);
+      //printf("nbin: %d, ny: %d\n", nbin, ny);
       
       integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
 						   F_up_wg,
@@ -753,7 +754,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
     }
 
     {
-      int num_levels_per_block = 256/nbin;
+      int num_levels_per_block = 256/nbin + 1;
       dim3 gridsize(ninterface/num_levels_per_block + 1);
       dim3 blocksize(num_levels_per_block, nbin);
       integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
