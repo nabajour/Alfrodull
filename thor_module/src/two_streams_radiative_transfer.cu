@@ -77,7 +77,7 @@ void two_streams_radiative_transfer::print_config() {
     printf("Alf_T_surf: %f\n", T_surf);
     printf("Alf_albedo: %f\n", albedo);
     printf("Alf_g_0: %f\n", g_0);
-    printf("Alf_diffusivity: %d\n", epsi);
+    printf("Alf_diffusivity: %f\n", epsi);
 
     printf("Alf_scat: %s\n", scat ? "true" : "false");
     printf("Alf_scat_corr: %s\n", scat_corr ? "true" : "false");
