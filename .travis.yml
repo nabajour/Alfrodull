@@ -37,5 +37,10 @@ before_install:
   - LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
   - PATH=${CUDA_HOME}/bin:${PATH}
   - PATH=${PATH}:${PWD}
+  - mkdir build
+  - cd build
+  - cmake -DBUILD_TESTS=ON ..
 
-script: make release
+script:
+   - make 
+   - ./test_integrate_flux
