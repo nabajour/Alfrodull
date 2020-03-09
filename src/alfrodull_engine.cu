@@ -766,6 +766,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
 						  F_dir_band,
 						  nbin,
 						  ninterface);
+      cudaDeviceSynchronize();
     }
     
     

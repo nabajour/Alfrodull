@@ -7,6 +7,8 @@ set(SM "0" CACHE STRING "GPU SM value")
 #SET(CMAKE_CXX_COMPILER g++-8)
 #SET(CMAKE_C_COMPILER gcc-8)
 
+option(BUILD_TESTS "Build test programs" OFF)
+
 if (DEFINED THOR_MODULE)
   message(STATUS "Building as THOR module")
 
@@ -81,7 +83,11 @@ set(SRC_ALFRODULLIB
 	
 include_directories(src/inc)
 
-
+# THOR utilities
+set(SRC_THOR_UTILS
+  ${THOR_BASE_FOLDER}/src/utils/storage.cpp
+  ${THOR_BASE_FOLDER}/src/utils/cuda_device_memory.cu
+  )
 
 
 ######################################################################
@@ -160,4 +166,31 @@ else()
   # 				 CXX_VISIBILITY_PRESET "hidden"
   # 				 PREFIX "${PYTHON_MODULE_PREFIX}"
   #                                  SUFFIX "${PYTHON_MODULE_EXTENSION}")
+endif()
+
+#######################################################################
+# build and execute tests
+if (DEFINED BUILD_TESTS)
+  #include_directories(tests/inc)
+  include_directories(${THOR_ROOT_INCLUDES})
+
+
+
+  
+  # build as test
+  set(SRC_TEST_INTEGRATE_FLUX
+    tests/integrate_flux/flux_int_test.cu)
+
+  
+  set(LIBRARY_OUTPUT_PATH)
+
+  
+  add_executable(test_integrate_flux ${SRC_TEST_INTEGRATE_FLUX} ${SRC_THOR_UTILS})
+  set_target_properties(test_integrate_flux PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_VISIBILITY_PRESET "hidden"
+    CUDA_SEPARABLE_COMPILATION ON
+    )
+  target_link_libraries(test_integrate_flux PRIVATE alfrodull)
+  target_link_libraries(test_integrate_flux PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 endif()
