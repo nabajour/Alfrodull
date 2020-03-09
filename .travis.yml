@@ -40,9 +40,12 @@ before_install:
   - LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
   - PATH=${CUDA_HOME}/bin:${PATH}
   - PATH=${PATH}:${PWD}
+  - mkdir ~/THOR_download
+  - wget https://github.com/exoclime/THOR-dev/archive/master.zip /tmp/THOR_download/master.zip
+  - unzip /tmp/THOR_download/master.zip -d /tmp/THOR_download/
   - mkdir build
   - cd build
-  - cmake -DBUILD_TESTS=ON ..
+  - cmake -DBUILD_TESTS=ON -DTHOR_BASE_FOLDER=/tmp/THOR_download/THOR-dev/ ..
 
 script:
   - make 

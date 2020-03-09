@@ -21,8 +21,10 @@ else()
   set ( COMPILE_FLAGS --compiler-options;-Wall)
   
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-  
-  set(THOR_BASE_FOLDER "../")
+
+  if (NOT DEFINED THOR_BASE_FOLDER)
+    set(THOR_BASE_FOLDER "../")
+  endif()
   
   
   include(CheckLanguage)
