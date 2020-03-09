@@ -170,7 +170,7 @@ endif()
 
 #######################################################################
 # build and execute tests
-if (DEFINED BUILD_TESTS)
+if (BUILD_TESTS)
   #include_directories(tests/inc)
   include_directories(${THOR_ROOT_INCLUDES})
 
