@@ -22,6 +22,8 @@ matrix:
             - libhdf5-100
             - libhdf5-serial-dev
             - libhdf5-cpp-100
+	    - python3.7
+	    - python3.7-dev
             - pybind11-dev
 
 
