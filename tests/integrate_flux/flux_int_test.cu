@@ -10,7 +10,12 @@ using std::max;
 
 
 bool cmp_dbl(double d1, double d2, double eps) {
-    return abs(d1 - d2) / max(d1, d2) < eps;
+  if (d1 == d2)
+    return true;
+  else if (d1 == 0.0 && d2 == 0.0)
+    return false;
+
+  return fabs(d1 - d2) / fabs(max(d1, d2)) < eps;
 }
 
 int main(int argc, char** argv) {
@@ -20,10 +25,10 @@ int main(int argc, char** argv) {
 
     int point_num = 1;
 
-    int nlayer = 100;
+    int nlayer = 15;
 
-    int nbin = 30;
-    int ny   = 1;
+    int nbin = 10;
+    int ny   = 5;
 
     int ninterface         = nlayer + 1;
     int nlayer_nbin        = nlayer * nbin;
@@ -101,16 +106,16 @@ int main(int argc, char** argv) {
 
     // fill data
     for (int i = 0; i < nbin; i++) {
-        deltalambda_h[i] = 1.0;
+      deltalambda_h[i] = 1.0;
     }
 
     for (int i = 0; i < ninterface; i++) {
         for (int j = 0; j < nbin; j++) {
             for (int k = 0; k < ny; k++) {
                 //printf("%d %d %d \n", i, j, k);
-                F_down_wg_h[i * nbin * ny + j * ny + k] = 1.0;
-                F_up_wg_h[i * nbin * ny + j * ny + k]   = 1.0;
-                F_dir_wg_h[i * nbin * ny + j * ny + k]  = 1.0;
+	      F_down_wg_h[i * nbin * ny + j * ny + k] = 1.0/double(i+1 + j + k + 0.5);
+                F_up_wg_h[i * nbin * ny + j * ny + k]   = 1.0/double(i+1 + j + k + 0.9);
+                F_dir_wg_h[i * nbin * ny + j * ny + k]  = 1.0/double(i+1 + j + k + 0.7);
             }
         }
     }
@@ -144,9 +149,9 @@ int main(int argc, char** argv) {
     }
 
     {
-        int  num_levels_per_block = 256 / nbin + 1;
+        int  num_levels_per_block = 256 ;
         dim3 gridsize(ninterface / num_levels_per_block + 1);
-        dim3 blocksize(num_levels_per_block, nbin);
+        dim3 blocksize(num_levels_per_block);
         integrate_flux_tot<<<gridsize, blocksize>>>(*deltalambda,
                                                     *F_down_tot_opt,
                                                     *F_up_tot_opt,
@@ -224,7 +229,7 @@ int main(int argc, char** argv) {
 
             if (match1 && match2 && match3) {
                 if (debug)
-                    printf("%.12g == %.12g, %5d - %.12g == %.12g, %5d - %.12g == %.12g %5d\n",
+		  printf("% 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g %5d\n",
                            f_dwn_bd_opt,
                            f_dwn_bd,
                            match1,
@@ -238,7 +243,7 @@ int main(int argc, char** argv) {
             else {
                 error += 1;
 
-                printf("%.12g == %.12g, %5d - %.12g == %.12g, %5d - %.12g == %.12g %5d\n",
+                printf("% 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g %5d\n",
                        f_dwn_bd_opt,
                        f_dwn_bd,
                        match1,
@@ -252,13 +257,9 @@ int main(int argc, char** argv) {
             total += 1;
         }
     }
-
-    printf("Comparing band\n");
-
-    bool debug = true;
-
-    int error = 0;
-    int total = 0;
+    printf("errors: %d/%d\n", error, total);
+    
+    printf("Comparing total\n");
 
     std::shared_ptr<double[]> F_up_tot_h   = F_up_tot.get_host_data();
     std::shared_ptr<double[]> F_down_tot_h = F_down_tot.get_host_data();
@@ -268,54 +269,51 @@ int main(int argc, char** argv) {
     std::shared_ptr<double[]> F_down_tot_opt_h = F_down_tot_opt.get_host_data();
     std::shared_ptr<double[]> F_net_opt_h      = F_net_opt.get_host_data();
 
-
-    double epsilon = 1e-12;
     for (int i = 0; i < ninterface; i++) {
-        for (int j = 0; j < nbin; j++) {
-            double f_dwn_tot     = F_down_tot_h[i * nbin + j];
-            double f_dwn_tot_opt = F_down_tot_opt_h[i * nbin + j];
+      double f_dwn_tot     = F_down_tot_h[i];
+      double f_dwn_tot_opt = F_down_tot_opt_h[i];
 
-            bool match1 = cmp_dbl(f_dwn_tot, f_dwn_tot_opt, epsilon);
+      bool match1 = cmp_dbl(f_dwn_tot, f_dwn_tot_opt, epsilon);
 
-            double f_up_tot     = F_up_tot_h[i * nbin + j];
-            double f_up_tot_opt = F_up_tot_opt_h[i * nbin + j];
+      double f_up_tot     = F_up_tot_h[i];
+      double f_up_tot_opt = F_up_tot_opt_h[i];
+      
+      bool match2 = cmp_dbl(f_up_tot, f_up_tot_opt, epsilon);
 
-            bool match2 = cmp_dbl(f_up_tot, f_up_tot_opt, epsilon);
+      double f_net     = F_net_h[i];
+      double f_net_opt = F_net_opt_h[i];
 
-            double f_dir_tot     = F_dir_tot_h[i * nbin + j];
-            double f_dir_tot_opt = F_dir_tot_opt_h[i * nbin + j];
-
-            bool match3 = cmp_dbl(f_dir_tot, f_dir_tot_opt, epsilon);
-
-            if (match1 && match2 && match3) {
-                if (debug)
-                    printf("%.12g == %.12g, %5d - %.12g == %.12g, %5d - %.12g == %.12g %5d\n",
-                           f_dwn_tot_opt,
-                           f_dwn_tot,
-                           match1,
-                           f_up_tot_opt,
-                           f_up_tot,
-                           match2,
-                           f_dir_tot_opt,
-                           f_dir_tot,
-                           match3);
-            }
+      bool match3 = cmp_dbl(f_net, f_net_opt, epsilon);
+      
+      if (match1 && match2 && match3) {
+	if (debug)
+	  printf("% 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g %5d\n",
+		 f_dwn_tot_opt,
+		 f_dwn_tot,
+		 match1,
+		 f_up_tot_opt,
+		 f_up_tot,
+		 match2,
+		 f_net_opt,
+		 f_net,
+		 match3);
+      }
             else {
-                error += 1;
-
-                printf("%.12g == %.12g, %5d - %.12g == %.12g, %5d - %.12g == %.12g %5d\n",
-                       f_dwn_tot_opt,
+	      error += 1;
+	      
+	      printf("% 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g, %5d - % 20.12g == % 20.12g %5d\n",
+		     f_dwn_tot_opt,
                        f_dwn_tot,
-                       match1,
-                       f_up_tot_opt,
-                       f_up_tot,
-                       match2,
-                       f_dir_tot_opt,
-                       f_dir_tot,
-                       match3);
+		     match1,
+		     f_up_tot_opt,
+		     f_up_tot,
+		     match2,
+                       f_net_opt,
+		     f_net,
+		     match3);
             }
             total += 1;
-        }
+    
     }
 
 

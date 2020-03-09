@@ -754,9 +754,9 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
     }
 
     {
-      int num_levels_per_block = 256/nbin + 1;
+      int num_levels_per_block = 256;
       dim3 gridsize(ninterface/num_levels_per_block + 1);
-      dim3 blocksize(num_levels_per_block, nbin);
+      dim3 blocksize(num_levels_per_block);
       integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
 						  F_down_tot,
 						  F_up_tot,
