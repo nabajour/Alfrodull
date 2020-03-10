@@ -211,7 +211,7 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-	if (dir_beam)
+	if (dir_beam && mu_star > 0.0)
 	  F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
 	else
 	  F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
@@ -265,7 +265,7 @@ __global__ void fdir_noniso(double* F_dir_wg,
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-	if (dir_beam)
+	if (dir_beam && mu_star > 0.0)
 	  F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
 	else
 	  F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;

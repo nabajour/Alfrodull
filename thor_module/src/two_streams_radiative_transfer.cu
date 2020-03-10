@@ -236,6 +236,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_down_band.allocate(ninterface_nbin);
     F_up_band.allocate(ninterface_nbin);
     F_dir_band.allocate(ninterface_nbin);
+    // TODO: check, ninterface or nlayers ?
     F_net.allocate(esp.point_num * ninterface);
 
     g_0_tot_lay.allocate(nlayer_nbin);
@@ -598,7 +599,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
     int num_samples = (esp.point_num * nlayer);
     increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
-        *Qheat, esp.profx_Qheat_d, num_samples);
+         esp.profx_Qheat_d, *Qheat, num_samples);
     cudaDeviceSynchronize();
     cuda_check_status_or_exit();
 
