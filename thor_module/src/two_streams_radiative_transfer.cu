@@ -599,13 +599,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         start_up = false;
 
 	
-	std::shared_ptr<double[]> F_dir_band_h = F_dir_band.get_host_data();
-	int lev = (esp.nvi - 1);
-	for (int i = 0; i < esp.point_num; i++) {
-	  printf("i: %d, mu_star: %g\n", i, loc_col_mu_star[i]);
-	  for (int b = 0; b < nbin; b++)
-	    	  printf("\tb: %d, F_dir: %g\n", b, F_dir_band_h[i*esp.nvi*nbin + lev*nbin + b ]);
-	}
+	// std::shared_ptr<double[]> F_dir_band_h = F_dir_band.get_host_data();
+	// int lev = (esp.nvi - 1);
+	// for (int i = 0; i < esp.point_num; i++) {
+	//   printf("i: %d, mu_star: %g\n", i, loc_col_mu_star[i]);
+	//   for (int b = 0; b < nbin; b++)
+	//     	  printf("\tb: %d, F_dir: %g\n", b, F_dir_band_h[i*esp.nvi*nbin + lev*nbin + b ]);
+	// }
 	
     }
 
