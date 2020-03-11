@@ -83,7 +83,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     i2s_transition = i2s_transition;
     debug          = debug_;
     // TODO: maybe should stay in opacities object
-    nbin = opacities.nbin;
+    //    nbin = opacities.nbin;
 
     // prepare_planck_table();
 }
@@ -935,7 +935,8 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
 
     int ny = opacities.ny;
 
-
+    //printf("R_star: %g, R_planet: %g, a: %g\n", R_star, R_planet, a);
+    //printf("dir beam: %d, geom_z_corr: %d, mu_star: %g\n", dir_beam, geom_zenith_corr, mu_star);
     if (iso) {
         dim3 block(4, 32, 4);
         dim3 grid(int((ninterface + 3) / 4), int((nbin + 31) / 32), int((ny + 3) / 4));

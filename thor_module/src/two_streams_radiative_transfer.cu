@@ -193,20 +193,11 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     // initialise opacities table -> gives frequency bins
     alf.load_opacities(opacities_file);
+    cudaDeviceSynchronize();
     printf("Loaded opacities, using %d bins with %d weights per bin\n",
            alf.opacities.nbin,
            alf.opacities.ny);
-    // initialise planck tables
-    alf.prepare_planck_table();
-    printf("Built Planck Table for %d bins, Star temp %g K\n", alf.opacities.nbin, alf.T_star);
-    // initialise alf
 
-    // TODO: where to do this, check
-    // TODO where does starflux come from?
-    // correct_incident_energy
-    // alf.correct_incident_energy(dev_starflux,
-    // 				real_star,
-    // 				true);
 
     alf.allocate_internal_variables();
 
@@ -235,7 +226,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_up_tot.allocate(esp.point_num * ninterface);
     F_down_band.allocate(ninterface_nbin);
     F_up_band.allocate(ninterface_nbin);
-    F_dir_band.allocate(ninterface_nbin);
+    F_dir_band.allocate(esp.point_num*ninterface_nbin);
     // TODO: check, ninterface or nlayers ?
     F_net.allocate(esp.point_num * ninterface);
 
@@ -284,6 +275,18 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
 
     // this is only known here, comes from sim setup.
     alf.R_planet = sim.A;
+
+        // initialise planck tables
+    alf.prepare_planck_table();
+    printf("Built Planck Table for %d bins, Star temp %g K\n", alf.opacities.nbin, alf.T_star);
+    // initialise alf
+
+    // TODO: where to do this, check
+    // TODO where does starflux come from?
+    // correct_incident_energy
+    alf.correct_incident_energy(*star_flux,
+     				real_star,
+     				true);
     // initialise Alfrodull
     sync_rot = sync_rot_config;
     if (sync_rot) {
@@ -447,7 +450,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
-
+  int nbin = alf.opacities.nbin;
     //  update global insolation properties if necessary
     if (sync_rot) {
         if (ecc > 1e-10) {
@@ -553,7 +556,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             double* F_col_down_tot    = &((*F_down_tot)[column_offset_int]);
             double* F_col_up_tot      = &((*F_up_tot)[column_offset_int]);
             double* F_col_net         = &((*F_net)[column_offset_int]);
-
+	    double* F_dir_band_col    = &((*F_dir_band)[ column_idx * ninterface * nbin]);
             alf.compute_radiative_transfer(dev_starflux,             // dev_starflux
                                            column_layer_temperature, // dev_T_lay
                                            *temperature_int,         // dev_T_int
@@ -575,7 +578,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            F_col_net,
                                            *F_down_band,
                                            *F_up_band,
-                                           *F_dir_band,
+                                           F_dir_band_col,
                                            mu_star);
             cuda_check_status_or_exit();
 
@@ -594,6 +597,16 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             cuda_check_status_or_exit();
         }
         start_up = false;
+
+	
+	std::shared_ptr<double[]> F_dir_band_h = F_dir_band.get_host_data();
+	int lev = (esp.nvi - 1);
+	for (int i = 0; i < esp.point_num; i++) {
+	  printf("i: %d, mu_star: %g\n", i, loc_col_mu_star[i]);
+	  for (int b = 0; b < nbin; b++)
+	    	  printf("\tb: %d, F_dir: %g\n", b, F_dir_band_h[i*esp.nvi*nbin + lev*nbin + b ]);
+	}
+	
     }
 
 
@@ -608,6 +621,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     //     // calculate annually average of insolation for the first orbit
     //     annual_insol<<<NBRT, NTH>>>(insol_ann_d, insol_d, nstep, esp.point_num);
     // }
+
 
     printf("\r\n");
     return true;

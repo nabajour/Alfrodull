@@ -4,7 +4,6 @@
 
 #include "math_helpers.h"
 
-
 // constructing a table with Planck function values for given wavelengths and in a suitable temperature range
 __global__ void plancktable(double* planck_grid,
                             double* lambda_edge,
@@ -14,10 +13,10 @@ __global__ void plancktable(double* planck_grid,
                             int     p_iter,
                             int     dim,
                             int     step) {
-  // Wavenumber
-  int x = threadIdx.x + blockIdx.x * blockDim.x;
-  // temperature
-  int t = threadIdx.y + blockIdx.y * blockDim.y;
+    // Wavenumber
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    // temperature
+    int t = threadIdx.y + blockIdx.y * blockDim.y;
 
     if (x < nwave && t < (dim / 10 + 1)) {
 
@@ -39,7 +38,6 @@ __global__ void plancktable(double* planck_grid,
         }
 
         planck_grid[x + (t + p_iter * (dim / 10)) * nwave] = 0.0;
-
         // analytical calculation, only for T > 0
         if (T > 0.01) {
             D = 2.0 * (power_int(KBOLTZMANN / HCONST, 3) * KBOLTZMANN * power_int(T, 4))
@@ -144,10 +142,23 @@ void planck_table::construct_planck_table(
             *planck_grid, lambda_edge, deltalambda, nwave, Tstar, p_iter, dim, step);
         cudaDeviceSynchronize();
     }
-    // // print out planck grid for debug
-    // std::unique_ptr<double[]> plgrd = std::make_unique<double[]>(nplanck_grid);
+/*
+    double lambda_edge_h[nwave + 1];
+    double delta_lambda_h[nwave];
+    cudaMemcpy(lambda_edge_h, lambda_edge, (nwave + 1)*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(delta_lambda_h, deltalambda, (nwave)*sizeof(double), cudaMemcpyDeviceToHost);
 
-    // planck_grid.fetch(plgrd);
-    // for (int i = 0; i < nplanck_grid; i++)
-    //   printf("array[%d] : %g\n", i, plgrd[i]);
+    // print out planck grid for debug
+    std::shared_ptr<double[]> plgrd = planck_grid.get_host_data();
+    FILE*                     pFile;
+    pFile = fopen("planckgrid.txt", "w");
+
+    for (int d = 0; d < dim + 1; d++) {
+        for (int n = 0; n < nwave; n++) {
+            int idx = d * nwave + n;
+            fprintf(pFile, "%d\t%d\t%g\t%g\t%g\n", d, n, plgrd[idx], lambda_edge_h[n], delta_lambda_h[n]);
+        }
+    }
+    fclose(pFile);
+*/
 }

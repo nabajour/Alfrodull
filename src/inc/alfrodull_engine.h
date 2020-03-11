@@ -118,7 +118,7 @@ public:
     planck_table plancktable;
 
     // general sim parameters
-    int nbin = 0; // should come from opacity table (?)
+  //    int nbin = 0; // should come from opacity table (?)
 
     int    nlayer     = 0;
     int    ninterface = 0; // nlayers + 1

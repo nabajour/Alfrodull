@@ -54,19 +54,21 @@ opacity_table::opacity_table() {
 }
 
 bool opacity_table::load_opacity_table(const string& filename) {
-  #ifdef CGS_UNITS
+#ifdef CGS_UNITS
+  // #warning "Compiling with CGS units"
   const double temperatures_unit_conv = 1.0;
   const double pressures_unit_conv = 1.0;
   const double wavelength_unit_conv = 1.0;
   const double opacity_unit_conv = 1.0;
   const double scat_cross_unit_conv = 1.0; 
-  #else // SI units
+#else // SI units
+  // #warning "Compiling with SI units"
   // for SI units, convert CGS to SI
   const double temperatures_unit_conv = 1.0;
-  const double pressures_unit_conv = 1.0e1;
-  const double wavelength_unit_conv = 1.0e2;
-  const double opacity_unit_conv = 1.0e1;
-  const double scat_cross_unit_conv = 1.0e4; 
+  const double pressures_unit_conv = 1.0e-1;
+  const double wavelength_unit_conv = 1.0e-2;
+  const double opacity_unit_conv = 1.0e-1;
+  const double scat_cross_unit_conv = 1.0e-4; 
 
 #endif // CGS_UNIT
 
@@ -127,8 +129,8 @@ bool opacity_table::load_opacity_table(const string& filename) {
         data_opac_interwave[nbin] =
             data_opac_wave[nbin - 1] + (data_opac_wave[nbin - 1] - data_opac_wave[nbin - 2]) / 2.0;
 
-	for (int i = 0; i < nbin; i++)
-	  data_opac_interwave[i] *= wavelength_unit_conv;
+	// for (int i = 0; i < nbin; i++)
+	//   data_opac_interwave[i] *= wavelength_unit_conv;
         push_table_to_device<double>(data_opac_interwave, nbin + 1, dev_opac_interwave);
     }
     // for (int i = 0; i < nbin + 1; i++)
