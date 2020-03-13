@@ -428,7 +428,10 @@ __global__ void compute_col_mu_star(double* col_mu_star,
                                     obliquity,
                                     column_idx);
 
-        col_mu_star[column_idx] = coszrs;
+	if (coszrs < 0.0)
+	  col_mu_star[column_idx] = 0.0;
+	else
+	  col_mu_star[column_idx] = coszrs;
     }
 }
 
