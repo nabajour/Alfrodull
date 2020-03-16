@@ -415,6 +415,9 @@ __global__ void compute_col_mu_star(double* col_mu_star,
                                     double  obliquity,
                                     bool    sync_rot,
                                     int     num_points) {
+  // helios_angle_star = pi - zenith_angle
+  // cos(helios_angle_star) = mu_star = cos(pi - zenith_angle) = -cos(zenith_angle)
+  // Zenith angle is only positive. mu_star is only negative
     int column_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (column_idx < num_points) {
@@ -431,7 +434,7 @@ __global__ void compute_col_mu_star(double* col_mu_star,
 	if (coszrs < 0.0)
 	  col_mu_star[column_idx] = 0.0;
 	else
-	  col_mu_star[column_idx] = coszrs;
+	  col_mu_star[column_idx] = -coszrs;
     }
 }
 
