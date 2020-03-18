@@ -306,6 +306,9 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
     obliquity             = obliquity_config * M_PI / 180.0;
 
 
+    // internal flux from internal temperature
+    F_intern =  STEFANBOLTZMANN*pow(T_surf, 4);
+    
     return true;
 }
 
@@ -396,12 +399,21 @@ __global__ void increment_Qheat(double* Qheat_global, double* Qheat, int num_sam
 __global__ void compute_column_Qheat(double* F_net, // net flux, layer
                                      double* z_int,
                                      double* Qheat,
+				     double F_intern,
                                      int     num_layers) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (layer_idx < num_layers) {
-        // delta_flux/delta_z
-        Qheat[layer_idx] =
-            -(F_net[layer_idx + 1] - F_net[layer_idx]) / (z_int[layer_idx + 1] - z_int[layer_idx]);
+    if (layer_idx == 0) {
+      // delta_flux/delta_z
+      // F_net positive in upward direction (F_up - F_down)
+      // F_intern positive, flux out of bottom surface
+      // Qheat negative when net flux differential out of layer is positive
+      Qheat[layer_idx] =
+	- ((F_net[1] - (F_net[0] + F_intern))) / (z_int[1] - z_int[0]);      
+    }
+    else if (layer_idx < num_layers ) {
+      // delta_flux/delta_z
+      Qheat[layer_idx] =
+	-(F_net[layer_idx + 1] - F_net[layer_idx]) / (z_int[layer_idx + 1] - z_int[layer_idx]);
     }
 }
 
@@ -598,6 +610,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                    num_blocks>>>(*F_net, // net flux, layer
                                                  z_int,
                                                  qheat,
+						 F_intern,
                                                  num_layers);
             cudaDeviceSynchronize();
             cuda_check_status_or_exit();

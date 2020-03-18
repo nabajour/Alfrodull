@@ -3,11 +3,11 @@
 
 
 // physical constants
-const utype PI         = 3.141592653589793;
-const utype HCONST     = 6.62607015e-34; // J s
-const utype CSPEED     = 299792458.0; // m / s
-const utype KBOLTZMANN = 1.38064852e-23; // J / K
-const utype STEFANBOLTZMANN =
+const double PI         = 3.141592653589793;
+const double HCONST     = 6.62607015e-34; // J s
+const double CSPEED     = 299792458.0; // m / s
+const double KBOLTZMANN = 1.38064852e-23; // J / K
+const double STEFANBOLTZMANN =
   5.6703744191844314e-08; // W / (K^4 m^2)
 
 

@@ -149,6 +149,8 @@ public:
     double alpha_i_config     = 0;        // initial right asc of host star (relative to long = 0)
     double longp_config       = 0;        // longitude of periastron (rad)
 
+    double F_intern = 0.0;
+  
     int compute_every_n_iteration = 1;
 
     // TODO: check this. if we are starting up and not at iteration 0,

@@ -4,10 +4,6 @@
 
 #include "interpolate_values.h"
 
-//#include "surface_planck.h"
-
-//#include "correct_surface_emission.h"
-
 #include "calculate_physics.h"
 
 #include "alfrodull_engine.h"
