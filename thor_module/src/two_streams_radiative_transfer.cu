@@ -202,6 +202,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     alf.allocate_internal_variables();
 
     int ninterface         = nlayer + 1;
+    int nlayer_plus1       = nlayer + 1;
     int nbin               = alf.opacities.nbin;
     int ny                 = alf.opacities.ny;
     int nlayer_nbin        = nlayer * nbin;
@@ -210,9 +211,10 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     // allocate interface state variables to be interpolated
 
+
     pressure_int.allocate(ninterface);
     temperature_int.allocate(ninterface);
-
+    temperature_lay.allocate(nlayer_plus1);
     // TODO: allocate here. Should be read in in case of real_star == true
     star_flux.allocate(nbin);
 
@@ -338,16 +340,24 @@ __global__ void initialise_delta_colmass(double* delta_col_mass,
 // needs to loop from 0 to number of interfaces (nvi = nv+1)
 // same as profX_RT
 __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
+						     double* temperature_lay_thor,
                                                      double* temperature_int,
                                                      double* pressure_lay,
                                                      double* pressure_int,
                                                      double* density,
                                                      double* altitude_lay,
                                                      double* altitude_int,
+						     double  T_intern,
                                                      double  gravit,
                                                      int     num_layers) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
-
+    if (layer_idx == 0) {
+      temperature_lay[0] = T_intern;
+    }
+    else {
+	temperature_lay[layer_idx] = temperature_lay_thor[layer_idx - 1];
+    }
+    
     if (layer_idx == 0) {
         // extrapolate to lower boundary
         double psm =
@@ -357,7 +367,7 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
         double ps = 0.5 * (pressure_lay[0] + psm);
 
         pressure_int[0]    = ps;
-        temperature_int[0] = temperature_lay[0];
+        temperature_int[0] = T_intern;
     }
     else if (layer_idx == num_layers) {
         // extrapolate to top boundary
@@ -371,7 +381,7 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
         double ptop = 0.5 * (pressure_lay[num_layers - 1] + pp);
 
         pressure_int[num_layers]    = ptop;
-        temperature_int[num_layers] = temperature_lay[num_layers - 1];
+        temperature_int[num_layers] = temperature_lay_thor[num_layers - 1];
     }
     else if (layer_idx < num_layers) {
         // interpolation between layers
@@ -384,7 +394,7 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
 
         pressure_int[layer_idx] = pressure_lay[layer_idx - 1] * a + pressure_lay[layer_idx] * b;
         temperature_int[layer_idx] =
-            temperature_lay[layer_idx - 1] * a + temperature_lay[layer_idx] * b;
+            temperature_lay_thor[layer_idx - 1] * a + temperature_lay_thor[layer_idx] * b;
     }
 }
 
@@ -513,21 +523,23 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             // fetch column values
 
             // TODO: check that I got the correct ones between slow and fast modes
-            double* column_layer_temperature = &(esp.temperature_d[column_offset]);
+            double* column_layer_temperature_thor = &(esp.temperature_d[column_offset]);
             double* column_layer_pressure    = &(esp.pressure_d[column_offset]);
             double* column_density           = &(esp.Rho_d[column_offset]);
             // initialise interpolated T and P
 
             //printf("interpolate_temperature\n");
 
-            interpolate_temperature_and_pressure<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(
-                column_layer_temperature,
-                *temperature_int,
+            interpolate_temperature_and_pressure<<<((num_layers + 1) / num_blocks) + 1, num_blocks>>>(
+                *temperature_lay,
+		column_layer_temperature_thor,
+		*temperature_int,
                 column_layer_pressure,
                 *pressure_int,
                 column_density,
                 esp.Altitude_d,
                 esp.Altitudeh_d,
+		T_surf,
                 gravit,
                 num_layers);
             cudaDeviceSynchronize();
@@ -536,7 +548,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             // initialise delta_col_mass
             // TODO: should this go inside alf?
             //printf("initialise_delta_colmass\n");
-            initialise_delta_colmass<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(
+            initialise_delta_colmass<<<(num_layers / num_blocks) + 1, num_blocks>>>(
                 *alf.delta_col_mass,
                 *alf.delta_col_upper,
                 *alf.delta_col_lower,
@@ -576,7 +588,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             double* F_col_net         = &((*F_net)[column_offset_int]);
 	    double* F_dir_band_col    = &((*F_dir_band)[ column_idx * ninterface * nbin]);
             alf.compute_radiative_transfer(dev_starflux,             // dev_starflux
-                                           column_layer_temperature, // dev_T_lay
+                                           *temperature_lay,         // dev_T_lay
                                            *temperature_int,         // dev_T_int
                                            column_layer_pressure,    // dev_p_lay
                                            *pressure_int,            // dev_p_int
@@ -598,6 +610,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            *F_up_band,
                                            F_dir_band_col,
                                            mu_star);
+	    cudaDeviceSynchronize();
             cuda_check_status_or_exit();
 
 
@@ -606,8 +619,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             // set Qheat
             //printf("increment_column_Qheat\n");
             double* qheat = &((*Qheat)[column_offset]);
-            compute_column_Qheat<<<(esp.point_num / num_blocks) + 1,
-                                   num_blocks>>>(*F_net, // net flux, layer
+            compute_column_Qheat<<<(esp.nv / num_blocks) + 1,
+                                   num_blocks>>>(F_col_net, // net flux, layer
                                                  z_int,
                                                  qheat,
 						 F_intern,

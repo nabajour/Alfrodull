@@ -168,7 +168,7 @@ private:
 
     cuda_device_memory<double> pressure_int;
     cuda_device_memory<double> temperature_int;
-
+    cuda_device_memory<double> temperature_lay;
 
     cuda_device_memory<double> col_mu_star;
 
