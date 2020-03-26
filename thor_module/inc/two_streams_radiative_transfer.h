@@ -150,7 +150,7 @@ public:
     double longp_config       = 0;        // longitude of periastron (rad)
 
     double F_intern = 0.0;
-  
+
     int compute_every_n_iteration = 1;
 
     // TODO: check this. if we are starting up and not at iteration 0,
@@ -172,19 +172,19 @@ private:
 
     cuda_device_memory<double> col_mu_star;
 
-  // interfadce fluxes
+    // interfadce fluxes
     cuda_device_memory<double> F_down_wg;
     cuda_device_memory<double> F_up_wg;
-  // center of layer fluxes
+    // center of layer fluxes
     cuda_device_memory<double> Fc_down_wg;
     cuda_device_memory<double> Fc_up_wg;
-  // direct beam, interface and center
+    // direct beam, interface and center
     cuda_device_memory<double> F_dir_wg;
     cuda_device_memory<double> Fc_dir_wg;
-  // total integrated flux
+    // total integrated flux
     cuda_device_memory<double> F_down_tot;
     cuda_device_memory<double> F_up_tot;
-  // flux per freq band
+    // flux per freq band
     cuda_device_memory<double> F_down_band;
     cuda_device_memory<double> F_up_band;
     cuda_device_memory<double> F_dir_band;
