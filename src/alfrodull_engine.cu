@@ -815,7 +815,7 @@ bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
     int ny = opacities.ny;
 
 
-    dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
+    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
     dim3 block(16, 4, 4);
     trans_iso<<<grid, block>>>(trans_wg,
                                *delta_tau_wg,
@@ -872,7 +872,7 @@ bool alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
 
     int ny = opacities.ny;
 
-    dim3 grid(int((nbin + 15) / 16), int((ny + 3) / 4), int((nlayer + 3) / 4));
+    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
     dim3 block(16, 4, 4);
 
     trans_noniso<<<grid, block>>>(trans_wg_upper,
@@ -939,7 +939,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
     //printf("dir beam: %d, geom_z_corr: %d, mu_star: %g\n", dir_beam, geom_zenith_corr, mu_star);
     if (iso) {
         dim3 block(4, 32, 4);
-        dim3 grid(int((ninterface + 3) / 4), int((nbin + 31) / 32), int((ny + 3) / 4));
+        dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (ny + 3) / 4);
         fdir_iso<<<grid, block>>>(F_dir_wg,
                                   *planckband_lay,
                                   *delta_tau_wg,
@@ -958,7 +958,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
     }
     else {
         dim3 block(4, 32, 4);
-        dim3 grid(int((ninterface + 3) / 4), int((nbin + 31) / 32), int((ny + 3) / 4));
+        dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (ny + 3) / 4);
 
         fdir_noniso<<<grid, block>>>(F_dir_wg,
                                      Fc_dir_wg,
@@ -1004,7 +1004,7 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
 
 
     dim3 block(16, 16, 1);
-    dim3 grid(int((nbin + 15) / 16), int((ny + 16) / 16), 1);
+    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
     fband_iso_notabu<<<grid, block>>>(F_down_wg,
                                       F_up_wg,
                                       F_dir_wg,
@@ -1064,7 +1064,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
 
     dim3 block(16, 16, 1);
 
-    dim3 grid(int((nbin + 15) / 16), int((ny + 16) / 16), 1);
+    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
 
     // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
     fband_noniso_notabu<<<grid, block>>>(F_down_wg,

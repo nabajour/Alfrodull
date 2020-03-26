@@ -348,6 +348,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
         for (int i = numinterfaces - 1; i >= 0; i--) {
 
             // TOA boundary -- incoming stellar flux
+	  // TODO: move if switch outside of loop to make it unnecessary
             if (i == numinterfaces - 1) {
 	      if (dir_beam)		
 		F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
@@ -410,6 +411,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
         for (int i = 0; i < numinterfaces; i++) {
 
             // BOA boundary -- surface emission and reflection
+	  // TODO: move if switch outside of loop to make it unnecessary
             if (i == 0) {
 
                 double reflected_part = albedo

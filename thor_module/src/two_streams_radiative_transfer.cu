@@ -69,38 +69,38 @@ two_streams_radiative_transfer::~two_streams_radiative_transfer() {
 }
 
 void two_streams_radiative_transfer::print_config() {
-    printf("Tstar: %f\n", T_star);
-    printf("Alf_iso: %s\n", iso ? "true" : "false");
-    printf("Alf_real_star: %s\n", real_star ? "true" : "false");
-    printf("Alf_fake_opac: %f\n", fake_opac);
+  log::printf("Tstar: %f\n", T_star);
+  log::printf("Alf_iso: %s\n", iso ? "true" : "false");
+  log::printf("Alf_real_star: %s\n", real_star ? "true" : "false");
+  log::printf("Alf_fake_opac: %f\n", fake_opac);
 
-    printf("Alf_T_surf: %f\n", T_surf);
-    printf("Alf_albedo: %f\n", albedo);
-    printf("Alf_g_0: %f\n", g_0);
-    printf("Alf_diffusivity: %f\n", epsi);
+  log::printf("Alf_T_surf: %f\n", T_surf);
+  log::printf("Alf_albedo: %f\n", albedo);
+  log::printf("Alf_g_0: %f\n", g_0);
+  log::printf("Alf_diffusivity: %f\n", epsi);
 
-    printf("Alf_scat: %s\n", scat ? "true" : "false");
-    printf("Alf_scat_corr: %s\n", scat_corr ? "true" : "false");
-    printf("R_star: %f [R_SUN]\n", R_star_config);
-    printf("planet star dist: %f [au]\n", planet_star_dist_config);
+  log::printf("Alf_scat: %s\n", scat ? "true" : "false");
+  log::printf("Alf_scat_corr: %s\n", scat_corr ? "true" : "false");
+  log::printf("R_star: %f [R_SUN]\n", R_star_config);
+  log::printf("planet star dist: %f [au]\n", planet_star_dist_config);
 
-    printf("Alf_dir_beam: %s\n", dir_beam ? "true" : "false");
-    printf("Alf_geom_zenith_corr: %s\n", geom_zenith_corr ? "true" : "false");
+  log::printf("Alf_dir_beam: %s\n", dir_beam ? "true" : "false");
+  log::printf("Alf_geom_zenith_corr: %s\n", geom_zenith_corr ? "true" : "false");
 
-    printf("Alf_w_0_limit: %f\n", w_0_limit);
-    printf("Alf_i2s_transition: %f\n", i2s_transition);
-    printf("Alf_opacities_file: %s\n", opacities_file.c_str());
-    printf("Alf_compute_every_nstep: %d\n", compute_every_n_iteration);
+  log::printf("Alf_w_0_limit: %f\n", w_0_limit);
+  log::printf("Alf_i2s_transition: %f\n", i2s_transition);
+  log::printf("Alf_opacities_file: %s\n", opacities_file.c_str());
+  log::printf("Alf_compute_every_nstep: %d\n", compute_every_n_iteration);
 
 
     // orbit/insolation properties
-    printf("    Synchronous rotation        = %s.\n", sync_rot_config ? "true" : "false");
-    printf("    Orbital mean motion         = %f rad/s.\n", mean_motion_config);
-    printf("    Host star initial right asc = %f deg.\n", alpha_i_config);
-    printf("    Planet true initial long    = %f.\n", true_long_i_config);
-    printf("    Orbital eccentricity        = %f.\n", ecc_config);
-    printf("    Obliquity                   = %f deg.\n", obliquity_config);
-    printf("    Longitude of periastron     = %f deg.\n", longp_config);
+  log::printf("    Synchronous rotation        = %s.\n", sync_rot_config ? "true" : "false");
+  log::printf("    Orbital mean motion         = %f rad/s.\n", mean_motion_config);
+  log::printf("    Host star initial right asc = %f deg.\n", alpha_i_config);
+  log::printf("    Planet true initial long    = %f.\n", true_long_i_config);
+  log::printf("    Orbital eccentricity        = %f.\n", ecc_config);
+  log::printf("    Obliquity                   = %f deg.\n", obliquity_config);
+  log::printf("    Longitude of periastron     = %f deg.\n", longp_config);
 }
 
 bool two_streams_radiative_transfer::configure(config_file& config_reader) {
@@ -194,7 +194,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     // initialise opacities table -> gives frequency bins
     alf.load_opacities(opacities_file);
     cudaDeviceSynchronize();
-    printf("Loaded opacities, using %d bins with %d weights per bin\n",
+    log::printf("Loaded opacities, using %d bins with %d weights per bin\n",
            alf.opacities.nbin,
            alf.opacities.ny);
 
@@ -280,7 +280,7 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
 
         // initialise planck tables
     alf.prepare_planck_table();
-    printf("Built Planck Table for %d bins, Star temp %g K\n", alf.opacities.nbin, alf.T_star);
+    log::printf("Built Planck Table for %d bins, Star temp %g K\n", alf.opacities.nbin, alf.T_star);
     // initialise alf
 
     // TODO: where to do this, check
@@ -347,18 +347,26 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
                                                      double* density,
                                                      double* altitude_lay,
                                                      double* altitude_int,
-						     double  T_intern,
-                                                     double  gravit,
-                                                     int     num_layers) {
-    int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (layer_idx == 0) {
-      temperature_lay[0] = T_intern;
+						     double T_intern,
+                                                     double gravit,
+                                                     int    num_layers) {
+  int int_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    // Prepare temperature array with T_intern
+    // TODO: check this, HELIOS uses temperature_lay[nlayer] as BOA value (also indexed as temperture_lay[numinterfaces - 1])
+  // try helios style
+  // printf("-intidx: %d/%d\n", int_idx, num_layers);
+    if (int_idx < num_layers) {
+      // printf("intidx: %d/%d\n", int_idx, num_layers);
+      temperature_lay[int_idx] = temperature_lay_thor[int_idx];
     }
-    else {
-	temperature_lay[layer_idx] = temperature_lay_thor[layer_idx - 1];
+    else if (int_idx == num_layers ) {
+      // printf("intidx: %d/%d *\n", int_idx, num_layers);
+      temperature_lay[num_layers] = T_intern;
     }
     
-    if (layer_idx == 0) {
+    // compute interface values
+    if (int_idx == 0) {
         // extrapolate to lower boundary
         double psm =
             pressure_lay[1]
@@ -369,7 +377,7 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
         pressure_int[0]    = ps;
         temperature_int[0] = T_intern;
     }
-    else if (layer_idx == num_layers) {
+    else if (int_idx == num_layers) {
         // extrapolate to top boundary
         double pp = pressure_lay[num_layers - 2]
                     + (pressure_lay[num_layers - 1] - pressure_lay[num_layers - 2])
@@ -381,20 +389,23 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
         double ptop = 0.5 * (pressure_lay[num_layers - 1] + pp);
 
         pressure_int[num_layers]    = ptop;
-        temperature_int[num_layers] = temperature_lay_thor[num_layers - 1];
+	// extrapolate to top interface
+        temperature_int[num_layers] = temperature_lay_thor[num_layers - 1] + 0.5*(temperature_lay_thor[num_layers - 1] - temperature_lay_thor[num_layers - 2]);
     }
-    else if (layer_idx < num_layers) {
+    else if (int_idx < num_layers) {
         // interpolation between layers
-        // linear interpolation
-        double xi       = altitude_int[layer_idx];
-        double xi_minus = altitude_lay[layer_idx - 1];
-        double xi_plus  = altitude_lay[layer_idx];
+        // Helios computes gy taking the middle between the layers. We can have non uniform Z levels,
+        // so linear interpolation
+        double xi       = altitude_int[int_idx];
+        double xi_minus = altitude_lay[int_idx - 1];
+        double xi_plus  = altitude_lay[int_idx];
         double a        = (xi - xi_plus) / (xi_minus - xi_plus);
         double b        = (xi - xi_minus) / (xi_plus - xi_minus);
 
-        pressure_int[layer_idx] = pressure_lay[layer_idx - 1] * a + pressure_lay[layer_idx] * b;
-        temperature_int[layer_idx] =
-            temperature_lay_thor[layer_idx - 1] * a + temperature_lay_thor[layer_idx] * b;
+        pressure_int[int_idx] = pressure_lay[int_idx - 1] * a + pressure_lay[int_idx] * b;
+	
+        temperature_int[int_idx] =
+            temperature_lay_thor[int_idx - 1] * a + temperature_lay_thor[int_idx] * b;
     }
 }
 
@@ -473,6 +484,20 @@ void cuda_check_status_or_exit() {
     }
 }
 
+void cuda_check_status_or_exit(const char * filename, const int & line ) {
+    cudaError_t err = cudaGetLastError();
+
+    // Check device query
+    if (err != cudaSuccess) {
+        log::printf("[%s:%d] CUDA error check reports error: %s\n",
+                    filename,
+                    line,
+                    cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+}
+
+
 bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               const SimulationSetup& sim,
                                               int                    nstep, // Step number
@@ -543,7 +568,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 gravit,
                 num_layers);
             cudaDeviceSynchronize();
-            cuda_check_status_or_exit();
+            cuda_check_status_or_exit(__FILE__, __LINE__);
 
             // initialise delta_col_mass
             // TODO: should this go inside alf?
@@ -557,7 +582,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 gravit,
                 num_layers);
             cudaDeviceSynchronize();
-            cuda_check_status_or_exit();
+            cuda_check_status_or_exit(__FILE__, __LINE__);
 
             // get z_lay
             // TODO: z_lay for beam computation
@@ -611,7 +636,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            F_dir_band_col,
                                            mu_star);
 	    cudaDeviceSynchronize();
-            cuda_check_status_or_exit();
+            cuda_check_status_or_exit(__FILE__, __LINE__);
 
 
             // compute Delta flux
@@ -626,7 +651,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 						 F_intern,
                                                  num_layers);
             cudaDeviceSynchronize();
-            cuda_check_status_or_exit();
+            cuda_check_status_or_exit(__FILE__, __LINE__);
         }
         start_up = false;
 
@@ -646,7 +671,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
          esp.profx_Qheat_d, *Qheat, num_samples);
     cudaDeviceSynchronize();
-    cuda_check_status_or_exit();
+    cuda_check_status_or_exit(__FILE__, __LINE__);
 
     // if (nstep * time_step < (2 * M_PI / mean_motion)) {
     //     // stationary orbit/obliquity

@@ -172,14 +172,19 @@ private:
 
     cuda_device_memory<double> col_mu_star;
 
+  // interfadce fluxes
     cuda_device_memory<double> F_down_wg;
     cuda_device_memory<double> F_up_wg;
+  // center of layer fluxes
     cuda_device_memory<double> Fc_down_wg;
     cuda_device_memory<double> Fc_up_wg;
+  // direct beam, interface and center
     cuda_device_memory<double> F_dir_wg;
     cuda_device_memory<double> Fc_dir_wg;
+  // total integrated flux
     cuda_device_memory<double> F_down_tot;
     cuda_device_memory<double> F_up_tot;
+  // flux per freq band
     cuda_device_memory<double> F_down_band;
     cuda_device_memory<double> F_up_band;
     cuda_device_memory<double> F_dir_band;
