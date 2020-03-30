@@ -92,6 +92,8 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_opacities_file: %s\n", opacities_file.c_str());
     log::printf("Alf_compute_every_nstep: %d\n", compute_every_n_iteration);
 
+    log::printf("Alf_idle_steps: %d\n", N_idle_steps);
+    log::printf("Alf_spinup_steps: %d\n", N_spinup_steps);
 
     // orbit/insolation properties
     log::printf("    Synchronous rotation        = %s.\n", sync_rot_config ? "true" : "false");
@@ -127,6 +129,9 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_opacities_file", opacities_file, opacities_file);
     config_reader.append_config_var(
         "Alf_compute_every_nstep", compute_every_n_iteration, compute_every_n_iteration);
+
+    config_reader.append_config_var("Alf_idle_steps", N_idle_steps, N_idle_steps);
+    config_reader.append_config_var("Alf_spinup_steps", N_spinup_steps, N_spinup_steps);
 
     // orbit/insolation properties
     config_reader.append_config_var("sync_rot", sync_rot_config, sync_rot_config);
@@ -409,11 +414,12 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay,
     }
 }
 
-__global__ void increment_Qheat(double* Qheat_global, double* Qheat, int num_sample) {
+__global__ void
+increment_Qheat(double* Qheat_global, double* Qheat, double scaling, int num_sample) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < num_sample) {
         // delta_flux/delta_z
-        Qheat_global[idx] += Qheat[idx];
+        Qheat_global[idx] += scaling * Qheat[idx];
     }
 }
 
@@ -515,7 +521,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
     const int num_blocks = 256;
 
-    if (nstep % compute_every_n_iteration == 0 || start_up) {
+    if ((nstep % compute_every_n_iteration == 0 || start_up) && nstep > N_idle_steps) {
         compute_col_mu_star<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(*col_mu_star,
                                                                               esp.lonlat_d,
                                                                               alpha,
@@ -535,7 +541,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         // loop on columns
         for (int column_idx = 0; column_idx < esp.point_num; column_idx++) {
             print_progress((column_idx + 1.0) / double(esp.point_num));
-            //printf("two_stream_rt::phy_loop, step: %d, column: %d\n", nstep, column_idx);
+
             int num_layers = esp.nv;
 
 
@@ -664,13 +670,22 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         // }
     }
 
+    if (nstep > N_idle_steps) {
+        double scaling = 0.0;
+        if (nstep > N_idle_steps && nstep < N_idle_steps + N_spinup_steps) {
+            double x = (nstep - N_idle_steps) / N_spinup_steps;
+            scaling  = (1 + sin(PI * x - PI / 2.0)) / 2.0;
+        }
+        else {
+            scaling = 1.0;
+        }
 
-    int num_samples = (esp.point_num * nlayer);
-    increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
-        esp.profx_Qheat_d, *Qheat, num_samples);
-    cudaDeviceSynchronize();
-    cuda_check_status_or_exit(__FILE__, __LINE__);
-
+        int num_samples = (esp.point_num * nlayer);
+        increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
+            esp.profx_Qheat_d, *Qheat, scaling, num_samples);
+        cudaDeviceSynchronize();
+        cuda_check_status_or_exit(__FILE__, __LINE__);
+    }
     // if (nstep * time_step < (2 * M_PI / mean_motion)) {
     //     // stationary orbit/obliquity
     //     // calculate annually average of insolation for the first orbit

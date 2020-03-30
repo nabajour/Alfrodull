@@ -156,8 +156,11 @@ public:
     // TODO: check this. if we are starting up and not at iteration 0,
     // we need either to reload the Qheat or something to compute it (net flux) or recompute it.
     // or we'll have discrepancies between loading initial conditions and running cases
+
     bool start_up = true;
 
+    int  N_idle_steps      = 0;
+    int  N_spinup_steps    = 0;
     bool store_weight_flux = true;
     bool store_band_flux   = true;
     bool store_updown_flux = true;
