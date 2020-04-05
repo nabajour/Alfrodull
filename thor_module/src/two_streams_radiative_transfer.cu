@@ -671,13 +671,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     }
 
     if (nstep > N_idle_steps) {
-        double scaling = 0.0;
+        qheat_scaling = 0.0;
         if (nstep > N_idle_steps && nstep < N_idle_steps + N_spinup_steps) {
-            double x = (nstep - N_idle_steps) / N_spinup_steps;
-            scaling  = (1 + sin(PI * x - PI / 2.0)) / 2.0;
+            double x      = (nstep - N_idle_steps) / N_spinup_steps;
+            qheat_scaling = (1 + sin(PI * x - PI / 2.0)) / 2.0;
         }
         else {
-            scaling = 1.0;
+            qheat_scaling = 1.0;
         }
 
         int num_samples = (esp.point_num * nlayer);
@@ -764,6 +764,7 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
     s.append_table(
         F_down_tot_h.get(), F_down_tot.get_size(), "/F_down_tot", "W m^-2", "Total downward flux");
 
+    s.append_value(R_star_config, "/radius_star", "R_sun", "radius of host star");
 
     return true;
 }

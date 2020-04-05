@@ -151,6 +151,8 @@ public:
 
     double F_intern = 0.0;
 
+    double qheat_scaling = 0.0; // scaling of QHeat to slowly ramp up over multiple steps
+
     int compute_every_n_iteration = 1;
 
     // TODO: check this. if we are starting up and not at iteration 0,
