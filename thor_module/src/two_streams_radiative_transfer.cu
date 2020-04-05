@@ -682,7 +682,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
         int num_samples = (esp.point_num * nlayer);
         increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
-            esp.profx_Qheat_d, *Qheat, scaling, num_samples);
+            esp.profx_Qheat_d, *Qheat, qheat_scaling, num_samples);
         cudaDeviceSynchronize();
         cuda_check_status_or_exit(__FILE__, __LINE__);
     }
@@ -764,7 +764,7 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
     s.append_table(
         F_down_tot_h.get(), F_down_tot.get_size(), "/F_down_tot", "W m^-2", "Total downward flux");
 
-    s.append_value(R_star_config, "/radius_star", "R_sun", "radius of host star");
+    s.append_value(qheat_scaling, "/qheat_scaling", "-", "QHeat scaling");
 
     return true;
 }
