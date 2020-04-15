@@ -181,10 +181,29 @@ if (BUILD_TESTS)
   
   # build as test
   set(SRC_TEST_INTEGRATE_FLUX
-    tests/integrate_flux/flux_int_test.cu)
+    tests/integrate_flux/flux_int_test.cu
+    )
 
+
+  set(SRC_TEST_TWO_STREAMS_SOLVE
+    tests/integrate_flux/two_streams_solve_test.cu
+    src/kernels/integrate_flux.cu
+    src/kernels/atomic_add.cu
+    src/kernels/calculate_physics.cu
+    )
+  
   
   set(LIBRARY_OUTPUT_PATH)
+
+  add_executable(test_two_streams_solve ${SRC_TEST_TWO_STREAMS_SOLVE} ${SRC_THOR_UTILS})
+  set_target_properties(test_two_streams_solve PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_VISIBILITY_PRESET "hidden"
+    CUDA_SEPARABLE_COMPILATION ON
+    )
+  #target_link_libraries(test_integrate_flux PRIVATE alfrodull)
+  target_link_libraries(test_two_streams_solve PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
+  
 
   
   add_executable(test_integrate_flux ${SRC_TEST_INTEGRATE_FLUX} ${SRC_THOR_UTILS})
