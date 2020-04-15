@@ -151,13 +151,18 @@ public:
 
     double F_intern = 0.0;
 
+    double qheat_scaling = 0.0; // scaling of QHeat to slowly ramp up over multiple steps
+
     int compute_every_n_iteration = 1;
 
     // TODO: check this. if we are starting up and not at iteration 0,
     // we need either to reload the Qheat or something to compute it (net flux) or recompute it.
     // or we'll have discrepancies between loading initial conditions and running cases
+
     bool start_up = true;
 
+    int  N_idle_steps      = 0;
+    int  N_spinup_steps    = 0;
     bool store_weight_flux = true;
     bool store_band_flux   = true;
     bool store_updown_flux = true;
