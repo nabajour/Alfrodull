@@ -3,6 +3,7 @@
 #include "integrate_flux.h"
 
 #include "vector_operations.h"
+#include "math_helpers.h"
 
 #include <algorithm> // std::max
 #include <cstdio>
@@ -86,6 +87,25 @@ bool cmp_dbl(double d1, double d2, double eps) {
 // A.z  A.w
 
 // A - B*C
+
+__global__ void thomas_solve_global(double * A,
+				    double * B,
+				    double * C,
+				    double * D,
+				    double * C_prime,
+				    double * D_prime,
+				    double * X,
+				    int N_m)
+{
+			   
+  thomas_solve((double4*)A,
+	       (double4*)B,
+	       (double4*)C,
+	       (double2*)D,
+	       (double4*)C_prime,
+	       (double2*)D_prime,
+	       (double2*)X, N_m);
+}
 
 bool compare_vector2(double2 in, double2 ref, double epsilon, string message) {
   if ( !(cmp_dbl(in.x, ref.x, epsilon)
@@ -191,44 +211,6 @@ __host__ __device__ void dbg_print_matrix(char * msg, double4 m)
 __host__ __device__ void dbg_print_vector(char * msg, double2 v)
 {
   printf(msg, v.x, v.y);
-}
-
-// Thomas solver for 2x2 matrix blocks
-// N here is the number of matrices
-__global__ void thomas_solve(double4 * A,
-			     double4 * B,
-			     double4 * C,
-			     double2 * D,
-			     double4 * C_prime,
-			     double2 * D_prime,
-			     double2 * X,
-			     int N)
-{
-  // initialise
-  double4 invB0 = inv2x2(B[0]);
-
-  C_prime[0] =  invB0 * C[0] ;
-  D_prime[0] =  invB0 * D[0] ;
- // forward compute coefficients for matrix and RHS vector 
-  for (int i = 1; i < N; i++)
-    {
-      double4 invBmACp = inv2x2(B[i] - (A[i]*C_prime[i-1]));
-
-      if (i < N - 1)
-	{
-	  C_prime[i] = invBmACp*C[i];
-	}
-      D_prime[i] = invBmACp*(D[i] - A[i]*D_prime[i-1]);
-    }
-
-  
-
-  // Back substitution
-  // last case:
-  X[N-1] = D_prime[N-1];
-  for (int i = N-2; i>= 0; i--) {
-    X[i] = D_prime[i] - C_prime[i]*X[i+1];
-  }
 }
 
 
@@ -450,13 +432,14 @@ bool thomas_test() {
   // run thomas algorithm
   dim3 block(1, 1, 1);
   dim3 grid(1, 1, 1);
-  thomas_solve<<<grid, block>>>((double4*)*A,
-				(double4*)*B,
-				(double4*)*C,
-				(double2*)*D,
-				(double4*)*C_prime,
-				(double2*)*D_prime,
-				(double2*)*X, N_m);
+  thomas_solve_global<<<grid, block>>>(*A,
+				       *B,
+				       *C,
+				       *D,
+				       *C_prime,
+				       *D_prime,
+				       *X,
+				       N_m);
   
   
   

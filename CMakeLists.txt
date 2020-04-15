@@ -190,6 +190,7 @@ if (BUILD_TESTS)
     src/kernels/integrate_flux.cu
     src/kernels/atomic_add.cu
     src/kernels/calculate_physics.cu
+    src/kernels/math_helpers.cu
     )
   
   
