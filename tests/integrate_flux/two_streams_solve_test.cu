@@ -2,6 +2,8 @@
 #include "gauss_legendre_weights.h"
 #include "integrate_flux.h"
 
+#include "vector_operations.h"
+
 #include <algorithm> // std::max
 #include <cstdio>
 #include <memory>
@@ -36,54 +38,6 @@ bool cmp_dbl(double d1, double d2, double eps) {
     return false;
 
   return fabs(d1 - d2) / fabs(max(d1, d2)) < eps;
-}
-
-
-// double4 operators 
-// matrix negation
-inline __host__ __device__ double4 operator-(const double4 &a) {
-  return make_double4(-a.x, -a.y, -a.z, -a.w);
-}
-
-// matrix-matrix addition
-inline __host__ __device__ double4 operator+(const double4 &a, const double4 &b) {
-  return make_double4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
-}
-
-// matrix multiplication
-inline __host__ __device__ double4 operator*(const double4 &A, const double4 &B) {
-    return make_double4(A.x*B.x + A.y*B.z,
-		       A.x*B.y + A.y*B.w,
-		       A.z*B.x + A.w*B.z,
-		       A.z*B.y + A.w*B.w);
-}
-
-// matrix-vector multiplication
-inline __host__ __device__ double2 operator*(const double4 &A, const double2 &v) {
-    return make_double2(A.x*v.x + A.y*v.y,
-			A.z*v.x + A.w*v.y);
-}
-
-
-// vector-vector addition
-inline __host__ __device__ double2 operator+(const double2 &A, const double2 &B) {
-  return make_double2(A.x+B.x, A.y+B.y);
-}
-
-// vector-vector subtraction
-inline __host__ __device__ double2 operator-(const double2 &A, const double2 &B) {
-  return make_double2(A.x-B.x, A.y-B.y);
-}
-
-// vector negation
-inline __host__ __device__ double2 operator-(const double2 &a) {
-  return make_double2(-a.x, -a.y);
-}
-
-
-// subtraction
-inline __host__ __device__ double4 operator-(const double4 &a, const double4 &b) {
-  return make_double4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
 }
 
 
@@ -132,24 +86,6 @@ inline __host__ __device__ double4 operator-(const double4 &a, const double4 &b)
 // A.z  A.w
 
 // A - B*C
-double4 multsub2x2(const double4 & A, const double4 & B, const double4 & C) {
-  return make_double4(A.x - (B.x*C.x + B.y*C.z),
-		      A.y - (B.x*C.y + B.y*C.w),
-		      A.z - (B.z*C.x + B.w*C.z),
-		      A.w - (B.z*C.y + B.w*C.w) );
-}
-
-
-__host__ __device__ double4 inv2x2(const double4 A) {
-  double det_inv = 1.0/( A.x*A.w - A.y*A.z );
-  if (det_inv == 0.0)
-    printf("Warning, null determinant for matrix inversion\n");
-  return make_double4(det_inv*A.w,
-		      -det_inv*A.y,
-		      -det_inv*A.z,
-		      det_inv*A.x);
-}
-
 
 bool compare_vector2(double2 in, double2 ref, double epsilon, string message) {
   if ( !(cmp_dbl(in.x, ref.x, epsilon)
@@ -268,46 +204,21 @@ __global__ void thomas_solve(double4 * A,
 			     double2 * X,
 			     int N)
 {
-  printf("Thomas solve, dim : %d\n", N);
   // initialise
   double4 invB0 = inv2x2(B[0]);
-  //printf("inv B0: [[ %g %g ], [ %g %g ]]\n", invB0.x, invB0.y, invB0.z, invB0.w);
-  dbg_print_matrix("A[0]: [[ %g %g ], [ %g %g ]]\n", A[0]);
-  dbg_print_matrix("B[0]: [[ %g %g ], [ %g %g ]]\n", B[0]);
-      
-  dbg_print_matrix("inv B0: [[ %g %g ], [ %g %g ]]\n", invB0);
+
   C_prime[0] =  invB0 * C[0] ;
   D_prime[0] =  invB0 * D[0] ;
-
-  dbg_print_matrix("C[0]: [[ %g %g ], [ %g %g ]]\n", C[0]);
-  dbg_print_vector("D[0]: [ %g %g ]\n", D[0]);
-
-  dbg_print_matrix("C'[0]: [[ %g %g ], [ %g %g ]]\n", C_prime[0]);
-  dbg_print_vector("D'[0]: [ %g %g ]\n", D_prime[0]);
-
-  // forward compute coefficients for matrix and RHS vector 
+ // forward compute coefficients for matrix and RHS vector 
   for (int i = 1; i < N; i++)
     {
-      printf("i: %d\n", i);
-      dbg_print_matrix("A[i]: [[ %g %g ], [ %g %g ]]\n", A[i]);
-      dbg_print_matrix("B[i]: [[ %g %g ], [ %g %g ]]\n", B[i]);
-
-      dbg_print_vector("D[i]: [ %g %g ]\n", D[i]);
-      dbg_print_matrix("C'[i-1]: [[ %g %g ], [ %g %g ]]\n", C_prime[i-1]);
       double4 invBmACp = inv2x2(B[i] - (A[i]*C_prime[i-1]));
-      dbg_print_matrix("invBmACp[i]: [[ %g %g ], [ %g %g ]]\n", invBmACp);
+
       if (i < N - 1)
 	{
 	  C_prime[i] = invBmACp*C[i];
-	  dbg_print_matrix("C[i]: [[ %g %g ], [ %g %g ]]\n", C[i]);
-	  dbg_print_matrix("C'[i]: [[ %g %g ], [ %g %g ]]\n", C_prime[i]);
-
 	}
       D_prime[i] = invBmACp*(D[i] - A[i]*D_prime[i-1]);
-
-
-      dbg_print_vector("D'[i]: [ %g %g ]\n", D_prime[i]);
-
     }
 
   
@@ -327,7 +238,7 @@ bool thomas_test() {
   bool success = true;
 
   // number of rows
-  int N = 8;
+  int N = 120;
   // number of diagonals below main
   int d_b = 2;
   // number of diagonals above main
