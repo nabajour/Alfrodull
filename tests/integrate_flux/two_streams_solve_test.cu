@@ -10,9 +10,10 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-
+#include <string>
 
 using std::max;
+using std::string;
 
 
 void cuda_check_status_or_exit(const char* filename, const int& line) {
@@ -37,14 +38,563 @@ bool cmp_dbl(double d1, double d2, double eps) {
   return fabs(d1 - d2) / fabs(max(d1, d2)) < eps;
 }
 
-int main(int argc, char** argv) {
-    bool success = true;
-    printf("Running Two Streams Solver test\n");
+
+// double4 operators 
+// matrix negation
+inline __host__ __device__ double4 operator-(const double4 &a) {
+  return make_double4(-a.x, -a.y, -a.z, -a.w);
+}
+
+// matrix-matrix addition
+inline __host__ __device__ double4 operator+(const double4 &a, const double4 &b) {
+  return make_double4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+}
+
+// matrix multiplication
+inline __host__ __device__ double4 operator*(const double4 &A, const double4 &B) {
+    return make_double4(A.x*B.x + A.y*B.z,
+		       A.x*B.y + A.y*B.w,
+		       A.z*B.x + A.w*B.z,
+		       A.z*B.y + A.w*B.w);
+}
+
+// matrix-vector multiplication
+inline __host__ __device__ double2 operator*(const double4 &A, const double2 &v) {
+    return make_double2(A.x*v.x + A.y*v.y,
+			A.z*v.x + A.w*v.y);
+}
 
 
-    int point_num = 1;
+// vector-vector addition
+inline __host__ __device__ double2 operator+(const double2 &A, const double2 &B) {
+  return make_double2(A.x+B.x, A.y+B.y);
+}
 
-    int nlayer = 15;
+// vector-vector subtraction
+inline __host__ __device__ double2 operator-(const double2 &A, const double2 &B) {
+  return make_double2(A.x-B.x, A.y-B.y);
+}
+
+// vector negation
+inline __host__ __device__ double2 operator-(const double2 &a) {
+  return make_double2(-a.x, -a.y);
+}
+
+
+// subtraction
+inline __host__ __device__ double4 operator-(const double4 &a, const double4 &b) {
+  return make_double4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
+}
+
+
+
+// 2x2 matrix operations on linear stored by row matrices
+// matrix is stored as
+// A[0]  A[1]
+// A[2]  A[3]
+
+// __device__ void mult2x2(double * A, double * B, double * C) {
+//   C[0] = A[0]*B[0] + A[1]*B[2];
+//   C[1] = A[0]*B[1] + A[1]*B[3];
+//   C[2] = A[2]*B[0] + A[3]*B[2];
+//   C[3] = A[2]*B[1] + A[3]*B[3];
+// }
+
+// __device__ void add2x2(double * A, double * B, double * C) {
+//   for (int i = 0; i < 4; i++)
+//     C[i] = A[i] + B[i];
+// }
+
+// __device__ void sub2x2(double * A, double * B, double * C) {
+//   for (int i = 0; i < 4; i++)
+//     C[i] = A[i] - B[i];
+// }
+
+// // A - B*C
+// __device__ multsub2x2(double * A, double * B, double * C, double * D) {
+//   D[0] = A[0] - (B[0]*C[0] + B[1]*C[2]);
+//   D[1] = A[1] - (B[0]*C[1] + B[1]*C[3]);
+//   D[2] = A[2] - (B[2]*C[0] + B[3]*C[2]);
+//   D[3] = A[3] - (B[2]*C[1] + B[3]*C[3]);
+// }
+
+
+// __device__ void invert2x2(double * A, double * A_inv) {
+//   double det_inv = 1.0/( A[0]*A[3] - A[1]*A[2] );
+//   A_inv[0] =  det_inv*A[3];
+//   A_inv[1] = -det_inv*A[1];
+//   A_inv[2] = -det_inv*A[2];
+//   A_inv[3] =  det_inv*A[0];
+// }
+
+// matrix is stored as
+// A.x  A.y
+// A.z  A.w
+
+// A - B*C
+double4 multsub2x2(const double4 & A, const double4 & B, const double4 & C) {
+  return make_double4(A.x - (B.x*C.x + B.y*C.z),
+		      A.y - (B.x*C.y + B.y*C.w),
+		      A.z - (B.z*C.x + B.w*C.z),
+		      A.w - (B.z*C.y + B.w*C.w) );
+}
+
+
+__host__ __device__ double4 inv2x2(const double4 A) {
+  double det_inv = 1.0/( A.x*A.w - A.y*A.z );
+  if (det_inv == 0.0)
+    printf("Warning, null determinant for matrix inversion\n");
+  return make_double4(det_inv*A.w,
+		      -det_inv*A.y,
+		      -det_inv*A.z,
+		      det_inv*A.x);
+}
+
+
+bool compare_vector2(double2 in, double2 ref, double epsilon, string message) {
+  if ( !(cmp_dbl(in.x, ref.x, epsilon)
+	 && cmp_dbl(in.y, ref.y, epsilon)))
+    {
+      printf(message.c_str());
+      return false;
+    }
+  else
+    {
+      return true;
+    }
+}
+
+bool compare_matrix4(double4 in, double4 ref, double epsilon, string message) {
+  if ( !(cmp_dbl(in.x, ref.x, epsilon)
+	 && cmp_dbl(in.y, ref.y, epsilon)
+	 && cmp_dbl(in.z, ref.z, epsilon)
+	 && cmp_dbl(in.w, ref.w, epsilon)))
+    {
+      printf(message.c_str());
+      return false;
+    }
+  else
+    {
+      return true;
+    }
+}
+
+bool test_vectors_ops(){
+  printf("Running vector and matrix ops test\n");
+  bool success = true;
+  
+  double epsilon = 1e-11;
+  double4 M1 = make_double4(1.5, 0.5, 0.25, 2.0);
+  double4 M2 = make_double4(3.0, 1.7, 0.7, 2.0);
+  double2 V1 = make_double2(5.0, 2.7);
+  double2 V2 = make_double2(6.0, 7.4);
+
+  double4 negM1 = -M1;
+  success &= compare_matrix4(negM1, make_double4(-1.5, -0.5, -0.25, -2.0), epsilon, "error in matrix negation\n");
+
+  double4 invM1 = M1*inv2x2(M1);
+  success &= compare_matrix4(invM1,
+			     make_double4(1.0, 0.0, 0.0, 1.0),
+			     epsilon,
+			     "error in matrix inversion\n");
+  
+  double4 MulM1M2 = M1*M2;
+  success &= compare_matrix4(MulM1M2,
+			     make_double4(4.85, 3.55, 2.15, 4.425),
+			     epsilon,
+			     "error in matrix multiplication\n");
+
+  double4 addM1M2 = M1 + M2;
+  success &= compare_matrix4(addM1M2,
+			     make_double4(4.5, 2.2, 0.95, 4.0),
+			     epsilon,
+			     "error in matrix addition\n");
+  
+  double4 subM1M2 = M1 - M2;
+  success &= compare_matrix4(subM1M2,
+			     make_double4(-1.5, -1.2, -0.45, 0.0),
+			     epsilon,
+			     "error in matrix subtraction\n");
+
+  
+  double2 MulM1V1 = M1*V1;
+  success &= compare_vector2(MulM1V1,
+			     make_double2(8.85, 6.65),
+			     epsilon,
+			     "error in matrix-vector multiplication\n");
+
+  double2 addV1V2 = V1 + V2;
+  success &= compare_vector2(addV1V2,
+			     make_double2(11.0, 10.1),
+			     epsilon,
+			     "error in vector addition\n");
+  
+  double2 subV1V2 = V1 - V2;
+  success &= compare_vector2(subV1V2,
+			     make_double2(-1.0, -4.7),
+			     epsilon,
+			     "error in vector subtraction\n");
+
+  double2 negV1 = -V1;
+  success &= compare_vector2(negV1,
+			     make_double2(-5.0, -2.7),
+			     epsilon,
+			     "error in vector negation\n");
+
+  
+  printf("Vector and matrix ops test done\n");
+
+  return success;
+}
+
+__host__ __device__ void dbg_print_matrix(char * msg, double4 m)
+{
+  printf(msg, m.x, m.y, m.z, m.w);
+}
+
+__host__ __device__ void dbg_print_vector(char * msg, double2 v)
+{
+  printf(msg, v.x, v.y);
+}
+
+// Thomas solver for 2x2 matrix blocks
+// N here is the number of matrices
+__global__ void thomas_solve(double4 * A,
+			     double4 * B,
+			     double4 * C,
+			     double2 * D,
+			     double4 * C_prime,
+			     double2 * D_prime,
+			     double2 * X,
+			     int N)
+{
+  printf("Thomas solve, dim : %d\n", N);
+  // initialise
+  double4 invB0 = inv2x2(B[0]);
+  //printf("inv B0: [[ %g %g ], [ %g %g ]]\n", invB0.x, invB0.y, invB0.z, invB0.w);
+  dbg_print_matrix("A[0]: [[ %g %g ], [ %g %g ]]\n", A[0]);
+  dbg_print_matrix("B[0]: [[ %g %g ], [ %g %g ]]\n", B[0]);
+      
+  dbg_print_matrix("inv B0: [[ %g %g ], [ %g %g ]]\n", invB0);
+  C_prime[0] =  invB0 * C[0] ;
+  D_prime[0] =  invB0 * D[0] ;
+
+  dbg_print_matrix("C[0]: [[ %g %g ], [ %g %g ]]\n", C[0]);
+  dbg_print_vector("D[0]: [ %g %g ]\n", D[0]);
+
+  dbg_print_matrix("C'[0]: [[ %g %g ], [ %g %g ]]\n", C_prime[0]);
+  dbg_print_vector("D'[0]: [ %g %g ]\n", D_prime[0]);
+
+  // forward compute coefficients for matrix and RHS vector 
+  for (int i = 1; i < N; i++)
+    {
+      printf("i: %d\n", i);
+      dbg_print_matrix("A[i]: [[ %g %g ], [ %g %g ]]\n", A[i]);
+      dbg_print_matrix("B[i]: [[ %g %g ], [ %g %g ]]\n", B[i]);
+
+      dbg_print_vector("D[i]: [ %g %g ]\n", D[i]);
+      dbg_print_matrix("C'[i-1]: [[ %g %g ], [ %g %g ]]\n", C_prime[i-1]);
+      double4 invBmACp = inv2x2(B[i] - (A[i]*C_prime[i-1]));
+      dbg_print_matrix("invBmACp[i]: [[ %g %g ], [ %g %g ]]\n", invBmACp);
+      if (i < N - 1)
+	{
+	  C_prime[i] = invBmACp*C[i];
+	  dbg_print_matrix("C[i]: [[ %g %g ], [ %g %g ]]\n", C[i]);
+	  dbg_print_matrix("C'[i]: [[ %g %g ], [ %g %g ]]\n", C_prime[i]);
+
+	}
+      D_prime[i] = invBmACp*(D[i] - A[i]*D_prime[i-1]);
+
+
+      dbg_print_vector("D'[i]: [ %g %g ]\n", D_prime[i]);
+
+    }
+
+  
+
+  // Back substitution
+  // last case:
+  X[N-1] = D_prime[N-1];
+  for (int i = N-2; i>= 0; i--) {
+    X[i] = D_prime[i] - C_prime[i]*X[i+1];
+  }
+}
+
+
+
+bool thomas_test() {
+  printf("Running Thomas algorithm test\n");
+  bool success = true;
+
+  // number of rows
+  int N = 8;
+  // number of diagonals below main
+  int d_b = 2;
+  // number of diagonals above main
+  int d_a = 2;
+  // number of diagonals
+  int diags = d_b + d_a + 1;
+  // diagonal matrix
+  std::shared_ptr<double[]> diag_M = std::shared_ptr<double[]>(new double[N*diags]);
+  // solution vector (the one to find)
+  std::shared_ptr<double[]> x_sol = std::shared_ptr<double[]>(new double[N]);
+  // right hand side: diag_M*x_sol = d
+  std::shared_ptr<double[]> d = std::shared_ptr<double[]>(new double[N]);
+
+  
+  // *********************************************************************************
+  // Random number generator
+  std::random_device rd;        // Will be used to obtain a seed for the random number engine
+  std::mt19937       gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+  std::uniform_real_distribution<> dis_off_diag(0.0, 1.0);
+  std::uniform_real_distribution<> dis_diag(5.0, 10.0);
+  std::uniform_real_distribution<> dis_sol(1.0, 5.0);
+  //  std::normal_distribution<> rand_norm_dist{1.0,0.5};
+  // std::normal_distribution<> rand_norm_dist_plk{1e-5,0.5};    // Random number generator
+
+  // *********************************************************************************
+  // fill in matrix
+  // should be diagonally dominant (sum of off-diagonal values should be smaller than diagonal)
+  for (int r = 0; r < N; r++) {
+    int d = 0;
+    for (; d < d_b; d++)
+      diag_M[r*diags + d] = dis_off_diag(gen);
+
+    diag_M[r*diags + d] = dis_diag(gen);
+    d++;
+    
+    for (; d < d_b + 1 + d_a; d++)
+      diag_M[r*diags + d] = dis_off_diag(gen);
+  }
+
+  // corners
+  diag_M[0*diags + 0] = 0.0;
+  diag_M[0*diags + 1] = 0.0;
+  diag_M[1*diags + 0] = 0.0;
+
+  diag_M[(N-2)*diags + d_b + d_a]     = 0.0;
+  diag_M[(N-1)*diags + d_b + d_a - 1] = 0.0;
+  diag_M[(N-1)*diags + d_b + d_a]     = 0.0;
+  
+  // fill in solution
+  for (int r = 0; r < N; r++) {
+    x_sol[r] = dis_sol(gen);
+  }
+  
+  // compute RHS
+  // matrix multiplication
+  for (int r = 0; r < N; r++) {    
+    d[r] = 0.0;
+    for (int c = -d_b; c < d_a + 1; c++) {
+      if (r+c >= 0 && r+c < N )
+	d[r] += diag_M[r*diags + d_b + c ]*x_sol[r+c];
+    }
+  }
+
+  // *********************************************************************************
+  // debug printout
+  printf("d = np.array([\n");
+  for (int r = 0; r < N; r++) {
+    printf("%g,\n", d[r]);
+  }
+  printf("])\n");
+
+  printf("x_sol = np.array([\n");
+  for (int r = 0; r < N; r++) {
+    printf("%g,\n", x_sol[r]);
+  }
+  printf("])\n");
+    
+  printf("A = np.array([\n");
+  for (int r = 0; r < N; r++) {
+    printf("[\t");
+    for (int c = 0; c < N; c++) {
+      if (r - c <= d_b && r - c  > 0) {
+	printf("% 10g,\t", diag_M[r*diags + c - r + d_b]);
+      }
+      else if (c - r <= d_a && c - r > 0) {
+	printf("% 10g,\t", diag_M[r*diags + c - r + d_b]);
+      }
+      else if (c - r == 0) {
+	printf("% 10g,\t", diag_M[r*diags + c - r + d_b]);
+      }
+      else
+	printf("% 10g,\t", 0.0);
+    }
+    printf("],\n");
+  }
+  printf("])\n");
+
+    for (int r = 0; r < N; r++) {
+    printf("[\t");
+    for (int c = 0; c < diags; c++) {
+      printf("% 10g\t", diag_M[r*diags + c]);
+    }
+    printf("],\n");
+  }
+
+    printf("\n");
+  
+    // debug printout
+  printf("[\n");
+  for (int r = 0; r < N; r++) {
+    printf("[\t");
+    for (int c = 0; c < N; c++) {
+      if (r - c <= d_b && r - c  > 0) {
+	printf("(% 3d,% 3d)\t", r, c - r );
+      }
+      else if (c - r <= d_a && c - r > 0) {
+	printf("(% 3d,% 3d)\t", r, c - r );
+      }
+      else if (c - r == 0) {
+	printf("(% 3d,% 3d)\t", r, c - r);
+      }
+      else
+	printf("(% 3d,% 3d)\t", 0, 0);
+    }
+    printf("],\n");
+  }
+  printf("]\n");
+  // *********************************************************************************
+  // prepare GPU arrays
+  cuda_device_memory<double> A;
+  cuda_device_memory<double> B;
+  cuda_device_memory<double> C;
+  cuda_device_memory<double> D;
+  cuda_device_memory<double> X;
+  cuda_device_memory<double> C_prime;
+  cuda_device_memory<double> D_prime;
+
+  // be dumb and write out all dimensions
+  // Number of 2x2 blocks in our block matrix
+  int N_m = N/2;
+  A.allocate((2*2)*N_m);
+  B.allocate((2*2)*N_m);
+  C.allocate((2*2)*N_m);
+
+  C_prime.allocate((2*2)*N_m);
+  D_prime.allocate((2*2)*N_m);
+  
+  X.allocate(2*N_m);
+  D.allocate(2*N_m);
+
+  const int R = 4;
+  // fill in gpu data
+  std::shared_ptr<double[]> A_h = A.get_host_data();
+  // these are dummy values, shouldn't be used
+  A_h[0] = 0.0;
+  A_h[1] = 0.0;
+  A_h[2] = 0.0;
+  A_h[3] = 0.0;
+  
+  for (int i = 1; i < N_m; i++)
+    {
+      A_h[i*R + 0] = diag_M[2*i*diags + 0];
+      A_h[i*R + 1] = diag_M[2*i*diags + 1];
+      A_h[i*R + 2] = 0.0;
+      A_h[i*R + 3] = diag_M[(2*i+1)*diags + 0];
+      printf("A[%d]: [[ %g %g ], [ %g %g ]]\n", i,
+	     A_h[i*R+0],
+	     A_h[i*R+1],
+	     A_h[i*R+2],
+	     A_h[i*R+3]    );
+    }
+  A.put();
+  
+  std::shared_ptr<double[]> B_h = B.get_host_data();
+  for (int i = 0; i < N_m; i++)
+    {
+      B_h[i*R + 0] = diag_M[2*i*diags + 2];
+      B_h[i*R + 1] = diag_M[2*i*diags + 3];
+      B_h[i*R + 2] = diag_M[(2*i+1)*diags + 1];
+      B_h[i*R + 3] = diag_M[(2*i+1)*diags + 2];
+    }
+  B.put();
+  
+  std::shared_ptr<double[]> C_h = C.get_host_data();
+  C_h[N_m - 1 + 0] = 0.0;
+  C_h[N_m - 1 + 1] = 0.0;
+  C_h[N_m - 1 + 2] = 0.0;
+  C_h[N_m - 1 + 3] = 0.0;
+  for (int i = 0; i < N_m; i++)
+    {
+      C_h[i*R + 0] = diag_M[2*i*diags + 4];
+      C_h[i*R + 1] = 0.0;
+      C_h[i*R + 2] = diag_M[(2*i+1)*diags + 3];
+      C_h[i*R + 3] = diag_M[(2*i+1)*diags + 4];
+    }
+  C.put();
+
+  std::shared_ptr<double[]> D_h = D.get_host_data();
+  for (int i = 0; i < N_m; i++)
+    {
+      D_h[i*2 + 0] = d[2*i + 0];
+      D_h[i*2 + 1] = d[2*i + 1];
+    }
+  D.put();
+  
+
+  
+  
+  // run thomas algorithm
+  dim3 block(1, 1, 1);
+  dim3 grid(1, 1, 1);
+  thomas_solve<<<grid, block>>>((double4*)*A,
+				(double4*)*B,
+				(double4*)*C,
+				(double2*)*D,
+				(double4*)*C_prime,
+				(double2*)*D_prime,
+				(double2*)*X, N_m);
+  
+  
+  
+  // *********************************************************************************
+  // check solution
+  bool debug = true;
+  int error = 0;
+  int total = 0;
+  
+  std::shared_ptr<double[]> X_h   = X.get_host_data();
+  
+  double epsilon = 1e-12;
+  for (int i = 0; i < N; i++) {
+    double x     = X_h[i];
+    double x_ref = x_sol[i];
+    
+    bool match = cmp_dbl(x, x_ref, epsilon);
+    
+    
+    if (match) {
+      if (debug)
+	printf("% 5d % 20.12g == % 20.12g %d\n",
+	       i, x, x_ref, match);
+    }
+    else {
+      error += 1;
+      printf("% 5d % 20.12g == % 20.12g %d\n",
+	     i, x, x_ref, match);
+    }
+    total += 1;
+    success &= match;
+  }
+  
+  printf("errors: %d/%d\n", error, total);
+  
+  printf("Finished thomas algorithm test\n");
+  return success;
+}
+
+
+bool two_streams_solver_test()
+{
+  bool success = true;
+  printf("Running Two Streams Solver test\n");
+  
+  
+  int point_num = 1;
+
+  int nlayer = 15;
 
     int nbin = 1;
     int ny   = 1;
@@ -200,9 +750,9 @@ int main(int argc, char** argv) {
 	
     }
     else {
-        // M_upper.allocate(nlayer_wg_nbin);
-        // M_lower.allocate(nlayer_wg_nbin);
-        // N_upper.allocate(nlayer_wg_nbin);
+      // M_upper.allocate(nlayer_wg_nbin);
+      // M_lower.allocate(nlayer_wg_nbin);
+      // N_upper.allocate(nlayer_wg_nbin);
         // N_lower.allocate(nlayer_wg_nbin);
         // P_upper.allocate(nlayer_wg_nbin);
         // P_lower.allocate(nlayer_wg_nbin);
@@ -383,7 +933,16 @@ int main(int argc, char** argv) {
     printf("errors: %d/%d\n", error, total);
     
     printf("Two stream solver test done\n");
+    return success;
+}
 
+int main(int argc, char** argv) {
+
+  bool success = true;
+  success &= test_vectors_ops();
+  success &= thomas_test();
+  // success &= two_streams_solver_test();
+  
 
     if (success) {
         printf("Success\n");
