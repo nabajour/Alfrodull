@@ -670,11 +670,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         // }
     }
 
+    
     if (nstep > N_idle_steps) {
         qheat_scaling = 0.0;
+	double x = 0.0;
         if (nstep > N_idle_steps && nstep < N_idle_steps + N_spinup_steps) {
-            double x      = (nstep - N_idle_steps) / N_spinup_steps;
-            qheat_scaling = (1 + sin(PI * x - PI / 2.0)) / 2.0;
+	  x      = (double)(nstep - N_idle_steps) / (double)N_spinup_steps;
+	  qheat_scaling = (1 + sin(PI * x - PI / 2.0)) / 2.0;
         }
         else {
             qheat_scaling = 1.0;
@@ -686,14 +688,15 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         cudaDeviceSynchronize();
         cuda_check_status_or_exit(__FILE__, __LINE__);
     }
+    
     // if (nstep * time_step < (2 * M_PI / mean_motion)) {
     //     // stationary orbit/obliquity
     //     // calculate annually average of insolation for the first orbit
     //     annual_insol<<<NBRT, NTH>>>(insol_ann_d, insol_d, nstep, esp.point_num);
     // }
 
-
     printf("\r\n");
+
     return true;
 }
 
