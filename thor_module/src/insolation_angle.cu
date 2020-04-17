@@ -1,20 +1,20 @@
 
 
-__host__ double sign(double val) {
+__host__ double alf_sign(double val) {
     if (val < 0.0)
         return -1.0;
     else
         return 1.0;
 }
 
-__host__ double solve_kepler(double mean_anomaly, double ecc) {
+__host__ double alf_solve_kepler(double mean_anomaly, double ecc) {
 
     // Solve Kepler's equation (see Murray & Dermott 1999)
     // Get eccentric anomaly from mean anomaly and eccentricity
 
     double ecc_anomaly, fi, fi_1, fi_2, fi_3, di_1, di_2, di_3;
 
-    ecc_anomaly = mean_anomaly + sign(sin(mean_anomaly)) * 0.85 * ecc;
+    ecc_anomaly = mean_anomaly + alf_sign(sin(mean_anomaly)) * 0.85 * ecc;
     di_3        = 1.0;
 
     while (di_3 > 1e-15) {
@@ -30,7 +30,7 @@ __host__ double solve_kepler(double mean_anomaly, double ecc) {
     return ecc_anomaly;
 }
 
-__host__ double calc_r_orb(double ecc_anomaly, double ecc) {
+__host__ double alf_calc_r_orb(double ecc_anomaly, double ecc) {
 
     // Calc relative distance between planet and star (units of semi-major axis)
 
@@ -38,7 +38,7 @@ __host__ double calc_r_orb(double ecc_anomaly, double ecc) {
     return r;
 }
 
-__host__ double ecc2true_anomaly(double ecc_anomaly, double ecc) {
+__host__ double alf_ecc2true_anomaly(double ecc_anomaly, double ecc) {
 
     // Convert from eccentric to true anomaly
 
@@ -50,7 +50,7 @@ __host__ double ecc2true_anomaly(double ecc_anomaly, double ecc) {
     return true_anomaly;
 }
 
-__host__ double true2ecc_anomaly(double true_anomaly, double ecc) {
+__host__ double alf_true2ecc_anomaly(double true_anomaly, double ecc) {
 
     // Convert from true to eccentric anomaly
 
@@ -70,7 +70,7 @@ __host__ double true2ecc_anomaly(double true_anomaly, double ecc) {
 }
 
 __device__ double
-calc_zenith(double *     lonlat_d, //latitude/longitude grid
+alf_calc_zenith(double *     lonlat_d, //latitude/longitude grid
             const double alpha,    //current RA of star (relative to zero long on planet)
             const double alpha_i,
             const double sin_decl, //declination of star
@@ -111,7 +111,7 @@ calc_zenith(double *     lonlat_d, //latitude/longitude grid
     return coszrs; //zenith angle
 }
 
-__global__ void annual_insol(double *insol_ann_d, double *insol_d, int nstep, int num) {
+__global__ void alf_annual_insol(double *insol_ann_d, double *insol_d, int nstep, int num) {
 
     int id = blockIdx.x * blockDim.x + threadIdx.x;
 

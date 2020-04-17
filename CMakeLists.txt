@@ -11,7 +11,9 @@ option(BUILD_TESTS "Build test programs" OFF)
 
 if (DEFINED THOR_MODULE)
   message(STATUS "Building as THOR module")
-
+  
+  set(THOR_BASE_FOLDER ${THOR_ROOT})
+  message("THOR_BASE_FOLDER: " ${THOR_BASE_FOLDER})
 else()
   message(STATUS "Building as python library module")
   project (Alfrodull CUDA CXX)
@@ -105,13 +107,15 @@ if (DEFINED THOR_MODULE)
   include_directories(thor_module/inc)
   include_directories(${THOR_ROOT_INCLUDES} ${SHARED_PHY_MODULES_INC_DIR})
 
+  include_directories(${THOR_BASE_FOLDER}/src/physics/modules/inc/)
   
   # build as THOR module
   set(SRC_THOR_MODULE
     thor_module/src/phy_modules.cu
     thor_module/src/insolation_angle.cu
-    thor_module/src/two_streams_radiative_transfer.cu)
-
+    thor_module/src/two_streams_radiative_transfer.cu
+    ${THOR_BASE_FOLDER}/src/physics/modules/src/radiative_transfer.cu)
+  
   
   set(LIBRARY_OUTPUT_PATH)
 
