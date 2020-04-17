@@ -12,9 +12,9 @@ void cuda_check_status_or_exit(const char* filename, int line) {
     // Check device query
     if (err != cudaSuccess) {
         printf("[%s:%d] CUDA error check reports error: %s\n",
-                    filename,
-                    line,
-                    cudaGetErrorString(err));
+               filename,
+               line,
+               cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 }
@@ -121,6 +121,13 @@ void alfrodull_engine::allocate_internal_variables() {
         G_plus.allocate(nlayer_wg_nbin);
         G_minus.allocate(nlayer_wg_nbin);
         w_0.allocate(nlayer_wg_nbin);
+        A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+        D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+        X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
     }
     else {
         M_upper.allocate(nlayer_wg_nbin);
@@ -300,7 +307,7 @@ void alfrodull_engine::compute_radiative_transfer(
     double*     dev_T_int, // in: it, pii, ioi, mmmi, kii
     double*     dev_p_lay, // in: io, mmm, kil
     double*     dev_p_int, // in: ioi, mmmi, kii
-    const bool & interpolate_temp_and_pres, 
+    const bool& interpolate_temp_and_pres,
     const bool& interp_and_calc_flux_step,
     // calculate_transmission_iso
     //double* trans_wg,        // out
@@ -406,8 +413,7 @@ void alfrodull_engine::compute_radiative_transfer(
     // double* gauss_weight
     //int num_interfaces, -> ninterface
     //int ny
-    double mu_star
-) {
+    double mu_star) {
 
     double* delta_colmass = *delta_col_mass;
 
@@ -428,7 +434,7 @@ void alfrodull_engine::compute_radiative_transfer(
         fake_opac,        // io
         T_surf,           // csp, cse, pil
         surf_albedo,      // cse
-	interpolate_temp_and_pres, 
+        interpolate_temp_and_pres,
         interp_and_calc_flux_step);
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -480,39 +486,12 @@ void alfrodull_engine::compute_radiative_transfer(
         cuda_check_status_or_exit(__FILE__, __LINE__);
     }
 
-    int nscat_step = 0;
-    if (single_walk)
-        nscat_step = 200;
-    else
-        nscat_step = 3;
-
-    for (int scat_iter = 0; scat_iter < nscat_step * scat + 1; scat_iter++) {
-        if (iso) {
-            populate_spectral_flux_iso(F_down_wg,   // out
-                                       F_up_wg,     // out
-                                       F_dir_wg,    // in
-                                       g_0_tot_lay, // in
-                                       g_0,
-                                       single_walk,
-                                       R_star,
-                                       a,
-                                       f_factor,
-                                       mu_star,
-                                       epsi,
-                                       w_0_limit,
-                                       dir_beam,
-                                       clouds,
-                                       albedo);
-        }
-        else {
-            populate_spectral_flux_noniso(F_down_wg,
-                                          F_up_wg,
-                                          Fc_down_wg,
-                                          Fc_up_wg,
-                                          F_dir_wg,
-                                          Fc_dir_wg,
-                                          g_0_tot_lay,
-                                          g_0_tot_int,
+    bool thomas = false;
+    if (thomas) {
+        populate_spectral_flux_iso_thomas(F_down_wg,   // out
+                                          F_up_wg,     // out
+                                          F_dir_wg,    // in
+                                          g_0_tot_lay, // in
                                           g_0,
                                           single_walk,
                                           R_star,
@@ -521,17 +500,63 @@ void alfrodull_engine::compute_radiative_transfer(
                                           mu_star,
                                           epsi,
                                           w_0_limit,
-                                          delta_tau_limit,
                                           dir_beam,
                                           clouds,
-                                          albedo,
-                                          *trans_wg_upper,
-                                          *trans_wg_lower);
-        }
-
-        cuda_check_status_or_exit(__FILE__, __LINE__);
+                                          albedo);
     }
+    else {
+        int nscat_step = 0;
+        if (single_walk)
+            nscat_step = 200;
+        else
+            nscat_step = 3;
 
+        for (int scat_iter = 0; scat_iter < nscat_step * scat + 1; scat_iter++) {
+            if (iso) {
+                populate_spectral_flux_iso(F_down_wg,   // out
+                                           F_up_wg,     // out
+                                           F_dir_wg,    // in
+                                           g_0_tot_lay, // in
+                                           g_0,
+                                           single_walk,
+                                           R_star,
+                                           a,
+                                           f_factor,
+                                           mu_star,
+                                           epsi,
+                                           w_0_limit,
+                                           dir_beam,
+                                           clouds,
+                                           albedo);
+            }
+            else {
+                populate_spectral_flux_noniso(F_down_wg,
+                                              F_up_wg,
+                                              Fc_down_wg,
+                                              Fc_up_wg,
+                                              F_dir_wg,
+                                              Fc_dir_wg,
+                                              g_0_tot_lay,
+                                              g_0_tot_int,
+                                              g_0,
+                                              single_walk,
+                                              R_star,
+                                              a,
+                                              f_factor,
+                                              mu_star,
+                                              epsi,
+                                              w_0_limit,
+                                              delta_tau_limit,
+                                              dir_beam,
+                                              clouds,
+                                              albedo,
+                                              *trans_wg_upper,
+                                              *trans_wg_lower);
+            }
+
+            cuda_check_status_or_exit(__FILE__, __LINE__);
+        }
+    }
 
     double* gauss_weight = *gauss_weights;
     integrate_flux(deltalambda,
@@ -570,7 +595,7 @@ bool alfrodull_engine::prepare_compute_flux(
     double*       dev_opac_wg_int,     // out: ioi
     double*       dev_meanmolmass_lay, // out: mmm
     double*       dev_meanmolmass_int, // out: mmmi
-    const bool&    real_star,           // pil
+    const bool&   real_star,           // pil
     const double& fake_opac,           // io
     const double& T_surf,              // csp, cse, pil
     const double& surf_albedo,         // cse
@@ -587,16 +612,16 @@ bool alfrodull_engine::prepare_compute_flux(
     int plancktable_step = plancktable.step;
 
     if (interpolate_temp_and_pres) {
-      // it
-      dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
-      dim3 it_block(16, 1, 1);
-      
-      interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, // out
-						     dev_T_int, // in
-						     ninterface);
-      cudaDeviceSynchronize();
+        // it
+        dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
+        dim3 it_block(16, 1, 1);
+
+        interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, // out
+                                                       dev_T_int, // in
+                                                       ninterface);
+        cudaDeviceSynchronize();
     }
-    
+
     // pil
     dim3 pil_grid(int((nbin + 15) / 16), int(((nlayer + 2) + 15)) / 16, 1);
     dim3 pil_block(16, 16, 1);
@@ -727,75 +752,72 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
                                       double* F_up_band,
                                       double* F_dir_band,
                                       double* gauss_weight) {
-  bool opt = true;
-  
-  int nbin = opacities.nbin;
-  int ny   = opacities.ny;
-  
-  if (opt) {
-    {
-      int num_levels_per_block = 256/nbin + 1;
-      dim3 gridsize(ninterface/num_levels_per_block + 1);
-      dim3 blocksize(num_levels_per_block, nbin);
-      //printf("nbin: %d, ny: %d\n", nbin, ny);
-      
-      integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
-						   F_up_wg,
-						   F_dir_wg,
-						   F_down_band,
-						   F_up_band,
-						   F_dir_band,
-						   gauss_weight,
-						   nbin,
-						   ninterface,
-						   ny);
+    bool opt = true;
 
-      cudaDeviceSynchronize();
+    int nbin = opacities.nbin;
+    int ny   = opacities.ny;
+
+    if (opt) {
+        {
+            int  num_levels_per_block = 256 / nbin + 1;
+            dim3 gridsize(ninterface / num_levels_per_block + 1);
+            dim3 blocksize(num_levels_per_block, nbin);
+            //printf("nbin: %d, ny: %d\n", nbin, ny);
+
+            integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
+                                                         F_up_wg,
+                                                         F_dir_wg,
+                                                         F_down_band,
+                                                         F_up_band,
+                                                         F_dir_band,
+                                                         gauss_weight,
+                                                         nbin,
+                                                         ninterface,
+                                                         ny);
+
+            cudaDeviceSynchronize();
+        }
+
+        {
+            int  num_levels_per_block = 256;
+            dim3 gridsize(ninterface / num_levels_per_block + 1);
+            dim3 blocksize(num_levels_per_block);
+            integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
+                                                        F_down_tot,
+                                                        F_up_tot,
+                                                        F_net,
+                                                        F_down_band,
+                                                        F_up_band,
+                                                        F_dir_band,
+                                                        nbin,
+                                                        ninterface);
+            cudaDeviceSynchronize();
+        }
     }
+    else {
 
-    {
-      int num_levels_per_block = 256;
-      dim3 gridsize(ninterface/num_levels_per_block + 1);
-      dim3 blocksize(num_levels_per_block);
-      integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
-						  F_down_tot,
-						  F_up_tot,
-						  F_net,
-						  F_down_band,
-						  F_up_band,
-						  F_dir_band,
-						  nbin,
-						  ninterface);
-      cudaDeviceSynchronize();
+        dim3 threadsPerBlock(1, 1, 1);
+        dim3 numBlocks(32, 4, 8);
+
+
+        //printf("Running Alfrodull Wrapper for integrate flux\n");
+        integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
+                                                              F_down_tot,
+                                                              F_up_tot,
+                                                              F_net,
+                                                              F_down_wg,
+                                                              F_up_wg,
+                                                              F_dir_wg,
+                                                              F_down_band,
+                                                              F_up_band,
+                                                              F_dir_band,
+                                                              gauss_weight,
+                                                              nbin,
+                                                              ninterface,
+                                                              ny);
+
+        cudaDeviceSynchronize();
     }
-    
-    
-  }
-  else {
-      
-    dim3 threadsPerBlock(1, 1, 1);
-    dim3 numBlocks(32, 4, 8);
-
-
-
-    //printf("Running Alfrodull Wrapper for integrate flux\n");
-    integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
-                                                          F_down_tot,
-                                                          F_up_tot,
-                                                          F_net,
-                                                          F_down_wg,
-                                                          F_up_wg,
-                                                          F_dir_wg,
-                                                          F_down_band,
-                                                          F_up_band,
-                                                          F_dir_band,
-                                                          gauss_weight,
-                                                          nbin,
-                                                          ninterface,
-                                                          ny);
-
-    cudaDeviceSynchronize();
-  }
 }
 
 bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
@@ -982,6 +1004,68 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
     return true;
 }
 
+bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg,   // out
+                                                         double* F_up_wg,     // out
+                                                         double* F_dir_wg,    // in
+                                                         double* g_0_tot_lay, // in
+                                                         double  g_0,
+                                                         bool    singlewalk,
+                                                         double  Rstar,
+                                                         double  a,
+                                                         double  f_factor,
+                                                         double  mu_star,
+                                                         double  epsi,
+                                                         double  w_0_limit,
+                                                         bool    dir_beam,
+                                                         bool    clouds,
+                                                         double  albedo) {
+
+    int nbin = opacities.nbin;
+
+    int ny = opacities.ny;
+
+    dim3 block(16, 16, 1);
+    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
+    fband_iso_thomas<<<grid, block>>>(F_down_wg,
+                                      F_up_wg,
+                                      F_dir_wg,
+                                      *planckband_lay,
+                                      *w_0,
+                                      *M_term,
+                                      *N_term,
+                                      *P_term,
+                                      *G_plus,
+                                      *G_minus,
+                                      *A_buff,       // thomas worker
+                                      *B_buff,       // thomas worker
+                                      *C_buff,       // thomas worker
+                                      *D_buff,       // thomas worker
+                                      *C_prime_buff, // thomas worker
+                                      *D_prime_buff, // thomas worker
+                                      *X_buff,       // thomas worker
+                                      g_0_tot_lay,
+                                      g_0,
+                                      singlewalk,
+                                      Rstar,
+                                      a,
+                                      ninterface,
+                                      nbin,
+                                      f_factor,
+                                      mu_star,
+                                      ny,
+                                      epsi,
+                                      dir_beam,
+                                      clouds,
+                                      scat_corr,
+                                      albedo,
+                                      debug,
+                                      i2s_transition);
+
+    cudaDeviceSynchronize();
+
+    return true;
+}
+
 bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
                                                   double* F_up_wg,     // out
                                                   double* F_dir_wg,    // in
@@ -1001,7 +1085,6 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
     int nbin = opacities.nbin;
 
     int ny = opacities.ny;
-
 
     dim3 block(16, 16, 1);
     dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
@@ -1033,6 +1116,7 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
                                       debug,
                                       i2s_transition);
 
+    cudaDeviceSynchronize();
     return true;
 }
 
@@ -1108,6 +1192,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                          albedo,
                                          debug,
                                          i2s_transition);
+
+    cudaDeviceSynchronize();
 
     return true;
 }

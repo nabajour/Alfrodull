@@ -140,3 +140,40 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                     double  albedo,
                                     bool    debug,
                                     double  i2s_transition);
+
+
+// calculation of the spectral fluxes, isothermal case, using thomas algorithm
+__global__ void fband_iso_thomas(double* F_down_wg,      // out
+                                 double* F_up_wg,        // out
+                                 double* F_dir_wg,       // in
+                                 double* planckband_lay, // in
+                                 double* w_0,            // in
+                                 double* M_term,         // in
+                                 double* N_term,         // in
+                                 double* P_term,         // in
+                                 double* G_plus,         // in
+                                 double* G_minus,        // in
+                                 double* g_0_tot_lay,    // in (clouds)
+				 double * A_buff,             // thomas worker
+				 double * B_buff,             // thomas worker
+				 double * C_buff,             // thomas worker
+				 double * D_buff,             // thomas worker
+				 double * C_prime_buff,       // thomas worker
+				 double * D_prime_buff,       // thomas worker 
+				 double * X_buff,             // thomas worker 
+                                 double  g_0,
+                                 bool    singlewalk,
+                                 double  Rstar,
+                                 double  a,
+                                 int     numinterfaces,
+                                 int     nbin,
+                                 double  f_factor,
+                                 double  mu_star,
+                                 int     ny,
+                                 double  epsi,
+                                 bool    dir_beam,
+                                 bool    clouds,
+                                 bool    scat_corr,
+                                 double  albedo,
+                                 bool    debug,
+                                 double  i2s_transition);

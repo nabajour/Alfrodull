@@ -3,6 +3,8 @@
 #include "calculate_physics.h"
 #include "physics_constants.h"
 
+#include "math_helpers.h"
+
 #include <stdio.h>
 
 // calculates the integrated upwards and downwards fluxes
@@ -38,7 +40,7 @@ __global__ void integrate_flux_double(double* deltalambda,  // in
     int i = threadIdx.z;
 
     // set memory to 0.
-    
+
     if (y == 0) {
         while (i < numinterfaces) {
             while (x < nbin) {
@@ -121,67 +123,68 @@ must sum:
 */
 // first simple integration over weights
 __global__ void integrate_flux_band(double* F_down_wg,    // in
-				    double* F_up_wg,      // in
-				    double* F_dir_wg,     // in
-				    double* F_down_band,  // out
-				    double* F_up_band,    // out
-				    double* F_dir_band,   // out
-				    double* gauss_weight, // in
-				    int     nbin,
-				    int     numinterfaces,
-				    int     ny) {
+                                    double* F_up_wg,      // in
+                                    double* F_dir_wg,     // in
+                                    double* F_down_band,  // out
+                                    double* F_up_band,    // out
+                                    double* F_dir_band,   // out
+                                    double* gauss_weight, // in
+                                    int     nbin,
+                                    int     numinterfaces,
+                                    int     ny) {
 
-  int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int bin_idx = blockIdx.y * blockDim.y + threadIdx.y;
-  
+    int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int bin_idx       = blockIdx.y * blockDim.y + threadIdx.y;
 
-  if (interface_idx < numinterfaces && bin_idx < nbin) {
-    // set memory to 0.
-    F_dir_band[bin_idx + nbin * interface_idx]  = 0;
-    F_up_band[bin_idx + nbin * interface_idx]   = 0;
-    F_down_band[bin_idx + nbin * interface_idx] = 0;
-    
-    int bin_offset = bin_idx + nbin * interface_idx;
-    
-    for (int y = 0; y < ny; y++) {
-      double w = gauss_weight[y];
-      int weight_offset = y + ny * bin_idx + ny * nbin * interface_idx;
-      
-      F_dir_band[bin_offset] += 0.5 * w * F_dir_wg[weight_offset];
-      F_up_band[bin_offset] += 0.5 * w * F_up_wg[weight_offset];
-      F_down_band[bin_offset] += 0.5 * w * F_down_wg[weight_offset];
+
+    if (interface_idx < numinterfaces && bin_idx < nbin) {
+        // set memory to 0.
+        F_dir_band[bin_idx + nbin * interface_idx]  = 0;
+        F_up_band[bin_idx + nbin * interface_idx]   = 0;
+        F_down_band[bin_idx + nbin * interface_idx] = 0;
+
+        int bin_offset = bin_idx + nbin * interface_idx;
+
+        for (int y = 0; y < ny; y++) {
+            double w             = gauss_weight[y];
+            int    weight_offset = y + ny * bin_idx + ny * nbin * interface_idx;
+
+            F_dir_band[bin_offset] += 0.5 * w * F_dir_wg[weight_offset];
+            F_up_band[bin_offset] += 0.5 * w * F_up_wg[weight_offset];
+            F_down_band[bin_offset] += 0.5 * w * F_down_wg[weight_offset];
+        }
     }
-  }
 }
 
 // simple integration over bins/bands
-__global__ void integrate_flux_tot(double* deltalambda,  // in
-				   double* F_down_tot,   // out
-				   double* F_up_tot,     // out
-				   double* F_net,        // out
-				   double* F_down_band,  // out
-				   double* F_up_band,    // out
-				   double* F_dir_band,   // out
-				   int     nbin,
-				   int     numinterfaces) {
+__global__ void integrate_flux_tot(double* deltalambda, // in
+                                   double* F_down_tot,  // out
+                                   double* F_up_tot,    // out
+                                   double* F_net,       // out
+                                   double* F_down_band, // out
+                                   double* F_up_band,   // out
+                                   double* F_dir_band,  // out
+                                   int     nbin,
+                                   int     numinterfaces) {
 
-  
-  int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-  if (interface_idx < numinterfaces) {
-    
-    F_up_tot[interface_idx]   = 0;
-    F_down_tot[interface_idx] = 0;
+    int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    for (int bin = 0; bin < nbin; bin++) {
-      int band_idx = interface_idx*nbin + bin;
-      F_up_tot[interface_idx] += F_up_band[band_idx] * deltalambda[bin];
-      F_down_tot[interface_idx] += (F_down_band[band_idx]  + F_dir_band[band_idx])* deltalambda[bin];
+    if (interface_idx < numinterfaces) {
+
+        F_up_tot[interface_idx]   = 0;
+        F_down_tot[interface_idx] = 0;
+
+        for (int bin = 0; bin < nbin; bin++) {
+            int band_idx = interface_idx * nbin + bin;
+            F_up_tot[interface_idx] += F_up_band[band_idx] * deltalambda[bin];
+            F_down_tot[interface_idx] +=
+                (F_down_band[band_idx] + F_dir_band[band_idx]) * deltalambda[bin];
+        }
+
+        __syncthreads();
+        F_net[interface_idx] = F_up_tot[interface_idx] - F_down_tot[interface_idx];
     }
-    
-    __syncthreads();
-    F_net[interface_idx] = F_up_tot[interface_idx] - F_down_tot[interface_idx];
-  }
 }
 
 
@@ -211,10 +214,10 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-	if (dir_beam)
-	  F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
-	else
-	  F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
+        if (dir_beam)
+            F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+        else
+            F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
         double mu_star_layer_j;
 
         // flux values lower that TOA will now be attenuated depending on their location
@@ -265,10 +268,10 @@ __global__ void fdir_noniso(double* F_dir_wg,
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-	if (dir_beam)
-	  F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
-	else
-	  F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
+        if (dir_beam)
+            F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+        else
+            F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
 
         double mu_star_layer_j;
 
@@ -348,15 +351,14 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
         for (int i = numinterfaces - 1; i >= 0; i--) {
 
             // TOA boundary -- incoming stellar flux
-	  // TODO: move if switch outside of loop to make it unnecessary
+            // TODO: move if switch outside of loop to make it unnecessary
             if (i == numinterfaces - 1) {
-	      if (dir_beam)		
-		F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
-	      else
-		F_down_wg[y + ny * x + ny * nbin * i] =
-		  f_factor * ((Rstar / a) * (Rstar / a)) * PI
-		* planckband_lay[i + x * (numinterfaces - 1 + 2)];
-
+                if (dir_beam)
+                    F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
+                else
+                    F_down_wg[y + ny * x + ny * nbin * i] =
+                        f_factor * ((Rstar / a) * (Rstar / a)) * PI
+                        * planckband_lay[i + x * (numinterfaces - 1 + 2)];
             }
             else {
                 w0    = w_0[y + ny * x + ny * nbin * i];
@@ -367,6 +369,15 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                 G_min = G_minus[y + ny * x + ny * nbin * i];
                 g0    = g_0;
 
+		// DBG:
+                // printf("%g %g %g %g %g %g %g\n",
+                //        w0,
+                //        M,
+                //        N,
+                //        P,
+                //        G_pl,
+                //        G_min,
+                //        g0);
                 // improved scattering correction factor E
                 E = 1.0;
                 if (scat_corr) {
@@ -395,6 +406,18 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                     * (flux_terms + 2.0 * PI * epsi * (1.0 - w0) / (E - w0) * planck_terms
                        + direct_terms);
 
+		// DBG:
+                //		if (isnan(F_down_wg[y + ny * x + ny * nbin * i]))
+                // printf("NaN: %d %d %d - Fdip1: %g Fui: %g ft: %g pl: %g dt: %g\n",
+                //        y,
+                //        x,
+                //        i,
+                //        F_down_wg[y + ny * x + ny * nbin * (i + 1)],
+                //        F_up_wg[y + ny * x + ny * nbin * i],
+                //        flux_terms,
+                //        planck_terms,
+                //        direct_terms);
+
                 //feedback if flux becomes negative
                 if (debug) {
                     if (F_down_wg[y + ny * x + ny * nbin * i] < 0)
@@ -411,7 +434,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
         for (int i = 0; i < numinterfaces; i++) {
 
             // BOA boundary -- surface emission and reflection
-	  // TODO: move if switch outside of loop to make it unnecessary
+            // TODO: move if switch outside of loop to make it unnecessary
             if (i == 0) {
 
                 double reflected_part = albedo
@@ -558,12 +581,12 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
 
             // TOA boundary -- incoming stellar flux
             if (i == numinterfaces - 1) {
-	      if (dir_beam)
-		F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
-	      else
-                F_down_wg[y + ny * x + ny * nbin * i] =
-                    f_factor * ((Rstar / a) * (Rstar / a)) * PI
-                    * planckband_lay[i + x * (numinterfaces - 1 + 2)];
+                if (dir_beam)
+                    F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
+                else
+                    F_down_wg[y + ny * x + ny * nbin * i] =
+                        f_factor * ((Rstar / a) * (Rstar / a)) * PI
+                        * planckband_lay[i + x * (numinterfaces - 1 + 2)];
             }
             else {
                 // upper part of layer quantities
@@ -837,6 +860,299 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                y);
                 }
             }
+        }
+    }
+}
+
+
+// calculation of the spectral fluxes, isothermal case, using thomas algorithm
+__global__ void fband_iso_thomas(double* F_down_wg,      // out
+                                 double* F_up_wg,        // out
+                                 double* F_dir_wg,       // in
+                                 double* planckband_lay, // in
+                                 double* w_0,            // in
+                                 double* M_term,         // in
+                                 double* N_term,         // in
+                                 double* P_term,         // in
+                                 double* G_plus,         // in
+                                 double* G_minus,        // in
+                                 double* g_0_tot_lay,    // in (clouds)
+                                 double* A_buff,         // thomas worker
+                                 double* B_buff,         // thomas worker
+                                 double* C_buff,         // thomas worker
+                                 double* D_buff,         // thomas worker
+                                 double* C_prime_buff,   // thomas worker
+                                 double* D_prime_buff,   // thomas worker
+                                 double* X_buff,         // thomas worker
+                                 double  g_0,
+                                 bool    singlewalk,
+                                 double  Rstar,
+                                 double  a,
+                                 int     numinterfaces,
+                                 int     nbin,
+                                 double  f_factor,
+                                 double  mu_star,
+                                 int     ny,
+                                 double  epsi,
+                                 bool    dir_beam,
+                                 bool    clouds,
+                                 bool    scat_corr,
+                                 double  albedo,
+                                 bool    debug,
+                                 double  i2s_transition) {
+
+    // wavelength bin index
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    // weight index
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x < nbin && y < ny) {
+        // make contiguous address space for worker memory, fastest idx is interface
+        // two equations per interface, one matrix block per interface
+        int      N       = numinterfaces;
+        double4* A       = (double4*)&(A_buff[(x * ny + y) * numinterfaces * 4]);
+        double4* B       = (double4*)&(B_buff[(x * ny + y) * numinterfaces * 4]);
+        double4* C       = (double4*)&(C_buff[(x * ny + y) * numinterfaces * 4]);
+        double2* D       = (double2*)&(D_buff[(x * ny + y) * numinterfaces * 2]);
+        double2* X       = (double2*)&(X_buff[(x * ny + y) * numinterfaces * 2]);
+        double4* C_prime = (double4*)&(C_prime_buff[(x * ny + y) * numinterfaces * 4]);
+        double2* D_prime = (double2*)&(D_prime_buff[(x * ny + y) * numinterfaces * 2]);
+
+        // TODO: how do we treat boundary ?
+
+        double F_BOA_up   = 0.0;
+        double F_TOA_down = 0.0;
+
+        if (!dir_beam)
+            F_TOA_down = f_factor * ((Rstar / a) * (Rstar / a)) * PI
+                         * planckband_lay[(N - 1) + x * (numinterfaces - 1 + 2)];
+
+        {
+
+            //   // BOA boundary -- surface emission and reflection
+            // // TODO: move if switch outside of loop to make it unnecessary
+            //   if (i == 0) {
+
+            //       double reflected_part = albedo
+            //                               * (F_dir_wg[y + ny * x + ny * nbin * i]
+            //                                  + F_down_wg[y + ny * x + ny * nbin * i]);
+
+            //       // this is the surface/BOA emission. it correctly considers the emissivity e = (1 - albedo)
+            //       double BOA_part =
+            //           (1.0 - albedo) * PI * (1.0 - w0) / (E - w0)
+            //           * planckband_lay[numinterfaces
+            //                            + x
+            //                                  * (numinterfaces - 1
+            //                                     + 2)]; // remember: numinterfaces = numlayers + 1
+
+            //       F_up_wg[y + ny * x + ny * nbin * i] =
+            //           reflected_part
+            //           + BOA_part; // internal_part consists of the internal heat flux plus the surface/BOA emission
+            //   }
+
+            double w0_N = w_0[y + ny * x + ny * nbin * 0];
+            double g0_N = g_0;
+            // improved scattering correction factor E
+            double E_N = 1.0;
+            if (scat_corr) {
+                E_N = E_parameter(w0_N, g0_N, i2s_transition);
+            }
+
+            F_BOA_up = PI * (1.0 - w0_N) / (E_N - w0_N)
+                       * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+        }
+
+        {
+            double w0_0    = w_0[y + ny * x + ny * nbin * 0];
+            double M_0     = M_term[y + ny * x + ny * nbin * 0];
+            double N_0     = N_term[y + ny * x + ny * nbin * 0];
+            double P_0     = P_term[y + ny * x + ny * nbin * 0];
+            double G_pl_0  = G_plus[y + ny * x + ny * nbin * 0];
+            double G_min_0 = G_minus[y + ny * x + ny * nbin * 0];
+            double g0_0    = g_0;
+
+
+            // improved scattering correction factor E
+            double E_0 = 1.0;
+            if (scat_corr) {
+                E_0 = E_parameter(w0_0, g0_0, i2s_transition);
+            }
+
+            // experimental clouds functionality
+            if (clouds) {
+                g0_0 = g_0_tot_lay[x + nbin * 0];
+            }
+
+            double B_down = planckband_lay[0 + x * (numinterfaces - 1 + 2)] * (N_0 + M_0 - P_0);
+
+            double I_down = min(
+                0.0,
+                F_dir_wg[y + ny * x + ny * nbin * 0] / (-mu_star) * (G_min_0 * M_0 + G_pl_0 * N_0)
+                    - F_dir_wg[y + ny * x + ny * nbin * (0 + 1)] / (-mu_star) * P_0 * G_min_0);
+
+            // double psi = P;
+            // double xi = N;
+            // double chi = M;
+
+            A[0].x = 0.0;
+            A[0].y = 0.0;
+            A[0].z = 0.0;
+            A[0].w = 0.0;
+
+            B[0].x = 1.0;
+            B[0].y = 0.0;
+            B[0].z = M_0;
+            B[0].w = N_0;
+
+            C[0].x = 0.0;
+            C[0].y = 0.0;
+            C[0].z = 0.0;
+            C[0].w = -P_0;
+
+            D[0].x = F_BOA_up;
+            D[0].y = 2 * PI * epsi * (1.0 - w0_0) / (E_0 - w0_0) * B_down + I_down;
+        }
+
+        // fill in inner interfaces
+        for (int i = 1; i < N - 1; i++) {
+            double w0_down    = w_0[y + ny * x + ny * nbin * i];
+            double M_down     = M_term[y + ny * x + ny * nbin * i];
+            double N_down     = N_term[y + ny * x + ny * nbin * i];
+            double P_down     = P_term[y + ny * x + ny * nbin * i];
+            double G_pl_down  = G_plus[y + ny * x + ny * nbin * i];
+            double G_min_down = G_minus[y + ny * x + ny * nbin * i];
+            double g0_down    = g_0;
+
+            double w0_up    = w_0[y + ny * x + ny * nbin * (i - 1)];
+            double M_up     = M_term[y + ny * x + ny * nbin * (i - 1)];
+            double N_up     = N_term[y + ny * x + ny * nbin * (i - 1)];
+            double P_up     = P_term[y + ny * x + ny * nbin * (i - 1)];
+            double G_pl_up  = G_plus[y + ny * x + ny * nbin * (i - 1)];
+            double G_min_up = G_minus[y + ny * x + ny * nbin * (i - 1)];
+            double g0_up    = g_0;
+
+            // improved scattering correction factor E
+            double E_down = 1.0;
+            double E_up   = 1.0;
+            if (scat_corr) {
+                E_down = E_parameter(w0_down, g0_down, i2s_transition);
+                E_up   = E_parameter(w0_up, g0_up, i2s_transition);
+            }
+
+            // experimental clouds functionality
+            if (clouds) {
+                g0_down = g_0_tot_lay[x + nbin * i];
+                g0_up   = g_0_tot_lay[x + nbin * (i - 1)];
+            }
+
+            double B_down =
+                planckband_lay[i + x * (numinterfaces - 1 + 2)] * (N_down + M_down - P_down);
+            double B_up =
+                planckband_lay[(i - 1) + x * (numinterfaces - 1 + 2)] * (N_up + M_up - P_up);
+
+            double I_down = min(0.0,
+                                F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star)
+                                        * (G_min_down * M_down + G_pl_down * N_down)
+                                    - F_dir_wg[y + ny * x + ny * nbin * (i + 1)] / (-mu_star) * P_up
+                                          * G_min_up);
+
+            double I_up =
+                min(0.0,
+                    F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star)
+                            * (G_min_up * N_up + G_pl_up * M_up)
+                        - F_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star) * P_up * G_pl_up);
+
+
+            // double psi = P;
+            // double xi = N;
+            // double chi = M;
+
+            A[i].x = -P_up; // -psi
+            A[i].y = 0.0;
+            A[i].z = 0.0;
+            A[i].w = 0.0;
+
+            B[i].x = N_up;   // xi
+            B[i].y = M_up;   // chi
+            B[i].z = M_down; // chi
+            B[i].w = N_down; // xi
+
+            C[i].x = 0.0;
+            C[i].y = 0.0;
+            C[i].z = 0.0;
+            C[i].w = -P_down; // -psi
+
+            D[i].x = 2 * PI * epsi * (1.0 - w0_up) / (E_up - w0_up) * B_up + I_up;
+            D[i].y = 2 * PI * epsi * (1.0 - w0_down) / (E_down - w0_down) * B_down + I_down;
+        }
+
+        {
+            // TOA boundary condition
+
+            double w0_N    = w_0[y + ny * x + ny * nbin * (N - 2)];
+            double M_N     = M_term[y + ny * x + ny * nbin * (N - 2)];
+            double N_N     = N_term[y + ny * x + ny * nbin * (N - 2)];
+            double P_N     = P_term[y + ny * x + ny * nbin * (N - 2)];
+            double G_pl_N  = G_plus[y + ny * x + ny * nbin * (N - 2)];
+            double G_min_N = G_minus[y + ny * x + ny * nbin * (N - 2)];
+            double g0_N    = g_0;
+
+            // improved scattering correction factor E
+            double E_N = 1.0;
+            if (scat_corr) {
+                E_N = E_parameter(w0_N, g0_N, i2s_transition);
+            }
+
+            // experimental clouds functionality
+            if (clouds) {
+                g0_N = g_0_tot_lay[x + nbin * (N - 2)];
+            }
+
+            double B_up = planckband_lay[(N - 2) + x * (numinterfaces - 1 + 2)] * (N_N + M_N - P_N);
+
+            double I_up =
+                min(0.0,
+                    F_dir_wg[y + ny * x + ny * nbin * (N - 1)] / (-mu_star)
+                            * (G_min_N * N_N + G_pl_N * M_N)
+                        - F_dir_wg[y + ny * x + ny * nbin * (N - 2)] / (-mu_star) * P_N * G_pl_N);
+
+
+            // double psi = P;
+            // double xi = N;
+            // double chi = M;
+
+            A[N - 1].x = -P_N; // -psi
+            A[N - 1].y = 0.0;
+            A[N - 1].z = 0.0;
+            A[N - 1].w = 0.0;
+
+            B[N - 1].x = N_N; // xi
+            B[N - 1].y = M_N; // chi
+            B[N - 1].z = 0.0; // chi
+            B[N - 1].w = 1.0; // xi
+
+            C[N - 1].x = 0.0;
+            C[N - 1].y = 0.0;
+            C[N - 1].z = 0.0;
+            C[N - 1].w = 0.0; // -psi
+
+            D[N - 1].x = 2 * PI * epsi * (1.0 - w0_N) / (E_N - w0_N) * B_up + I_up;
+            D[N - 1].y = F_TOA_down;
+        }
+
+        // Solve Thomas algorithm
+
+        thomas_solve(A, B, C, D, C_prime, D_prime, X, N);
+
+        // Fill output data
+
+        for (int i = 0; i < N; i++) {
+            // if (isnan(X[i].x))
+            //     printf("F_up[i: % 3d, nbin: % 3d, ny: % 3d] == NaN\n", i, x, y);
+            // if (isnan(X[i].y))
+            //     printf("F_down[i: % 3d, nbin: % 3d, ny: % 3d] == NaN\n", i, x, y);
+
+            F_up_wg[y + ny * x + ny * nbin * i]   = X[i].x;
+            F_down_wg[y + ny * x + ny * nbin * i] = X[i].y;
         }
     }
 }

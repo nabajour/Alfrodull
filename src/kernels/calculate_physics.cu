@@ -215,6 +215,7 @@ __global__ void trans_iso(double* trans_wg,             // out
         if (scat) {
             ray_cross   = scat_cross_lay[x + nbin * i];
             cloud_cross = cloud_scat_cross_lay[x + nbin * i];
+	    // DBG: cloud_cross = 0.0;
         }
         else {
             ray_cross   = 0;
@@ -245,6 +246,20 @@ __global__ void trans_iso(double* trans_wg,             // out
         N_term[y + ny * x + ny * nbin * i] = zeta_pl * zeta_min * (1.0 - (trans * trans));
         P_term[y + ny * x + ny * nbin * i] = ((zeta_min * zeta_min) - (zeta_pl * zeta_pl)) * trans;
 
+	// DBG:
+	// if (!isfinite(M_term[y + ny * x + ny * nbin * i]))
+	//   printf("abnormal M_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g, "
+	// 	 "epsi: %g, w0: %g, delta_tau: %g g0: %g, "
+	// 	 "delta_colamss: %g, opac_wg_lay: %g, cloud_opac_lay: %g, ray_cross: %g, cloud_cross: %g, meanmolmass_lay: %g\n", 
+	// 	 M_term[y + ny * x + ny * nbin * i], zeta_min, trans, zeta_pl,
+	// 	 epsi, w0, del_tau, g0,
+	// 	 delta_colmass[i], opac_wg_lay[y + ny * x + ny * nbin * i], cloud_opac_lay[i], ray_cross, cloud_cross, meanmolmass_lay[i] );
+	// if (!isfinite(N_term[y + ny * x + ny * nbin * i]))
+	//   printf("abnormal N_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g "
+	// 	 "epsi: %g, w0: %g, delta_tau: %g, g0: %g\n",
+	// 	 N_term[y + ny * x + ny * nbin * i], zeta_min, trans, zeta_pl,
+	// 	 epsi, w0, del_tau, g0);
+		
         G_plus[y + ny * x + ny * nbin * i] =
             G_limiter(G_plus_func(w0, g0, epsi, mu_star, scat_corr, i2s_transition), debug);
         G_minus[y + ny * x + ny * nbin * i] =
