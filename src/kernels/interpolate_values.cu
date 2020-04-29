@@ -2,6 +2,8 @@
 
 #include "physics_constants.h"
 
+// uncomment to set planck function to zero
+//#define ZERO_PLANCK_FUNCTION
 
 // temperature interpolation for the non-isothermal layers
 __global__ void interpolate_temperature(double* tlay, double* tint, int numinterfaces) {
@@ -71,6 +73,9 @@ __global__ void planck_interpol_layer(double* temp,           // in
             if (tdown == tup) {
                 planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + tdown * nwave];
             }
+#ifdef ZERO_PLANCK_FUNCTION
+	    planckband_lay[i + x * (numlayers + 2)] = 0.0;
+#endif //  ZERO_PLANCK_FUNCTION
         }
     }
 }
@@ -104,6 +109,9 @@ __global__ void planck_interpol_interface(double* temp,           // in
         if (tdown == tup) {
             planckband_int[i + x * numinterfaces] = planck_grid[x + tdown * nwave];
         }
+#ifdef ZERO_PLANCK_FUNCTION
+	planckband_int[i + x * numinterfaces] = 0.0;
+#endif //  ZERO_PLANCK_FUNCTION
     }
 }
 

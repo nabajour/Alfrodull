@@ -105,6 +105,7 @@ public:
     double albedo;
     double g_0;
     double epsi;
+    double diffusivity = 2.0;
     double mu_star; // not a config
     bool   scat;
     bool   scat_corr;
@@ -164,7 +165,7 @@ public:
 
     bool start_up = true;
 
-  int  N_spinup_steps    = 0;
+    int  N_spinup_steps    = 0;
     bool store_weight_flux = true;
     bool store_band_flux   = true;
     bool store_updown_flux = true;
@@ -172,11 +173,11 @@ public:
 
 
     // double gray RT spinup
-  int dgrt_spinup_steps = 0;
-  radiative_transfer dgrt;
+    int                dgrt_spinup_steps = 0;
+    radiative_transfer dgrt;
 
 private:
-  int last_step = 0;
+    int              last_step = 0;
     alfrodull_engine alf;
 
     cuda_device_memory<double> pressure_int;
@@ -216,4 +217,7 @@ private:
     cuda_device_memory<double> Qheat;
 
     void update_spin_orbit(double time, double Omega);
+
+    // Debug print out function
+    void debug_print_columns(ESP &esp, double cmustar, int nstep, int column_idx);
 };
