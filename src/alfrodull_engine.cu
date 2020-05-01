@@ -5,6 +5,15 @@
 #include "integrate_flux.h"
 #include "interpolate_values.h"
 
+#include "binary_test.h"
+#include "debug.h"
+
+#include <functional>
+#include <map>
+
+
+using std::string;
+
 
 void cuda_check_status_or_exit(const char* filename, int line) {
     cudaError_t err = cudaGetLastError();
@@ -161,7 +170,8 @@ void alfrodull_engine::allocate_internal_variables() {
     trans_wg.allocate(nlayer_wg_nbin);
 
     if (!iso) {
-        meanmolmass_lay.allocate(ninterface); // TODO: needs copy back to host
+        meanmolmass_lay.allocate(
+            ninterface); // TODO: needs copy back to host / Check agains def above, check size
         opac_wg_int.allocate(ninterface_wg_nbin);
         trans_wg_upper.allocate(nlayer_wg_nbin);
         trans_wg_lower.allocate(nlayer_wg_nbin);
@@ -175,6 +185,136 @@ void alfrodull_engine::allocate_internal_variables() {
 
     gauss_weights.allocate(opacities.ny);
     gauss_weights.put(weights);
+
+    USE_BENCHMARK();
+
+    if (iso) {
+        std::map<string, output_def> debug_arrays = {
+            {"meanmolmass_lay",
+             {meanmolmass_lay.ptr_ref(), nlayer, "meanmolmass_lay", "mmml", true, dummy}},
+            {"meanmolmass_int",
+             {meanmolmass_int.ptr_ref(), ninterface, "meanmolmass_int", "mmmi", true, dummy}},
+            {"planckband_lay",
+             {planckband_lay.ptr_ref(), nlayer_plus2_nbin, "planckband_lay", "plkl", true, dummy}},
+            {"planckband_int",
+             {planckband_int.ptr_ref(), ninterface_nbin, "planckband_int", "plki", true, dummy}},
+            {"opac_wg_lay",
+             {opac_wg_lay.ptr_ref(), nlayer_wg_nbin, "opac_wg_lay", "opc", true, dummy}},
+            {"trans_wg", {trans_wg.ptr_ref(), nlayer_wg_nbin, "trans_wg", "tr", true, dummy}},
+            {"scat_cs_lay",
+             {scatter_cross_section_lay.ptr_ref(),
+              nlayer_nbin,
+              "scat_cs_lay",
+              "scsl",
+              true,
+              dummy}},
+            {"scat_cs_int",
+             {scatter_cross_section_inter.ptr_ref(),
+              ninterface_nbin,
+              "scat_cs_int",
+              "scsi",
+              true,
+              dummy}},
+            {"delta_tau_wg",
+             {delta_tau_wg.ptr_ref(), nlayer_wg_nbin, "delta_tau_wg", "dtw", true, dummy}},
+            {"delta_col_mass",
+             {delta_col_mass.ptr_ref(), nlayer, "delta_col_mass", "dcm", true, dummy}},
+            {"M_term", {M_term.ptr_ref(), nlayer_wg_nbin, "M_term", "Mt", true, dummy}},
+            {"N_term", {N_term.ptr_ref(), nlayer_wg_nbin, "N_term", "Nt", true, dummy}},
+            {"P_term", {P_term.ptr_ref(), nlayer_wg_nbin, "P_term", "Pt", true, dummy}},
+            {"G_plus", {G_plus.ptr_ref(), nlayer_wg_nbin, "G_plus", "Gp", true, dummy}},
+            {"G_minus", {G_minus.ptr_ref(), nlayer_wg_nbin, "G_minus", "Gm", true, dummy}},
+            {"w_0", {w_0.ptr_ref(), nlayer_wg_nbin, "w_0", "w0", true, dummy}},
+
+
+        };
+        // TODO: add thomas algorithm variables
+
+        /*
+        A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+        D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+        X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+	*/
+
+        BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
+    }
+    else {
+        std::map<string, output_def> debug_arrays = {
+            {"meanmolmass_lay",
+             {meanmolmass_lay.ptr_ref(), nlayer, "meanmolmass_lay", "mmml", true, dummy}},
+            {"meanmolmass_int",
+             {meanmolmass_int.ptr_ref(), ninterface, "meanmolmass_int", "mmmi", true, dummy}},
+            {"planckband_lay",
+             {planckband_lay.ptr_ref(), nlayer_plus2_nbin, "planckband_lay", "plkl", true, dummy}},
+            {"planckband_int",
+             {planckband_int.ptr_ref(), ninterface_nbin, "planckband_int", "plki", true, dummy}},
+            {"opac_wg_lay",
+             {opac_wg_lay.ptr_ref(), nlayer_wg_nbin, "opac_wg_lay", "opcl", true, dummy}},
+            {"opac_wg_int",
+             {opac_wg_int.ptr_ref(), ninterface_wg_nbin, "opac_wg_int", "opci", true, dummy}},
+            {"trans_wg_upper",
+             {trans_wg_upper.ptr_ref(), nlayer_wg_nbin, "trans_wg_upper", "tru", true, dummy}},
+            {"trans_wg_lower",
+             {trans_wg_lower.ptr_ref(), nlayer_wg_nbin, "trans_wg_lower", "trl", true, dummy}},
+            {"scat_cs_lay",
+             {scatter_cross_section_lay.ptr_ref(),
+              nlayer_nbin,
+              "scat_cs_lay",
+              "scsl",
+              true,
+              dummy}},
+            {"scat_cs_int",
+             {scatter_cross_section_inter.ptr_ref(),
+              ninterface_nbin,
+              "scat_cs_int",
+              "scsi",
+              true,
+              dummy}},
+            {"delta_tau_wg_upper",
+             {delta_tau_wg_upper.ptr_ref(),
+              nlayer_wg_nbin,
+              "delta_tau_wg_upper",
+              "dtwu",
+              true,
+              dummy}},
+            {"delta_tau_wg_lower",
+             {delta_tau_wg_lower.ptr_ref(),
+              nlayer_wg_nbin,
+              "delta_tau_wg_lower",
+              "dtwl",
+              true,
+              dummy}},
+
+            {"delta_col_upper",
+             {delta_col_upper.ptr_ref(), nlayer, "delta_col_upper", "dcu", true, dummy}},
+            {"delta_col_lower",
+             {delta_col_lower.ptr_ref(), nlayer, "delta_col_lower", "dcl", true, dummy}},
+            {"M_upper", {M_upper.ptr_ref(), nlayer_wg_nbin, "M_upper", "Mu", true, dummy}},
+            {"M_lower", {M_lower.ptr_ref(), nlayer_wg_nbin, "M_lower", "Ml", true, dummy}},
+            {"N_upper", {N_upper.ptr_ref(), nlayer_wg_nbin, "N_upper", "Nu", true, dummy}},
+            {"N_lower", {N_lower.ptr_ref(), nlayer_wg_nbin, "N_lower", "Nl", true, dummy}},
+            {"P_upper", {P_upper.ptr_ref(), nlayer_wg_nbin, "P_upper", "Pu", true, dummy}},
+            {"P_lower", {P_lower.ptr_ref(), nlayer_wg_nbin, "P_lower", "Pl", true, dummy}},
+            {"G_plus_upper",
+             {G_plus_upper.ptr_ref(), nlayer_wg_nbin, "G_plus_upper", "Gpu", true, dummy}},
+            {"G_plus_lower",
+             {G_plus_lower.ptr_ref(), nlayer_wg_nbin, "G_plus_lower", "Gpl", true, dummy}},
+            {"G_minus_upper",
+             {G_minus_upper.ptr_ref(), nlayer_wg_nbin, "G_minus_upper", "Gmu", true, dummy}},
+            {"G_minus_lower",
+             {G_minus_lower.ptr_ref(), nlayer_wg_nbin, "G_minus_lower", "Gml", true, dummy}},
+
+
+            {"w_0_upper", {w_0_upper.ptr_ref(), nlayer_wg_nbin, "w_0_upper", "w0u", true, dummy}},
+            {"w_0_lower", {w_0_lower.ptr_ref(), nlayer_wg_nbin, "w_0_lower", "w0l", true, dummy}},
+
+        };
+        BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
+    }
 }
 
 // return device pointers for helios data save
@@ -415,6 +555,8 @@ void alfrodull_engine::compute_radiative_transfer(
     //int ny
     double mu_star) {
 
+    USE_BENCHMARK();
+
     double* delta_colmass = *delta_col_mass;
 
 
@@ -439,9 +581,21 @@ void alfrodull_engine::compute_radiative_transfer(
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
 
+    BENCH_POINT_I_S_PHY(debug_nstep,
+                        debug_col_idx,
+                        "Alf_prep_flx",
+                        (),
+                        ("opac_wg_lay",
+                         "opac_wg_int",
+                         "meanmolmass_lay",
+                         "meanmolmass_int",
+                         "cloud_scat_cross_lay"));
+
 
     if (interp_and_calc_flux_step) {
         if (iso) {
+            BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
+
             calculate_transmission_iso(*trans_wg,            // out
                                        delta_colmass,        // in
                                        *opac_wg_lay,         // in
@@ -454,8 +608,18 @@ void alfrodull_engine::compute_radiative_transfer(
                                        mu_star,
                                        scat,
                                        clouds);
+
+            BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_comp_trans", (), ("trans_wg_lay"));
         }
         else {
+            BENCH_POINT_I_S_PHY(debug_nstep,
+                                debug_col_idx,
+                                "Alf_prep_II",
+                                (),
+                                ("delta_col_upper", "delta_col_lower",
+
+
+                                 ));
             calculate_transmission_noniso(*trans_wg_upper,
                                           *trans_wg_lower,
                                           *delta_col_upper,
@@ -475,6 +639,28 @@ void alfrodull_engine::compute_radiative_transfer(
                                           mu_star,
                                           scat,
                                           clouds);
+            BENCH_POINT_I_S_PHY(debug_nstep,
+                                debug_col_idx,
+                                "Alf_comp_trans",
+                                (),
+                                ("trans_wg_upper",
+                                 "trans_wg_lower",
+                                 "delta_tau_wg_upper",
+                                 "delta_tau_wg_lower",
+                                 "planckband_lay",
+                                 "planckband_int",
+                                 "M_upper",
+                                 "M_lower",
+                                 "N_upper",
+                                 "N_lower",
+                                 "P_upper",
+                                 "P_lower",
+                                 "G_plus_upper",
+                                 "G_plus_lower",
+                                 "G_minus_upper",
+                                 "G_minus_lower",
+                                 "w_0_upper",
+                                 "w_0_lower"));
         }
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -482,6 +668,8 @@ void alfrodull_engine::compute_radiative_transfer(
 
         direct_beam_flux(
             F_dir_wg, Fc_dir_wg, z_lay, mu_star, R_planet, R_star, a, dir_beam, geom_zenith_corr);
+
+        BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
     }
@@ -556,6 +744,9 @@ void alfrodull_engine::compute_radiative_transfer(
 
             cuda_check_status_or_exit(__FILE__, __LINE__);
         }
+
+        BENCH_POINT_I_S_PHY(
+            debug_nstep, debug_col_idx, "Alf_pop_spec_flx", (), ("F_up_wg", "F_down_wg"));
     }
 
     double* gauss_weight = *gauss_weights;
@@ -570,6 +761,9 @@ void alfrodull_engine::compute_radiative_transfer(
                    F_up_band,
                    F_dir_band,
                    gauss_weight);
+
+    BENCH_POINT_I_S_PHY(
+        debug_nstep, debug_col_idx, "Alf_int_flx", (), ("F_up_band", "F_down_band", "F_dir_band"));
 
 
     cuda_check_status_or_exit(__FILE__, __LINE__);

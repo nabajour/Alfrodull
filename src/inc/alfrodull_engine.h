@@ -59,6 +59,8 @@ public:
     double w_0_limit = 0.0;
     double albedo    = 0.0;
 
+    int debug_nstep   = 0;
+    int debug_col_idx = 0;
 
     double i2s_transition = 0.0;
     bool   debug          = false;

@@ -45,6 +45,8 @@
 
 #include "two_streams_radiative_transfer.h"
 
+#include "binary_test.h"
+#include "debug.h"
 
 #include "alfrodull_engine.h"
 
@@ -56,13 +58,19 @@
 
 #include <string>
 
+#include <functional>
+#include <map>
+
+USE_BENCHMARK();
+
 
 using std::string;
+
 
 // debugging printout
 //#define DEBUG_PRINTOUT_ARRAYS
 // dump TP profile to run in HELIOS for profile comparison
-#define DUMP_HELIOS_TP
+// #define DUMP_HELIOS_TP
 // stride for column TP profile dump
 const int HELIOS_TP_STRIDE = 200;
 //***************************************************************************************************
@@ -379,7 +387,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_up_tot.allocate(esp.point_num * ninterface);
     F_down_band.allocate(ninterface_nbin);
     F_up_band.allocate(ninterface_nbin);
-    F_dir_band.allocate(esp.point_num * ninterface_nbin);
+    F_dir_band.allocate(ninterface_nbin);
     // TODO: check, ninterface or nlayers ?
     F_net.allocate(esp.point_num * ninterface);
 
@@ -420,6 +428,31 @@ bool two_streams_radiative_transfer::initialise_memory(
     if (dgrt_spinup_steps > 0) {
         dgrt.initialise_memory(esp, phy_modules_core_arrays);
     }
+
+    std::map<string, output_def> debug_arrays = {
+        {"F_net", {F_net.ptr_ref(), esp.point_num * ninterface, "Fnet", "Fn", true, dummy}},
+
+        {"F_up_tot",
+         {F_up_tot.ptr_ref(), esp.point_num * ninterface, "Fuptot", "Fut", true, dummy}},
+        {"F_down_tot",
+         {F_down_tot.ptr_ref(), esp.point_num * ninterface, "Fdowntot", "Fdt", true, dummy}},
+        {"F_up_wg", {F_up_wg.ptr_ref(), ninterface_wg_nbin, "Fupwg", "Fuw", true, dummy}},
+        {"F_down_wg", {F_down_wg.ptr_ref(), ninterface_wg_nbin, "Fdownwg", "Fdw", true, dummy}},
+        {"F_up_band", {F_up_band.ptr_ref(), ninterface_nbin, "Fupband", "Fub", true, dummy}},
+        {"F_down_band", {F_down_band.ptr_ref(), ninterface_nbin, "Fdownband", "Fdb", true, dummy}},
+        {"F_dir_wg", {F_dir_wg.ptr_ref(), ninterface_wg_nbin, "Fdirwg", "Fdirw", true, dummy}},
+
+        {"F_dir_band", {F_dir_band.ptr_ref(), ninterface_nbin, "Fdirband", "Fdib", true, dummy}},
+
+
+        {"T_lay", {temperature_lay.ptr_ref(), nlayer_plus1, "T_lay", "Tl", true, dummy}},
+        {"T_int", {temperature_int.ptr_ref(), ninterface, "T_int", "Ti", true, dummy}},
+        {"P_int", {pressure_int.ptr_ref(), ninterface, "P_int", "Pi", true, dummy}},
+
+        {"col_mu_star", {col_mu_star.ptr_ref(), esp.point_num, "col_mu_star", "cMu", true, dummy}},
+        {"AlfQheat", {Qheat.ptr_ref(), esp.point_num * nlayer, "AlfQheat", "aQh", true, dummy}}};
+
+    BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
 
     return out;
 }
@@ -678,6 +711,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         update_spin_orbit(nstep * time_step, sim.Omega);
     }
 
+    alf.debug_nstep = nstep;
+
     const int num_blocks = 256;
 
     if ((nstep % compute_every_n_iteration == 0 || start_up) && nstep > dgrt_spinup_steps) {
@@ -696,10 +731,20 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         std::unique_ptr<double[]> loc_col_mu_star = std::make_unique<double[]>(esp.point_num);
         col_mu_star.fetch(loc_col_mu_star);
 
-        printf("\r\n");
+        BENCH_POINT_I_PHY(nstep, "Alf_phy_loop_S", (), ("col_mu_star"));
+
+        //    printf("\r\n");
         // loop on columns
         for (int column_idx = 0; column_idx < esp.point_num; column_idx++) {
-            print_progress((column_idx + 1.0) / double(esp.point_num));
+            alf.debug_col_idx = column_idx;
+            //     print_progress((column_idx + 1.0) / double(esp.point_num));
+            F_up_wg.zero();
+            F_down_wg.zero();
+
+            Fc_down_wg.zero();
+            Fc_up_wg.zero();
+            F_dir_wg.zero();
+            Fc_dir_wg.zero();
 
             int num_layers = esp.nv;
 
@@ -718,6 +763,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             // initialise interpolated T and P
 
 #ifdef DUMP_HELIOS_TP
+
 
             // dump a TP profile for HELIOS input
             if (column_idx % HELIOS_TP_STRIDE == 0) {
@@ -773,6 +819,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             cudaDeviceSynchronize();
             cuda_check_status_or_exit(__FILE__, __LINE__);
 
+            BENCH_POINT_I_S_PHY(
+                nstep, column_idx, "Alf_interpTnP", (), ("T_lay", "T_int", "P_int"));
+
             // initialise delta_col_mass
             // TODO: should this go inside alf?
             //printf("initialise_delta_colmass\n");
@@ -813,7 +862,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             double* F_col_down_tot    = &((*F_down_tot)[column_offset_int]);
             double* F_col_up_tot      = &((*F_up_tot)[column_offset_int]);
             double* F_col_net         = &((*F_net)[column_offset_int]);
-            double* F_dir_band_col    = &((*F_dir_band)[column_idx * ninterface * nbin]);
+            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
             alf.compute_radiative_transfer(dev_starflux,          // dev_starflux
                                            *temperature_lay,      // dev_T_lay
                                            *temperature_int,      // dev_T_int
@@ -893,7 +942,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         else {
             qheat_scaling = 1.0;
         }
-        printf("Alf scaling: %g \n", qheat_scaling);
+        printf("Alf scaling: %g (step: %d) \n", qheat_scaling, nstep);
 
         int num_samples = (esp.point_num * nlayer);
         increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
@@ -909,6 +958,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     //     annual_insol<<<NBRT, NTH>>>(insol_ann_d, insol_d, nstep, esp.point_num);
     // }
 
+    BENCH_POINT_I_PHY(nstep, "Alf_phy_loop_E", (), ("F_up_tot", "F_down_tot", "AlfQheat"));
 
     return true;
 }

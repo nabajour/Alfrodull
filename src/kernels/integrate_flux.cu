@@ -436,22 +436,12 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
             // BOA boundary -- surface emission and reflection
             // TODO: move if switch outside of loop to make it unnecessary
             if (i == 0) {
+		double BOA_part = PI * planckband_lay[numinterfaces+ x * (numinterfaces - 1+ 2)]; // ghost layer plank emission
+		double reflected_part = (F_dir_wg[y + ny * x + ny * nbin * i]
+                                            + F_down_wg[y + ny * x + ny * nbin * i]);
 
-                double reflected_part = albedo
-                                        * (F_dir_wg[y + ny * x + ny * nbin * i]
-                                           + F_down_wg[y + ny * x + ny * nbin * i]);
+		F_up_wg[y + ny * x + ny * nbin * i] = BOA_part + reflected_part;
 
-                // this is the surface/BOA emission. it correctly considers the emissivity e = (1 - albedo)
-                double BOA_part =
-                    (1.0 - albedo) * PI * (1.0 - w0) / (E - w0)
-                    * planckband_lay[numinterfaces
-                                     + x
-                                           * (numinterfaces - 1
-                                              + 2)]; // remember: numinterfaces = numlayers + 1
-
-                F_up_wg[y + ny * x + ny * nbin * i] =
-                    reflected_part
-                    + BOA_part; // internal_part consists of the internal heat flux plus the surface/BOA emission
             }
             else {
                 w0    = w_0[y + ny * x + ny * nbin * (i - 1)];
