@@ -188,6 +188,8 @@ void alfrodull_engine::allocate_internal_variables() {
 
     USE_BENCHMARK();
 
+#ifdef BENCHMARKING
+
     if (iso) {
         std::map<string, output_def> debug_arrays = {
             {"meanmolmass_lay",
@@ -315,6 +317,7 @@ void alfrodull_engine::allocate_internal_variables() {
         };
         BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
     }
+#endif // BENCHMARKING
 }
 
 // return device pointers for helios data save

@@ -428,7 +428,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     if (dgrt_spinup_steps > 0) {
         dgrt.initialise_memory(esp, phy_modules_core_arrays);
     }
-
+#ifdef BENCHMARKING
     std::map<string, output_def> debug_arrays = {
         {"F_net", {F_net.ptr_ref(), esp.point_num * ninterface, "Fnet", "Fn", true, dummy}},
 
@@ -453,7 +453,7 @@ bool two_streams_radiative_transfer::initialise_memory(
         {"AlfQheat", {Qheat.ptr_ref(), esp.point_num * nlayer, "AlfQheat", "aQh", true, dummy}}};
 
     BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
-
+#endif // BENCHMARKING
     return out;
 }
 
