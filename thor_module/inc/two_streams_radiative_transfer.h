@@ -176,6 +176,7 @@ public:
     int                dgrt_spinup_steps = 0;
     radiative_transfer dgrt;
 
+
 private:
     int              last_step = 0;
     alfrodull_engine alf;
@@ -220,4 +221,7 @@ private:
 
     // Debug print out function
     void debug_print_columns(ESP &esp, double cmustar, int nstep, int column_idx);
+  void print_weighted_band_data_to_file(ESP &esp, int nstep, int column_idx,
+					cuda_device_memory<double> & array,
+					  string output_file_base);
 };

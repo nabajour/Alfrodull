@@ -113,45 +113,45 @@ void alfrodull_engine::allocate_internal_variables() {
     planckband_int.allocate(ninterface_nbin);
 
 
-    if (iso) {
-        delta_tau_wg.allocate(nlayer_wg_nbin);
-    }
-    else {
-        delta_tau_wg_upper.allocate(nlayer_wg_nbin);
-        delta_tau_wg_lower.allocate(nlayer_wg_nbin);
-    }
+    //    if (iso) {
+    delta_tau_wg.allocate(nlayer_wg_nbin);
+    //    }
+    //    else {
+    delta_tau_wg_upper.allocate(nlayer_wg_nbin);
+    delta_tau_wg_lower.allocate(nlayer_wg_nbin);
+    //    }
 
     // flux computation internal quantities
     // TODO: not needed to allocate everything, depending on iso or noniso
-    if (iso) {
-        M_term.allocate(nlayer_wg_nbin);
-        N_term.allocate(nlayer_wg_nbin);
-        P_term.allocate(nlayer_wg_nbin);
-        G_plus.allocate(nlayer_wg_nbin);
-        G_minus.allocate(nlayer_wg_nbin);
-        w_0.allocate(nlayer_wg_nbin);
-        A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-        D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-        X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-    }
-    else {
-        M_upper.allocate(nlayer_wg_nbin);
-        M_lower.allocate(nlayer_wg_nbin);
-        N_upper.allocate(nlayer_wg_nbin);
-        N_lower.allocate(nlayer_wg_nbin);
-        P_upper.allocate(nlayer_wg_nbin);
-        P_lower.allocate(nlayer_wg_nbin);
-        G_plus_upper.allocate(nlayer_wg_nbin);
-        G_plus_lower.allocate(nlayer_wg_nbin);
-        G_minus_upper.allocate(nlayer_wg_nbin);
-        G_minus_lower.allocate(nlayer_wg_nbin);
-        w_0_upper.allocate(nlayer_wg_nbin);
-        w_0_lower.allocate(nlayer_wg_nbin);
-    }
+    // if (iso) {
+    M_term.allocate(nlayer_wg_nbin);
+    N_term.allocate(nlayer_wg_nbin);
+    P_term.allocate(nlayer_wg_nbin);
+    G_plus.allocate(nlayer_wg_nbin);
+    G_minus.allocate(nlayer_wg_nbin);
+    w_0.allocate(nlayer_wg_nbin);
+    A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+    B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+    C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+    D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+    C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+    D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+    X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+                                                   //    }
+                                                   //  else {
+    M_upper.allocate(nlayer_wg_nbin);
+    M_lower.allocate(nlayer_wg_nbin);
+    N_upper.allocate(nlayer_wg_nbin);
+    N_lower.allocate(nlayer_wg_nbin);
+    P_upper.allocate(nlayer_wg_nbin);
+    P_lower.allocate(nlayer_wg_nbin);
+    G_plus_upper.allocate(nlayer_wg_nbin);
+    G_plus_lower.allocate(nlayer_wg_nbin);
+    G_minus_upper.allocate(nlayer_wg_nbin);
+    G_minus_lower.allocate(nlayer_wg_nbin);
+    w_0_upper.allocate(nlayer_wg_nbin);
+    w_0_lower.allocate(nlayer_wg_nbin);
+    //    }
 
     //  dev_T_int.allocate(ninterface);
 
@@ -169,13 +169,11 @@ void alfrodull_engine::allocate_internal_variables() {
 
     trans_wg.allocate(nlayer_wg_nbin);
 
-    if (!iso) {
-        meanmolmass_lay.allocate(
-            ninterface); // TODO: needs copy back to host / Check agains def above, check size
-        opac_wg_int.allocate(ninterface_wg_nbin);
-        trans_wg_upper.allocate(nlayer_wg_nbin);
-        trans_wg_lower.allocate(nlayer_wg_nbin);
-    }
+    //    if (!iso) {
+    opac_wg_int.allocate(ninterface_wg_nbin);
+    trans_wg_upper.allocate(nlayer_wg_nbin);
+    trans_wg_lower.allocate(nlayer_wg_nbin);
+    //    }
 
     // TODO: abstract this away into an interpolation class
 
@@ -318,6 +316,65 @@ void alfrodull_engine::allocate_internal_variables() {
         BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
     }
 #endif // BENCHMARKING
+}
+
+// set internal arrays to zero before loop
+void alfrodull_engine::reset() {
+    scatter_cross_section_lay.zero();
+    scatter_cross_section_inter.zero();
+
+    // planck function
+    planckband_lay.zero();
+    planckband_int.zero();
+
+    // delta tau, for weights. Only used internally (on device) for flux computations
+    // and shared at the end for integration over wg
+    // iso
+    delta_tau_wg.zero();
+    // noiso
+    delta_tau_wg_upper.zero();
+    delta_tau_wg_lower.zero();
+
+    //
+    dev_T_int.zero();
+    delta_col_mass.zero();
+    delta_col_upper.zero();
+    delta_col_lower.zero();
+    meanmolmass_int.zero();
+    meanmolmass_lay.zero();
+    opac_wg_lay.zero();
+    opac_wg_int.zero();
+    trans_wg.zero();
+    trans_wg_upper.zero();
+    trans_wg_lower.zero();
+
+    M_term.zero();
+    N_term.zero();
+    P_term.zero();
+    G_plus.zero();
+    G_minus.zero();
+    w_0.zero();
+
+    A_buff.zero();       // thomas worker
+    B_buff.zero();       // thomas worker
+    C_buff.zero();       // thomas worker
+    D_buff.zero();       // thomas worker
+    C_prime_buff.zero(); // thomas worker
+    D_prime_buff.zero(); // thomas worker
+    X_buff.zero();       // thomas worker
+                         // noniso
+    M_upper.zero();
+    M_lower.zero();
+    N_upper.zero();
+    N_lower.zero();
+    P_upper.zero();
+    P_lower.zero();
+    G_plus_upper.zero();
+    G_plus_lower.zero();
+    G_minus_upper.zero();
+    G_minus_lower.zero();
+    w_0_upper.zero();
+    w_0_lower.zero();
 }
 
 // return device pointers for helios data save
@@ -694,6 +751,11 @@ void alfrodull_engine::compute_radiative_transfer(
                                           dir_beam,
                                           clouds,
                                           albedo);
+
+        cuda_check_status_or_exit(__FILE__, __LINE__);
+
+        BENCH_POINT_I_S_PHY(
+            debug_nstep, debug_col_idx, "Alf_pop_spec_flx_thomas", (), ("F_up_wg", "F_down_wg"));
     }
     else {
         int nscat_step = 0;
@@ -702,7 +764,10 @@ void alfrodull_engine::compute_radiative_transfer(
         else
             nscat_step = 3;
 
-        for (int scat_iter = 0; scat_iter < nscat_step * scat + 1; scat_iter++) {
+        if (!scat)
+            nscat_step = 0;
+
+        for (int scat_iter = 0; scat_iter < nscat_step + 1; scat_iter++) {
             if (iso) {
                 populate_spectral_flux_iso(F_down_wg,   // out
                                            F_up_wg,     // out

@@ -346,7 +346,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
         double flux_terms;
         double planck_terms;
         double direct_terms;
-
+	
         // calculation of downward fluxes from TOA to BOA
         for (int i = numinterfaces - 1; i >= 0; i--) {
 
@@ -396,10 +396,10 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                 planck_terms = planckband_lay[i + x * (numinterfaces - 1 + 2)] * (N + M - P);
 
                 direct_terms =
-                    F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star) * (G_min * M + G_pl * N)
-                    - F_dir_wg[y + ny * x + ny * nbin * (i + 1)] / (-mu_star) * P * G_min;
+                    - F_dir_wg[y + ny * x + ny * nbin * i] * (G_min * M + G_pl * N)
+                    + F_dir_wg[y + ny * x + ny * nbin * (i + 1)] * P * G_min;
 
-                direct_terms = min(0.0, direct_terms);
+		direct_terms = min(0.0, direct_terms);
 
                 F_down_wg[y + ny * x + ny * nbin * i] =
                     1.0 / M
@@ -470,8 +470,8 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                 planck_terms = planckband_lay[(i - 1) + x * (numinterfaces - 1 + 2)] * (N + M - P);
 
                 direct_terms =
-                    F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star) * (G_min * N + G_pl * M)
-                    - F_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star) * P * G_pl;
+                    -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min * N + G_pl * M)
+                    + F_dir_wg[y + ny * x + ny * nbin * (i - 1)] * P * G_pl;
 
                 direct_terms = min(0.0, direct_terms);
 
@@ -976,9 +976,11 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
 
             double I_down = min(
                 0.0,
-                F_dir_wg[y + ny * x + ny * nbin * 0] / (-mu_star) * (G_min_0 * M_0 + G_pl_0 * N_0)
-                    - F_dir_wg[y + ny * x + ny * nbin * (0 + 1)] / (-mu_star) * P_0 * G_min_0);
-
+                F_dir_wg[y + ny * x + ny * nbin * 0] / (mu_star) * (G_min_0 * M_0 + G_pl_0 * N_0)
+                    - F_dir_wg[y + ny * x + ny * nbin * (0 + 1)] / (mu_star) * P_0 * G_min_0);
+	    if (mu_star == 0.0)
+	      I_down = 0.0;
+	    
             // double psi = P;
             // double xi = N;
             // double chi = M;
@@ -990,8 +992,8 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
 
             B[0].x = 1.0;
             B[0].y = 0.0;
-            B[0].z = M_0;
-            B[0].w = N_0;
+            B[0].z = N_0;
+            B[0].w = M_0;
 
             C[0].x = 0.0;
             C[0].y = 0.0;
@@ -1040,17 +1042,23 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                 planckband_lay[(i - 1) + x * (numinterfaces - 1 + 2)] * (N_up + M_up - P_up);
 
             double I_down = min(0.0,
-                                F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star)
+                                F_dir_wg[y + ny * x + ny * nbin * i] / (mu_star)
                                         * (G_min_down * M_down + G_pl_down * N_down)
-                                    - F_dir_wg[y + ny * x + ny * nbin * (i + 1)] / (-mu_star) * P_up
+                                    - F_dir_wg[y + ny * x + ny * nbin * (i + 1)] / (mu_star) * P_up
                                           * G_min_up);
+
+	    if (mu_star == 0.0)
+	      I_down = 0.0;
+		    
 
             double I_up =
                 min(0.0,
-                    F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star)
+                    F_dir_wg[y + ny * x + ny * nbin * i] / (mu_star)
                             * (G_min_up * N_up + G_pl_up * M_up)
-                        - F_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star) * P_up * G_pl_up);
+                        - F_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (mu_star) * P_up * G_pl_up);
 
+	    if (mu_star == 0.0)
+	      I_up = 0.0;
 
             // double psi = P;
             // double xi = N;
@@ -1061,10 +1069,10 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             A[i].z = 0.0;
             A[i].w = 0.0;
 
-            B[i].x = N_up;   // xi
-            B[i].y = M_up;   // chi
-            B[i].z = M_down; // chi
-            B[i].w = N_down; // xi
+            B[i].x = M_up;   // chi
+            B[i].y = N_up;   // xi
+            B[i].z = N_down; // xi
+            B[i].w = M_down; // chi
 
             C[i].x = 0.0;
             C[i].y = 0.0;
@@ -1101,10 +1109,12 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
 
             double I_up =
                 min(0.0,
-                    F_dir_wg[y + ny * x + ny * nbin * (N - 1)] / (-mu_star)
+                    F_dir_wg[y + ny * x + ny * nbin * (N - 1)] / (mu_star)
                             * (G_min_N * N_N + G_pl_N * M_N)
-                        - F_dir_wg[y + ny * x + ny * nbin * (N - 2)] / (-mu_star) * P_N * G_pl_N);
+                        - F_dir_wg[y + ny * x + ny * nbin * (N - 2)] / (mu_star) * P_N * G_pl_N);
 
+	    if (mu_star == 0.0)
+	      I_up = 0.0;
 
             // double psi = P;
             // double xi = N;
@@ -1115,10 +1125,10 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             A[N - 1].z = 0.0;
             A[N - 1].w = 0.0;
 
-            B[N - 1].x = N_N; // xi
-            B[N - 1].y = M_N; // chi
-            B[N - 1].z = 0.0; // chi
-            B[N - 1].w = 1.0; // xi
+            B[N - 1].x = M_N; // chi
+            B[N - 1].y = N_N; // xi
+            B[N - 1].z = 0.0; // xi
+            B[N - 1].w = 1.0; // chi
 
             C[N - 1].x = 0.0;
             C[N - 1].y = 0.0;

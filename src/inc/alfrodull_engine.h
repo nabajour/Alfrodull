@@ -13,6 +13,8 @@ public:
 
     void init();
 
+    void reset();
+
     void load_opacities(const string& filename);
     void prepare_planck_table();
 

@@ -74,11 +74,11 @@ __device__ double G_plus_func(double w0,
 
     double num = w0 * E * (w0 * g0 - g0 - 1);
 
-    double denom = 1.0 - pow(mu_star, 2.0) * E * pow(epsi, -2.0) * (E - w0) * (1.0 - w0 * g0);
+    double denom = 1.0 - E * pow(mu_star/epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
 
     double second_term = pow(mu_star, 2.0) / epsi + mu_star / (E * (1.0 - w0 * g0));
 
-    double third_term = w0 * g0 * mu_star / (1.0 - w0 * g0);
+    double third_term = mu_star * w0 * g0 / (1.0 - w0 * g0);
 
     double bracket = num / denom * second_term + third_term;
 
@@ -104,11 +104,11 @@ __device__ double G_minus_func(double w0,
 
     double num = w0 * E * (w0 * g0 - g0 - 1);
 
-    double denom = 1.0 - pow(mu_star, -2.0) * E * pow(epsi, -2.0) * (E - w0) * (1.0 - w0 * g0);
+    double denom = 1.0 - E * pow(mu_star/epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
 
     double second_term = pow(mu_star, 2.0) / epsi - mu_star / ( E * (1.0 - w0 * g0));
 
-    double third_term = w0 * g0 * mu_star / (1.0 - w0 * g0);
+    double third_term = mu_star * w0 * g0 / (1.0 - w0 * g0);
 
     double bracket = num / denom * second_term - third_term;
 
@@ -138,7 +138,7 @@ __device__ double G_limiter(double G, bool debug) {
 __device__ double
 single_scat_alb(double scat_cross, double opac_abs, double meanmolmass, double w_0_limit) {
 
-    return min(scat_cross / (scat_cross + opac_abs * meanmolmass), w_0_limit);
+  return min(scat_cross / (scat_cross + opac_abs * meanmolmass), w_0_limit);
 }
 
 // calculates the two-stream coupling coefficient Zeta_minus with the scattering coefficient E
@@ -222,6 +222,7 @@ __global__ void trans_iso(double* trans_wg,             // out
             cloud_cross = 0;
         }
 
+	
         w_0[y + ny * x + ny * nbin * i] =
             single_scat_alb(ray_cross + cloud_cross,
                             opac_wg_lay[y + ny * x + ny * nbin * i] + cloud_opac_lay[i],
@@ -338,6 +339,7 @@ __global__ void trans_noniso(double* trans_wg_upper,
                 / 2.0;
             cloud_cross_low =
                 (cloud_scat_cross_int[x + nbin * i] + cloud_scat_cross_lay[x + nbin * i]) / 2.0;
+
         }
         else {
             ray_cross_up    = 0;
@@ -354,7 +356,7 @@ __global__ void trans_noniso(double* trans_wg_upper,
             / 2.0;
         utype cloud_opac_up  = (cloud_opac_lay[i] + cloud_opac_int[i + 1]) / 2.0;
         utype cloud_opac_low = (cloud_opac_int[i] + cloud_opac_lay[i]) / 2.0;
-
+	
         utype meanmolmass_up  = (meanmolmass_lay[i] + meanmolmass_int[i + 1]) / 2.0;
         utype meanmolmass_low = (meanmolmass_int[i] + meanmolmass_lay[i]) / 2.0;
 
