@@ -76,9 +76,9 @@ __device__ double G_plus_func(double w0,
 
     double denom = 1.0 - E * pow(mu_star/epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
 
-    double second_term = pow(mu_star, 2.0) / epsi + mu_star / (E * (1.0 - w0 * g0));
+    double second_term = mu_star / epsi + 1 / (E * (1.0 - w0 * g0));
 
-    double third_term = mu_star * w0 * g0 / (1.0 - w0 * g0);
+    double third_term = w0 * g0 / (1.0 - w0 * g0);
 
     double bracket = num / denom * second_term + third_term;
 
@@ -106,9 +106,9 @@ __device__ double G_minus_func(double w0,
 
     double denom = 1.0 - E * pow(mu_star/epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
 
-    double second_term = pow(mu_star, 2.0) / epsi - mu_star / ( E * (1.0 - w0 * g0));
+    double second_term = mu_star / epsi - 1 / ( E * (1.0 - w0 * g0));
 
-    double third_term = mu_star * w0 * g0 / (1.0 - w0 * g0);
+    double third_term = w0 * g0 / (1.0 - w0 * g0);
 
     double bracket = num / denom * second_term - third_term;
 

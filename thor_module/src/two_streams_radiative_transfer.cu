@@ -1009,7 +1009,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         dgrt.phy_loop(esp, sim, nstep, time_step);
         printf("double gray scaling: %g \n", qheat_scaling);
     }
-    else {
+    else if (dgrt_spinup_steps > 0) {
       // still compute DG for comparison
       double qheat_scaling = 0.0;
       dgrt.set_qheat_scaling(qheat_scaling);

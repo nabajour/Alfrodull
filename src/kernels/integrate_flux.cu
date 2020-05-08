@@ -637,9 +637,9 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                              - N_up * Fc_up_wg[y + ny * x + ny * nbin * i];
 
                 direct_terms =
-                    Fc_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star)
+                    -Fc_dir_wg[y + ny * x + ny * nbin * i] 
                         * (G_min_up * M_up + G_pl_up * N_up)
-                    - F_dir_wg[y + ny * x + ny * nbin * (i + 1)] / (-mu_star) * G_min_up * P_up;
+		  + F_dir_wg[y + ny * x + ny * nbin * (i + 1)] * G_min_up * P_up;
 
                 direct_terms = min(0.0, direct_terms);
 
@@ -680,9 +680,8 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                              - N_low * F_up_wg[y + ny * x + ny * nbin * i];
 
                 direct_terms =
-                    F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star)
-                        * (G_min_low * M_low + G_pl_low * N_low)
-                    - Fc_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star) * P_low * G_min_low;
+		  - F_dir_wg[y + ny * x + ny * nbin * i] * (G_min_low * M_low + G_pl_low * N_low)
+		  + Fc_dir_wg[y + ny * x + ny * nbin * i] * P_low * G_min_low;
 
                 direct_terms = min(0.0, direct_terms);
 
