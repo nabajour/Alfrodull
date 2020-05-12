@@ -270,7 +270,7 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
         "planet_star_dist", planet_star_dist_config, planet_star_dist_config);
     config_reader.append_config_var("radius_star", R_star_config, R_star_config);
 
-    config_reader.append_config_var("Alf_thomas", thomas, thomas)
+    config_reader.append_config_var("Alf_thomas", thomas, thomas);
     config_reader.append_config_var("Alf_iso", iso, iso);
     config_reader.append_config_var("Alf_real_star", real_star, real_star);
     config_reader.append_config_var("Alf_fake_opac", fake_opac, fake_opac);
