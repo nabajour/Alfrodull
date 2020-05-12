@@ -734,7 +734,6 @@ void alfrodull_engine::compute_radiative_transfer(
         cuda_check_status_or_exit(__FILE__, __LINE__);
     }
 
-    bool thomas = false;
     if (thomas) {
         populate_spectral_flux_iso_thomas(F_down_wg,   // out
                                           F_up_wg,     // out
