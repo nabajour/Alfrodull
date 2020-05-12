@@ -118,7 +118,8 @@ public:
 
 
     //    double a; // ?
-
+  bool thomas = false;
+  
     bool   dir_beam;
     bool   geom_zenith_corr;
     double w_0_limit;

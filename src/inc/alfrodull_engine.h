@@ -84,6 +84,8 @@ public:
     double* g_0_tot_int          = nullptr;
 
     bool clouds = false;
+
+    bool thomas = false;
     void allocate_internal_variables();
 
     // TODO: temporary prototyping wrapper for HELIOS.

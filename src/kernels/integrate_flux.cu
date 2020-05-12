@@ -990,7 +990,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             A[0].w = 0.0;
 
             B[0].x = 1.0;
-            B[0].y = 0.0;
+            B[0].y = -1.0;
             B[0].z = N_0;
             B[0].w = M_0;
 
@@ -999,7 +999,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             C[0].z = 0.0;
             C[0].w = -P_0;
 
-            D[0].x = F_BOA_up;
+            D[0].x = F_BOA_up +  F_dir_wg[y + ny * x + ny * nbin * 0];
             D[0].y = 2 * PI * epsi * (1.0 - w0_0) / (E_0 - w0_0) * B_down + I_down;
         }
 

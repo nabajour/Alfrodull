@@ -225,6 +225,8 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_real_star: %s\n", real_star ? "true" : "false");
     log::printf("Alf_fake_opac: %f\n", fake_opac);
 
+    log::printf("Alf_thomas: %s\n", thomas ? "true" : "false");
+	
     log::printf("Alf_T_surf: %f\n", T_surf);
     log::printf("Alf_albedo: %f\n", albedo);
     log::printf("Alf_g_0: %f\n", g_0);
@@ -268,6 +270,7 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
         "planet_star_dist", planet_star_dist_config, planet_star_dist_config);
     config_reader.append_config_var("radius_star", R_star_config, R_star_config);
 
+    config_reader.append_config_var("Alf_thomas", thomas, thomas)
     config_reader.append_config_var("Alf_iso", iso, iso);
     config_reader.append_config_var("Alf_real_star", real_star, real_star);
     config_reader.append_config_var("Alf_fake_opac", fake_opac, fake_opac);
@@ -336,6 +339,8 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     epsi = 1.0 / diffusivity;
 
+    alf.thomas = thomas;
+    
     alf.set_parameters(nlayer,              // const int&    nlayer_,
                        iso,                 // const bool&   iso_,
                        T_star,              // const double& T_star_,
@@ -724,6 +729,35 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
     const int num_blocks = 256;
 
+    
+    if (dgrt_spinup_steps > 0 && nstep < dgrt_spinup_steps) {
+
+        // spin up with Double Gray Radiative Transfer
+        // full double gray
+        dgrt.phy_loop(esp, sim, nstep, time_step);
+        printf("full double gray\n");
+    }
+    else if (dgrt_spinup_steps > 0 && nstep >= dgrt_spinup_steps
+             && nstep < dgrt_spinup_steps + N_spinup_steps) {
+        double x             = (double)(nstep - dgrt_spinup_steps) / (double)N_spinup_steps;
+        double qheat_scaling = 1.0 - (1 + sin(PI * x - PI / 2.0)) / 2.0;
+        dgrt.set_qheat_scaling(qheat_scaling);
+        // spin up with Double Gray Radiative Transfer
+        // full double gray
+        dgrt.phy_loop(esp, sim, nstep, time_step);
+        printf("double gray scaling: %g \n", qheat_scaling);
+    }
+    else if (dgrt_spinup_steps > 0) {
+      // still compute DG for comparison
+      double qheat_scaling = 0.0;
+      dgrt.set_qheat_scaling(qheat_scaling);
+      // spin up with Double Gray Radiative Transfer
+      // full double gray
+      dgrt.phy_loop(esp, sim, nstep, time_step);
+      printf("double gray scaling: %g \n", qheat_scaling);
+    }
+
+
     if ((nstep % compute_every_n_iteration == 0 || start_up) && nstep > dgrt_spinup_steps) {
         compute_col_mu_star<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(*col_mu_star,
                                                                               esp.lonlat_d,
@@ -800,7 +834,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
             // dump a TP profile for HELIOS input
             if (column_idx % HELIOS_TP_STRIDE == 0) {
-	      	      std::string DBG_OUTPUT_DIR = "alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
+	      std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
 	      create_output_dir(DBG_OUTPUT_DIR);
 
                 double                    lon     = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
@@ -861,7 +895,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
             // dump a TP profile for HELIOS input
             if (column_idx % HELIOS_TP_STRIDE == 0) {
-	      std::string DBG_OUTPUT_DIR = "alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
+	      std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
 	      create_output_dir(DBG_OUTPUT_DIR);
     
                 double                    lon     = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
@@ -950,7 +984,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            false,                 // interp_press_and_temp
                                            true,                  // interp_and_calc_flux_step
                                            z_lay,                 // z_lay
-                                           false,                 // singlewalk
+                                           true,                 // singlewalk
                                            *F_down_wg,
                                            *F_up_wg,
                                            *Fc_down_wg,
@@ -991,33 +1025,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     }
 
     printf("\r\n");
-
-    if (dgrt_spinup_steps > 0 && nstep < dgrt_spinup_steps) {
-
-        // spin up with Double Gray Radiative Transfer
-        // full double gray
-        dgrt.phy_loop(esp, sim, nstep, time_step);
-        printf("full double gray\n");
-    }
-    else if (dgrt_spinup_steps > 0 && nstep >= dgrt_spinup_steps
-             && nstep < dgrt_spinup_steps + N_spinup_steps) {
-        double x             = (double)(nstep - dgrt_spinup_steps) / (double)N_spinup_steps;
-        double qheat_scaling = 1.0 - (1 + sin(PI * x - PI / 2.0)) / 2.0;
-        dgrt.set_qheat_scaling(qheat_scaling);
-        // spin up with Double Gray Radiative Transfer
-        // full double gray
-        dgrt.phy_loop(esp, sim, nstep, time_step);
-        printf("double gray scaling: %g \n", qheat_scaling);
-    }
-    else if (dgrt_spinup_steps > 0) {
-      // still compute DG for comparison
-      double qheat_scaling = 0.0;
-      dgrt.set_qheat_scaling(qheat_scaling);
-      // spin up with Double Gray Radiative Transfer
-      // full double gray
-      dgrt.phy_loop(esp, sim, nstep, time_step);
-      printf("double gray scaling: %g \n", qheat_scaling);
-    }
 
 
     if (nstep >= dgrt_spinup_steps) {
@@ -1186,7 +1193,7 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(
     int nbin = alf.opacities.nbin;
     int ny   = alf.opacities.ny;
     
-    std::string DBG_OUTPUT_DIR = "alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
+    std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
     create_output_dir(DBG_OUTPUT_DIR);
     
     // Print out single scattering albedo data
@@ -1231,7 +1238,7 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
     int nbin = alf.opacities.nbin;
     int ny   = alf.opacities.ny;
 
-    std::string DBG_OUTPUT_DIR = "alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
+    std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
     create_output_dir(DBG_OUTPUT_DIR);
 
     {
@@ -1736,4 +1743,55 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
         }
         fclose(Fdir_output_file);
     }
+
+    
+    {
+        // Print out alf qheat
+
+        int                       num_val = F_dir_wg.get_size() / (nbin * ny);
+
+
+	int col_offset = column_idx*esp.nv;
+
+        string output_file_name = DBG_OUTPUT_DIR + "alf_qheat_profile.dat";
+
+        FILE* output_file = fopen(output_file_name.c_str(), "w");
+
+        std::shared_ptr<double[]> qh_h =
+	  get_cuda_data(&((Qheat.ptr())[col_offset]), esp.nv);
+
+        fprintf(output_file, "level\tqheat\n");
+
+	for (int i = 0; i < esp.nv; i++) {
+	  fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
+	}
+	    
+        fclose(output_file);
+    }
+
+        
+    {
+        // Print out DG qheat
+
+        int                       num_val = F_dir_wg.get_size() / (nbin * ny);
+
+
+	int col_offset = column_idx*esp.nv;
+
+        string output_file_name = DBG_OUTPUT_DIR + "dgrt_qheat_profile.dat";
+
+        FILE* output_file = fopen(output_file_name.c_str(), "w");
+
+        std::shared_ptr<double[]> qh_h =
+	  get_cuda_data(&((dgrt.qheat_d)[col_offset]), esp.nv);
+
+        fprintf(output_file, "level\tqheat\n");
+
+	for (int i = 0; i < esp.nv; i++) {
+	  fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
+	}
+	    
+        fclose(output_file);
+    }
+    
 }
