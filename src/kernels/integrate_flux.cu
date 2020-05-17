@@ -710,14 +710,11 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
 
             // BOA boundary -- surface emission and reflection
             if (i == 0) {
-
-                double reflected_part = albedo
-                                        * (F_dir_wg[y + ny * x + ny * nbin * i]
+                double reflected_part = (F_dir_wg[y + ny * x + ny * nbin * i]
                                            + F_down_wg[y + ny * x + ny * nbin * i]);
 
                 // this is the surface/BOA emission. it correctly includes the emissivity e = (1 - albedo)
-                double BOA_part = (1.0 - albedo) * PI * (1.0 - w0_low) / (E_low - w0_low)
-                                  * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+                double BOA_part = PI * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
 
                 F_up_wg[y + ny * x + ny * nbin * i] =
                     reflected_part
