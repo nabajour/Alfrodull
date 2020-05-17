@@ -22,7 +22,7 @@ public:
     //private:
     string opacity_filename;
 
-
+    double experimental_opacities_offset = 0.0;
     // device tables
     cuda_device_memory<double> dev_kpoints;
 

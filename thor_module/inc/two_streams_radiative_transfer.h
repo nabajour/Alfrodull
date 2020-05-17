@@ -118,8 +118,13 @@ public:
 
 
     //    double a; // ?
-  bool thomas = false;
-  
+    bool thomas = false;
+    // two debugging variables
+    // run in single walk mode
+    bool scat_single_walk = true;
+    // add offset to opacities
+    double experimental_opacities_offset = 0.0;
+
     bool   dir_beam;
     bool   geom_zenith_corr;
     double w_0_limit;
@@ -222,7 +227,9 @@ private:
 
     // Debug print out function
     void debug_print_columns(ESP &esp, double cmustar, int nstep, int column_idx);
-  void print_weighted_band_data_to_file(ESP &esp, int nstep, int column_idx,
-					cuda_device_memory<double> & array,
-					  string output_file_base);
+    void print_weighted_band_data_to_file(ESP &                       esp,
+                                          int                         nstep,
+                                          int                         column_idx,
+                                          cuda_device_memory<double> &array,
+                                          string                      output_file_base);
 };

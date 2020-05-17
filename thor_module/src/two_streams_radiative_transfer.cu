@@ -226,7 +226,9 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_fake_opac: %f\n", fake_opac);
 
     log::printf("Alf_thomas: %s\n", thomas ? "true" : "false");
-	
+    log::printf("Alf_scat_single_walk: %s\n", scat_single_walk ? "true" : "false");
+    log::printf("Alf_exp_opac_offset: %d\n", experimental_opacities_offset);
+
     log::printf("Alf_T_surf: %f\n", T_surf);
     log::printf("Alf_albedo: %f\n", albedo);
     log::printf("Alf_g_0: %f\n", g_0);
@@ -271,6 +273,9 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("radius_star", R_star_config, R_star_config);
 
     config_reader.append_config_var("Alf_thomas", thomas, thomas);
+    config_reader.append_config_var("Alf_scat_single_walk", scat_single_walk, scat_single_walk);
+    config_reader.append_config_var(
+        "Alf_exp_opac_offset", experimental_opacities_offset, experimental_opacities_offset);
     config_reader.append_config_var("Alf_iso", iso, iso);
     config_reader.append_config_var("Alf_real_star", real_star, real_star);
     config_reader.append_config_var("Alf_fake_opac", fake_opac, fake_opac);
@@ -340,7 +345,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     epsi = 1.0 / diffusivity;
 
     alf.thomas = thomas;
-    
+
     alf.set_parameters(nlayer,              // const int&    nlayer_,
                        iso,                 // const bool&   iso_,
                        T_star,              // const double& T_star_,
@@ -362,9 +367,12 @@ bool two_streams_radiative_transfer::initialise_memory(
                        w_0_limit,           // const double& w_0_limit_,
                        albedo,              // const double& albedo_,
                        i2s_transition,      // const double& i2s_transition_,
-                       false);               // const bool&   debug_
+                       false);              // const bool&   debug_
 
     // initialise opacities table -> gives frequency bins
+    // set opacity offset for test
+    alf.set_experimental_opacity_offset(experimental_opacities_offset);
+
     alf.load_opacities(opacities_file);
     cudaDeviceSynchronize();
     log::printf("Loaded opacities, using %d bins with %d weights per bin\n",
@@ -729,7 +737,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
     const int num_blocks = 256;
 
-    
+
     if (dgrt_spinup_steps > 0 && nstep < dgrt_spinup_steps) {
 
         // spin up with Double Gray Radiative Transfer
@@ -748,13 +756,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         printf("double gray scaling: %g \n", qheat_scaling);
     }
     else if (dgrt_spinup_steps > 0) {
-      // still compute DG for comparison
-      double qheat_scaling = 0.0;
-      dgrt.set_qheat_scaling(qheat_scaling);
-      // spin up with Double Gray Radiative Transfer
-      // full double gray
-      dgrt.phy_loop(esp, sim, nstep, time_step);
-      printf("double gray scaling: %g \n", qheat_scaling);
+        // still compute DG for comparison
+        double qheat_scaling = 0.0;
+        dgrt.set_qheat_scaling(qheat_scaling);
+        // spin up with Double Gray Radiative Transfer
+        // full double gray
+        dgrt.phy_loop(esp, sim, nstep, time_step);
+        printf("double gray scaling: %g \n", qheat_scaling);
     }
 
 
@@ -834,8 +842,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
             // dump a TP profile for HELIOS input
             if (column_idx % HELIOS_TP_STRIDE == 0) {
-	      std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
-	      create_output_dir(DBG_OUTPUT_DIR);
+                std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                             + "/alfprof/"
+                                               "step_"
+                                             + std::to_string(nstep) + "/column_"
+                                             + std::to_string(column_idx) + "/";
+                create_output_dir(DBG_OUTPUT_DIR);
 
                 double                    lon     = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
                 double                    lat     = esp.lonlat_h[column_idx * 2 + 1] * 180 / M_PI;
@@ -895,9 +907,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
             // dump a TP profile for HELIOS input
             if (column_idx % HELIOS_TP_STRIDE == 0) {
-	      std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
-	      create_output_dir(DBG_OUTPUT_DIR);
-    
+                std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                             + "/alfprof/"
+                                               "step_"
+                                             + std::to_string(nstep) + "/column_"
+                                             + std::to_string(column_idx) + "/";
+                create_output_dir(DBG_OUTPUT_DIR);
+
                 double                    lon     = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
                 double                    lat     = esp.lonlat_h[column_idx * 2 + 1] * 180 / M_PI;
                 double                    cmustar = loc_col_mu_star[column_idx];
@@ -969,6 +985,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             // Check in here, some values from initial setup might change per column: e.g. mu_star;
             //printf("compute_radiative_transfer\n");
 
+
+            // singlewalk
+            //  true -> 201 iterations,
+            //  false -> 4 iterations,
+
+            bool    singlewalk_loc    = scat_single_walk;
             int     ninterface        = nlayer + 1;
             int     column_offset_int = column_idx * ninterface;
             double* F_col_down_tot    = &((*F_down_tot)[column_offset_int]);
@@ -984,7 +1006,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            false,                 // interp_press_and_temp
                                            true,                  // interp_and_calc_flux_step
                                            z_lay,                 // z_lay
-                                           true,                 // singlewalk
+                                           singlewalk_loc,        // singlewalk
                                            *F_down_wg,
                                            *F_up_wg,
                                            *Fc_down_wg,
@@ -1192,10 +1214,14 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(
     string                      output_file_base) {
     int nbin = alf.opacities.nbin;
     int ny   = alf.opacities.ny;
-    
-    std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
+
+    std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                 + "/alfprof/"
+                                   "step_"
+                                 + std::to_string(nstep) + "/column_" + std::to_string(column_idx)
+                                 + "/";
     create_output_dir(DBG_OUTPUT_DIR);
-    
+
     // Print out single scattering albedo data
 
     int                       num_val = array.get_size() / (nbin * ny);
@@ -1238,7 +1264,11 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
     int nbin = alf.opacities.nbin;
     int ny   = alf.opacities.ny;
 
-    std::string DBG_OUTPUT_DIR = esp.get_output_dir() + "/alfprof/" "step_" +std::to_string(nstep) + "/column_" + std::to_string(column_idx) + "/";
+    std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                 + "/alfprof/"
+                                   "step_"
+                                 + std::to_string(nstep) + "/column_" + std::to_string(column_idx)
+                                 + "/";
     create_output_dir(DBG_OUTPUT_DIR);
 
     {
@@ -1305,8 +1335,8 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
     {
         // Print out mean molecular weight data
 
-        string output_file_name = DBG_OUTPUT_DIR + "meanmolmassprofile.dat";
-        FILE* meanmolmass_output_file = fopen(output_file_name.c_str(), "w");
+        string output_file_name        = DBG_OUTPUT_DIR + "meanmolmassprofile.dat";
+        FILE*  meanmolmass_output_file = fopen(output_file_name.c_str(), "w");
 
         std::shared_ptr<double[]> meanmolmass_h = get_cuda_data(*alf.meanmolmass_lay, (esp.nv));
 
@@ -1744,54 +1774,51 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
         fclose(Fdir_output_file);
     }
 
-    
+
     {
         // Print out alf qheat
 
-        int                       num_val = F_dir_wg.get_size() / (nbin * ny);
+        int num_val = F_dir_wg.get_size() / (nbin * ny);
 
 
-	int col_offset = column_idx*esp.nv;
+        int col_offset = column_idx * esp.nv;
 
         string output_file_name = DBG_OUTPUT_DIR + "alf_qheat_profile.dat";
 
         FILE* output_file = fopen(output_file_name.c_str(), "w");
 
-        std::shared_ptr<double[]> qh_h =
-	  get_cuda_data(&((Qheat.ptr())[col_offset]), esp.nv);
+        std::shared_ptr<double[]> qh_h = get_cuda_data(&((Qheat.ptr())[col_offset]), esp.nv);
 
         fprintf(output_file, "level\tqheat\n");
 
-	for (int i = 0; i < esp.nv; i++) {
-	  fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
-	}
-	    
+        for (int i = 0; i < esp.nv; i++) {
+            fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
+        }
+
         fclose(output_file);
     }
 
-        
+
     {
         // Print out DG qheat
 
-        int                       num_val = F_dir_wg.get_size() / (nbin * ny);
+        int num_val = F_dir_wg.get_size() / (nbin * ny);
 
 
-	int col_offset = column_idx*esp.nv;
+        int col_offset = column_idx * esp.nv;
 
         string output_file_name = DBG_OUTPUT_DIR + "dgrt_qheat_profile.dat";
 
         FILE* output_file = fopen(output_file_name.c_str(), "w");
 
-        std::shared_ptr<double[]> qh_h =
-	  get_cuda_data(&((dgrt.qheat_d)[col_offset]), esp.nv);
+        std::shared_ptr<double[]> qh_h = get_cuda_data(&((dgrt.qheat_d)[col_offset]), esp.nv);
 
         fprintf(output_file, "level\tqheat\n");
 
-	for (int i = 0; i < esp.nv; i++) {
-	  fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
-	}
-	    
+        for (int i = 0; i < esp.nv; i++) {
+            fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
+        }
+
         fclose(output_file);
     }
-    
 }

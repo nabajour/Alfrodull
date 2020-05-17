@@ -41,6 +41,10 @@ public:
                         const double& i2s_transition,
                         const bool&   debug);
 
+    void set_experimental_opacity_offset(double opac) {
+        opacities.experimental_opacities_offset = opac;
+    };
+
     bool   real_star   = false;
     double fake_opac   = false;
     double T_surf      = 0.0;
