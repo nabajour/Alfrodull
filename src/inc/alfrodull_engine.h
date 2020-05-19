@@ -349,4 +349,27 @@ public:
                                        double  albedo,
                                        double* trans_wg_upper,
                                        double* trans_wg_lower);
+
+      bool populate_spectral_flux_noniso_thomas(double* F_down_wg,
+                                       double* F_up_wg,
+                                       double* Fc_down_wg,
+                                       double* Fc_up_wg,
+                                       double* F_dir_wg,
+                                       double* Fc_dir_wg,
+                                       double* g_0_tot_lay,
+                                       double* g_0_tot_int,
+                                       double  g_0,
+                                       bool    singlewalk,
+                                       double  Rstar,
+                                       double  a,
+                                       double  f_factor,
+                                       double  mu_star,
+                                       double  epsi,
+                                       double  w_0_limit,
+                                       double  delta_tau_limit,
+                                       bool    dir_beam,
+                                       bool    clouds,
+                                       double  albedo,
+                                       double* trans_wg_upper,
+                                       double* trans_wg_lower);
 };

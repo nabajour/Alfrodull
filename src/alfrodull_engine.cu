@@ -121,6 +121,27 @@ void alfrodull_engine::allocate_internal_variables() {
     delta_tau_wg_lower.allocate(nlayer_wg_nbin);
     //    }
 
+    if (iso) {
+        A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+        D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+        X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+    }
+    else {
+        int num_th_layers             = nlayer * 2;
+        int num_th_interfaces         = num_th_layers + 1;
+        int num_th_interfaces_wg_nbin = num_th_interfaces * opacities.ny * opacities.nbin;
+        A_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+        B_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+        C_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+        D_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+        C_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
+        D_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
+        X_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+    }
     // flux computation internal quantities
     // TODO: not needed to allocate everything, depending on iso or noniso
     // if (iso) {
@@ -130,15 +151,8 @@ void alfrodull_engine::allocate_internal_variables() {
     G_plus.allocate(nlayer_wg_nbin);
     G_minus.allocate(nlayer_wg_nbin);
     w_0.allocate(nlayer_wg_nbin);
-    A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-    B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-    C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-    D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-    C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-    D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-    X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-                                                   //    }
-                                                   //  else {
+    //    }
+    //  else {
     M_upper.allocate(nlayer_wg_nbin);
     M_lower.allocate(nlayer_wg_nbin);
     N_upper.allocate(nlayer_wg_nbin);
@@ -735,22 +749,47 @@ void alfrodull_engine::compute_radiative_transfer(
     }
 
     if (thomas) {
-        populate_spectral_flux_iso_thomas(F_down_wg,   // out
-                                          F_up_wg,     // out
-                                          F_dir_wg,    // in
-                                          g_0_tot_lay, // in
-                                          g_0,
-                                          single_walk,
-                                          R_star,
-                                          a,
-                                          f_factor,
-                                          mu_star,
-                                          epsi,
-                                          w_0_limit,
-                                          dir_beam,
-                                          clouds,
-                                          albedo);
-
+        if (iso) {
+            populate_spectral_flux_iso_thomas(F_down_wg,   // out
+                                              F_up_wg,     // out
+                                              F_dir_wg,    // in
+                                              g_0_tot_lay, // in
+                                              g_0,
+                                              single_walk,
+                                              R_star,
+                                              a,
+                                              f_factor,
+                                              mu_star,
+                                              epsi,
+                                              w_0_limit,
+                                              dir_beam,
+                                              clouds,
+                                              albedo);
+        }
+        else {
+            populate_spectral_flux_noniso_thomas(F_down_wg,
+                                                 F_up_wg,
+                                                 Fc_down_wg,
+                                                 Fc_up_wg,
+                                                 F_dir_wg,
+                                                 Fc_dir_wg,
+                                                 g_0_tot_lay,
+                                                 g_0_tot_int,
+                                                 g_0,
+                                                 single_walk,
+                                                 R_star,
+                                                 a,
+                                                 f_factor,
+                                                 mu_star,
+                                                 epsi,
+                                                 w_0_limit,
+                                                 delta_tau_limit,
+                                                 dir_beam,
+                                                 clouds,
+                                                 albedo,
+                                                 *trans_wg_upper,
+                                                 *trans_wg_lower);
+        }
         cuda_check_status_or_exit(__FILE__, __LINE__);
 
         BENCH_POINT_I_S_PHY(
@@ -1434,6 +1473,91 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                          *G_plus_lower,
                                          *G_minus_upper,
                                          *G_minus_lower,
+                                         g_0_tot_lay,
+                                         g_0_tot_int,
+                                         g_0,
+                                         singlewalk,
+                                         Rstar,
+                                         a,
+                                         ninterface,
+                                         nbin,
+                                         f_factor,
+                                         mu_star,
+                                         ny,
+                                         epsi,
+                                         delta_tau_limit,
+                                         dir_beam,
+                                         clouds,
+                                         scat_corr,
+                                         albedo,
+                                         debug,
+                                         i2s_transition);
+
+    cudaDeviceSynchronize();
+
+    return true;
+}
+
+// calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
+bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
+                                                            double* F_up_wg,
+                                                            double* Fc_down_wg,
+                                                            double* Fc_up_wg,
+                                                            double* F_dir_wg,
+                                                            double* Fc_dir_wg,
+                                                            double* g_0_tot_lay,
+                                                            double* g_0_tot_int,
+                                                            double  g_0,
+                                                            bool    singlewalk,
+                                                            double  Rstar,
+                                                            double  a,
+                                                            double  f_factor,
+                                                            double  mu_star,
+                                                            double  epsi,
+                                                            double  w_0_limit,
+                                                            double  delta_tau_limit,
+                                                            bool    dir_beam,
+                                                            bool    clouds,
+                                                            double  albedo,
+                                                            double* trans_wg_upper,
+                                                            double* trans_wg_lower) {
+    int nbin = opacities.nbin;
+    int ny   = opacities.ny;
+
+    dim3 block(16, 16, 1);
+
+    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
+
+    // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
+    fband_noniso_thomas<<<grid, block>>>(F_down_wg,
+                                         F_up_wg,
+                                         Fc_down_wg,
+                                         Fc_up_wg,
+                                         F_dir_wg,
+                                         Fc_dir_wg,
+                                         *planckband_lay,
+                                         *planckband_int,
+                                         *w_0_upper,
+                                         *w_0_lower,
+                                         *delta_tau_wg_upper,
+                                         *delta_tau_wg_lower,
+                                         *M_upper,
+                                         *M_lower,
+                                         *N_upper,
+                                         *N_lower,
+                                         *P_upper,
+                                         *P_lower,
+                                         *G_plus_upper,
+                                         *G_plus_lower,
+                                         *G_minus_upper,
+                                         *G_minus_lower,
+                                         *A_buff,       // thomas worker
+                                         *B_buff,       // thomas worker
+                                         *C_buff,       // thomas worker
+                                         *D_buff,       // thomas worker
+                                         *C_prime_buff, // thomas worker
+                                         *D_prime_buff, // thomas worker
+                                         *X_buff,       // thomas worker
                                          g_0_tot_lay,
                                          g_0_tot_int,
                                          g_0,
