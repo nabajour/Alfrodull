@@ -1358,22 +1358,42 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                     2.0 * PI * epsi * (1.0 - w0_up) / (E_up - w0_up) * planck_terms + direct_terms;
 
                 // lower part of layer calculations
-                if (del_tau_low < delta_tau_limit) {
-                    // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
-                    planck_terms = (planckband_int[i + x * numinterfaces]
-                                    + planckband_lay[i + x * (numinterfaces - 1 + 2)])
-                                   / 2.0 * (N_low + M_low - P_low);
+                if (i == 0) {
+                    double pb_lay = planckband_lay[i + x * (numinterfaces - 1 + 2)];
+                    double pb_int = pb_lay;
+                    if (del_tau_low < delta_tau_limit) {
+                        // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
+                        planck_terms = (pb_int + pb_lay) / 2.0 * (N_low + M_low - P_low);
+                    }
+                    else {
+                        // non-isothermal solution -- standard case
+                        double pgrad_low = (pb_int - pb_lay) / del_tau_low;
+
+                        planck_terms = pb_int * (M_low + N_low) - pb_lay * P_low
+                                       + epsi / (E_low * (1.0 - w0_low * g0_low))
+                                             * (P_low - M_low + N_low) * pgrad_low;
+                    }
                 }
                 else {
-                    // non-isothermal solution -- standard case
-                    double pgrad_low = (planckband_int[i + x * numinterfaces]
-                                        - planckband_lay[i + x * (numinterfaces - 1 + 2)])
-                                       / del_tau_low;
+                    {
+                        if (del_tau_low < delta_tau_limit) {
+                            // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
+                            planck_terms = (planckband_int[i + x * numinterfaces]
+                                            + planckband_lay[i + x * (numinterfaces - 1 + 2)])
+                                           / 2.0 * (N_low + M_low - P_low);
+                        }
+                        else {
+                            // non-isothermal solution -- standard case
+                            double pgrad_low = (planckband_int[i + x * numinterfaces]
+                                                - planckband_lay[i + x * (numinterfaces - 1 + 2)])
+                                               / del_tau_low;
 
-                    planck_terms = planckband_int[i + x * numinterfaces] * (M_low + N_low)
-                                   - planckband_lay[i + x * (numinterfaces - 1 + 2)] * P_low
-                                   + epsi / (E_low * (1.0 - w0_low * g0_low))
-                                         * (P_low - M_low + N_low) * pgrad_low;
+                            planck_terms = planckband_int[i + x * numinterfaces] * (M_low + N_low)
+                                           - planckband_lay[i + x * (numinterfaces - 1 + 2)] * P_low
+                                           + epsi / (E_low * (1.0 - w0_low * g0_low))
+                                                 * (P_low - M_low + N_low) * pgrad_low;
+                        }
+                    }
                 }
 
                 direct_terms =
