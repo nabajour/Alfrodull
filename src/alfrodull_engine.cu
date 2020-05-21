@@ -189,6 +189,8 @@ void alfrodull_engine::allocate_internal_variables() {
     trans_wg_lower.allocate(nlayer_wg_nbin);
     //    }
 
+    hit_G_pm_denom_limit.allocate(1);
+    
     // TODO: abstract this away into an interpolation class
 
     std::unique_ptr<double[]> weights = std::make_unique<double[]>(100);
@@ -670,7 +672,7 @@ void alfrodull_engine::compute_radiative_transfer(
         if (iso) {
             BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
 
-            calculate_transmission_iso(*trans_wg,            // out
+            mu_star = calculate_transmission_iso(*trans_wg,            // out
                                        delta_colmass,        // in
                                        *opac_wg_lay,         // in
                                        cloud_opac_lay,       // in
@@ -1120,7 +1122,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
     }
 }
 
-bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
+double alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
                                                   double* delta_colmass,        // in
                                                   double* opac_wg_lay,          // in
                                                   double* cloud_opac_lay,       // in
@@ -1129,13 +1131,20 @@ bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                                   double* g_0_tot_lay,          // in
                                                   double  g_0,
                                                   double  epsi,
-                                                  double  mu_star,
+                                                  double  mu_star_,
                                                   bool    scat,
                                                   bool    clouds) {
+  double mu_star_wiggle_factor = 1.0;
+
+  bool hit_G_pm_denom_limit_h = false;  
+  do {
+    hit_G_pm_denom_limit_h = false;
+    cudaMemcpy(*hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
+  // set wiggle checker to 0;
     int nbin = opacities.nbin;
 
     int ny = opacities.ny;
-
+    
 
     dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
     dim3 block(16, 4, 4);
@@ -1156,7 +1165,7 @@ bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                g_0_tot_lay,
                                g_0,
                                epsi,
-                               mu_star,
+                               mu_star_,
                                w_0_limit,
                                scat,
                                nbin,
@@ -1164,11 +1173,32 @@ bool alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                nlayer,
                                clouds,
                                scat_corr,
-                               debug,
+			       G_pm_limiter,
+			       G_pm_denom_limit,
+			       *hit_G_pm_denom_limit,
+			       debug,
                                i2s_transition);
 
     cudaDeviceSynchronize();
-    return true;
+    cudaMemcpy(&hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+
+    if (hit_G_pm_denom_limit_h)
+      {
+	if (fabs(mu_star_) > 0.9) {
+	  mu_star_wiggle_factor -= mu_star_wiggle_increment;
+	}
+	else
+	  {
+	    mu_star_wiggle_factor += mu_star_wiggle_increment;
+	  }
+	printf("Hit G_pm denom limit, wiggle mu_star by: %g\n", 	mu_star_wiggle_factor);
+	
+	mu_star_ *= mu_star_wiggle_factor;
+      }
+    
+  } while (hit_G_pm_denom_limit_h);
+
+    return mu_star_;
 }
 
 bool alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,

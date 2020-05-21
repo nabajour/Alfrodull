@@ -26,6 +26,9 @@ __global__ void trans_iso(double* trans_wg,
                           int     nlayer,
                           bool    clouds,
                           bool    scat_corr,
+                          bool    G_pm_limiter,
+                          double  G_pm_denom_limit_for_mu_star_wiggler,
+                          bool*   hit_G_pm_limit,
                           bool    debug,
                           double  i2s_transition);
 

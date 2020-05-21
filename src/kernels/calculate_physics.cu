@@ -74,7 +74,7 @@ __device__ double G_plus_func(double w0,
 
     double num = w0 * E * (w0 * g0 - g0 - 1);
 
-    double denom = 1.0 - E * pow(mu_star/epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
+    double denom = 1.0 - E * pow(mu_star / epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
 
     double second_term = mu_star / epsi + 1 / (E * (1.0 - w0 * g0));
 
@@ -88,6 +88,7 @@ __device__ double G_plus_func(double w0,
 }
 
 // calculates the G- function
+// TODO: can improve by computing E outside and pass as param ?
 __device__ double G_minus_func(double w0,
                                double g0,
                                double epsi,
@@ -104,9 +105,9 @@ __device__ double G_minus_func(double w0,
 
     double num = w0 * E * (w0 * g0 - g0 - 1);
 
-    double denom = 1.0 - E * pow(mu_star/epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
+    double denom = 1.0 - E * pow(mu_star / epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
 
-    double second_term = mu_star / epsi - 1 / ( E * (1.0 - w0 * g0));
+    double second_term = mu_star / epsi - 1 / (E * (1.0 - w0 * g0));
 
     double third_term = w0 * g0 / (1.0 - w0 * g0);
 
@@ -115,6 +116,23 @@ __device__ double G_minus_func(double w0,
     double result = 0.5 * bracket;
 
     return result;
+}
+
+__device__ double G_pm_denom(double w0,
+                             double g0,
+                             double epsi,
+                             double mu_star,
+                             bool   scat_corr,
+                             double i2s_transition) {
+    double E = 1.0;
+
+    // improved scattering correction disabled for the following terms -- at least for the moment
+    if (scat_corr) {
+        E = E_parameter(w0, g0, i2s_transition);
+    }
+    double denom = 1.0 - E * pow(mu_star / epsi, 2.0) * (E - w0) * (1.0 - w0 * g0);
+
+    return denom;
 }
 
 
@@ -138,7 +156,7 @@ __device__ double G_limiter(double G, bool debug) {
 __device__ double
 single_scat_alb(double scat_cross, double opac_abs, double meanmolmass, double w_0_limit) {
 
-  return min(scat_cross / (scat_cross + opac_abs * meanmolmass), w_0_limit);
+    return min(scat_cross / (scat_cross + opac_abs * meanmolmass), w_0_limit);
 }
 
 // calculates the two-stream coupling coefficient Zeta_minus with the scattering coefficient E
@@ -192,6 +210,9 @@ __global__ void trans_iso(double* trans_wg,             // out
                           int     nlayer,
                           bool    clouds,
                           bool    scat_corr,
+                          bool    G_pm_limiter,
+                          double  G_pm_denom_limit_for_mu_star_wiggler,
+                          bool*   hit_G_pm_limit,
                           bool    debug,
                           double  i2s_transition) {
     // indices
@@ -215,14 +236,14 @@ __global__ void trans_iso(double* trans_wg,             // out
         if (scat) {
             ray_cross   = scat_cross_lay[x + nbin * i];
             cloud_cross = cloud_scat_cross_lay[x + nbin * i];
-	    // DBG: cloud_cross = 0.0;
+            // DBG: cloud_cross = 0.0;
         }
         else {
             ray_cross   = 0;
             cloud_cross = 0;
         }
 
-	
+
         w_0[y + ny * x + ny * nbin * i] =
             single_scat_alb(ray_cross + cloud_cross,
                             opac_wg_lay[y + ny * x + ny * nbin * i] + cloud_opac_lay[i],
@@ -247,24 +268,37 @@ __global__ void trans_iso(double* trans_wg,             // out
         N_term[y + ny * x + ny * nbin * i] = zeta_pl * zeta_min * (1.0 - (trans * trans));
         P_term[y + ny * x + ny * nbin * i] = ((zeta_min * zeta_min) - (zeta_pl * zeta_pl)) * trans;
 
-	// DBG:
-	// if (!isfinite(M_term[y + ny * x + ny * nbin * i]))
-	//   printf("abnormal M_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g, "
-	// 	 "epsi: %g, w0: %g, delta_tau: %g g0: %g, "
-	// 	 "delta_colamss: %g, opac_wg_lay: %g, cloud_opac_lay: %g, ray_cross: %g, cloud_cross: %g, meanmolmass_lay: %g\n", 
-	// 	 M_term[y + ny * x + ny * nbin * i], zeta_min, trans, zeta_pl,
-	// 	 epsi, w0, del_tau, g0,
-	// 	 delta_colmass[i], opac_wg_lay[y + ny * x + ny * nbin * i], cloud_opac_lay[i], ray_cross, cloud_cross, meanmolmass_lay[i] );
-	// if (!isfinite(N_term[y + ny * x + ny * nbin * i]))
-	//   printf("abnormal N_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g "
-	// 	 "epsi: %g, w0: %g, delta_tau: %g, g0: %g\n",
-	// 	 N_term[y + ny * x + ny * nbin * i], zeta_min, trans, zeta_pl,
-	// 	 epsi, w0, del_tau, g0);
-		
-        G_plus[y + ny * x + ny * nbin * i] =
-            G_limiter(G_plus_func(w0, g0, epsi, mu_star, scat_corr, i2s_transition), debug);
-        G_minus[y + ny * x + ny * nbin * i] =
-            G_limiter(G_minus_func(w0, g0, epsi, mu_star, scat_corr, i2s_transition), debug);
+        // DBG:
+        // if (!isfinite(M_term[y + ny * x + ny * nbin * i]))
+        //   printf("abnormal M_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g, "
+        // 	 "epsi: %g, w0: %g, delta_tau: %g g0: %g, "
+        // 	 "delta_colamss: %g, opac_wg_lay: %g, cloud_opac_lay: %g, ray_cross: %g, cloud_cross: %g, meanmolmass_lay: %g\n",
+        // 	 M_term[y + ny * x + ny * nbin * i], zeta_min, trans, zeta_pl,
+        // 	 epsi, w0, del_tau, g0,
+        // 	 delta_colmass[i], opac_wg_lay[y + ny * x + ny * nbin * i], cloud_opac_lay[i], ray_cross, cloud_cross, meanmolmass_lay[i] );
+        // if (!isfinite(N_term[y + ny * x + ny * nbin * i]))
+        //   printf("abnormal N_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g "
+        // 	 "epsi: %g, w0: %g, delta_tau: %g, g0: %g\n",
+        // 	 N_term[y + ny * x + ny * nbin * i], zeta_min, trans, zeta_pl,
+        // 	 epsi, w0, del_tau, g0);
+
+
+        if (fabs(G_pm_denom(w0, g0, epsi, mu_star, scat_corr, i2s_transition))
+            < G_pm_denom_limit_for_mu_star_wiggler)
+            *hit_G_pm_limit = true;
+
+        if (G_pm_limiter) {
+            G_plus[y + ny * x + ny * nbin * i] =
+                G_limiter(G_plus_func(w0, g0, epsi, mu_star, scat_corr, i2s_transition), debug);
+            G_minus[y + ny * x + ny * nbin * i] =
+                G_limiter(G_minus_func(w0, g0, epsi, mu_star, scat_corr, i2s_transition), debug);
+        }
+        else {
+            G_plus[y + ny * x + ny * nbin * i] =
+                G_plus_func(w0, g0, epsi, mu_star, scat_corr, i2s_transition);
+            G_minus[y + ny * x + ny * nbin * i] =
+                G_minus_func(w0, g0, epsi, mu_star, scat_corr, i2s_transition);
+        }
     }
 }
 
@@ -339,7 +373,6 @@ __global__ void trans_noniso(double* trans_wg_upper,
                 / 2.0;
             cloud_cross_low =
                 (cloud_scat_cross_int[x + nbin * i] + cloud_scat_cross_lay[x + nbin * i]) / 2.0;
-
         }
         else {
             ray_cross_up    = 0;
@@ -356,7 +389,7 @@ __global__ void trans_noniso(double* trans_wg_upper,
             / 2.0;
         utype cloud_opac_up  = (cloud_opac_lay[i] + cloud_opac_int[i + 1]) / 2.0;
         utype cloud_opac_low = (cloud_opac_int[i] + cloud_opac_lay[i]) / 2.0;
-	
+
         utype meanmolmass_up  = (meanmolmass_lay[i] + meanmolmass_int[i + 1]) / 2.0;
         utype meanmolmass_low = (meanmolmass_int[i] + meanmolmass_lay[i]) / 2.0;
 

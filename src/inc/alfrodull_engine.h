@@ -71,6 +71,13 @@ public:
     double i2s_transition = 0.0;
     bool   debug          = false;
 
+    // TODO: add those as config options
+    bool G_pm_limiter = true;
+
+    double G_pm_denom_limit         = 1e-5;
+    double mu_star_wiggle_increment = 0.001;
+
+    cuda_device_memory<bool> hit_G_pm_denom_limit;
     // call if using clouds, to set data array pointers
     void set_clouds_data(const bool& clouds,
                          double*     cloud_opac_lay,
@@ -252,18 +259,18 @@ public:
                         double* F_dir_band,
                         double* gauss_weight);
 
-    bool calculate_transmission_iso(double* trans_wg,             // out
-                                    double* delta_colmass,        // in
-                                    double* opac_wg_lay,          // in
-                                    double* cloud_opac_lay,       // in
-                                    double* meanmolmass_lay,      // in
-                                    double* cloud_scat_cross_lay, // in
-                                    double* g_0_tot_lay,          // in
-                                    double  g_0,
-                                    double  epsi,
-                                    double  mu_star,
-                                    bool    scat,
-                                    bool    clouds);
+    double calculate_transmission_iso(double* trans_wg,             // out
+                                      double* delta_colmass,        // in
+                                      double* opac_wg_lay,          // in
+                                      double* cloud_opac_lay,       // in
+                                      double* meanmolmass_lay,      // in
+                                      double* cloud_scat_cross_lay, // in
+                                      double* g_0_tot_lay,          // in
+                                      double  g_0,
+                                      double  epsi,
+                                      double  mu_star,
+                                      bool    scat,
+                                      bool    clouds);
 
     bool calculate_transmission_noniso(double* trans_wg_upper,
                                        double* trans_wg_lower,
@@ -350,26 +357,26 @@ public:
                                        double* trans_wg_upper,
                                        double* trans_wg_lower);
 
-      bool populate_spectral_flux_noniso_thomas(double* F_down_wg,
-                                       double* F_up_wg,
-                                       double* Fc_down_wg,
-                                       double* Fc_up_wg,
-                                       double* F_dir_wg,
-                                       double* Fc_dir_wg,
-                                       double* g_0_tot_lay,
-                                       double* g_0_tot_int,
-                                       double  g_0,
-                                       bool    singlewalk,
-                                       double  Rstar,
-                                       double  a,
-                                       double  f_factor,
-                                       double  mu_star,
-                                       double  epsi,
-                                       double  w_0_limit,
-                                       double  delta_tau_limit,
-                                       bool    dir_beam,
-                                       bool    clouds,
-                                       double  albedo,
-                                       double* trans_wg_upper,
-                                       double* trans_wg_lower);
+    bool populate_spectral_flux_noniso_thomas(double* F_down_wg,
+                                              double* F_up_wg,
+                                              double* Fc_down_wg,
+                                              double* Fc_up_wg,
+                                              double* F_dir_wg,
+                                              double* Fc_dir_wg,
+                                              double* g_0_tot_lay,
+                                              double* g_0_tot_int,
+                                              double  g_0,
+                                              bool    singlewalk,
+                                              double  Rstar,
+                                              double  a,
+                                              double  f_factor,
+                                              double  mu_star,
+                                              double  epsi,
+                                              double  w_0_limit,
+                                              double  delta_tau_limit,
+                                              bool    dir_beam,
+                                              bool    clouds,
+                                              double  albedo,
+                                              double* trans_wg_upper,
+                                              double* trans_wg_lower);
 };
