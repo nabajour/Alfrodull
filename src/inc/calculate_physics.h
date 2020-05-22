@@ -72,5 +72,8 @@ __global__ void trans_noniso(double* trans_wg_upper,
                              int     nlayer,
                              bool    clouds,
                              bool    scat_corr,
+                             bool    G_pm_limiter,
+                             double  G_pm_denom_limit_for_mu_star_wiggler,
+                             bool*   hit_G_pm_limit,
                              bool    debug,
                              double  i2s_transition);

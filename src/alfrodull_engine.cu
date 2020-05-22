@@ -190,7 +190,7 @@ void alfrodull_engine::allocate_internal_variables() {
     //    }
 
     hit_G_pm_denom_limit.allocate(1);
-    
+
     // TODO: abstract this away into an interpolation class
 
     std::unique_ptr<double[]> weights = std::make_unique<double[]>(100);
@@ -673,17 +673,17 @@ void alfrodull_engine::compute_radiative_transfer(
             BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
 
             mu_star = calculate_transmission_iso(*trans_wg,            // out
-                                       delta_colmass,        // in
-                                       *opac_wg_lay,         // in
-                                       cloud_opac_lay,       // in
-                                       *meanmolmass_lay,     // in
-                                       cloud_scat_cross_lay, // in
-                                       g_0_tot_lay,          // in
-                                       g_0,
-                                       epsi,
-                                       mu_star,
-                                       scat,
-                                       clouds);
+                                                 delta_colmass,        // in
+                                                 *opac_wg_lay,         // in
+                                                 cloud_opac_lay,       // in
+                                                 *meanmolmass_lay,     // in
+                                                 cloud_scat_cross_lay, // in
+                                                 g_0_tot_lay,          // in
+                                                 g_0,
+                                                 epsi,
+                                                 mu_star,
+                                                 scat,
+                                                 clouds);
 
             BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_comp_trans", (), ("trans_wg_lay"));
         }
@@ -696,25 +696,25 @@ void alfrodull_engine::compute_radiative_transfer(
 
 
                                  ));
-            calculate_transmission_noniso(*trans_wg_upper,
-                                          *trans_wg_lower,
-                                          *delta_col_upper,
-                                          *delta_col_lower,
-                                          *opac_wg_lay,
-                                          *opac_wg_int,
-                                          cloud_opac_lay,
-                                          cloud_opac_int,
-                                          *meanmolmass_lay,
-                                          *meanmolmass_int,
-                                          cloud_scat_cross_lay,
-                                          cloud_scat_cross_int,
-                                          g_0_tot_lay,
-                                          g_0_tot_int,
-                                          g_0,
-                                          epsi,
-                                          mu_star,
-                                          scat,
-                                          clouds);
+            mu_star = calculate_transmission_noniso(*trans_wg_upper,
+                                                    *trans_wg_lower,
+                                                    *delta_col_upper,
+                                                    *delta_col_lower,
+                                                    *opac_wg_lay,
+                                                    *opac_wg_int,
+                                                    cloud_opac_lay,
+                                                    cloud_opac_int,
+                                                    *meanmolmass_lay,
+                                                    *meanmolmass_int,
+                                                    cloud_scat_cross_lay,
+                                                    cloud_scat_cross_int,
+                                                    g_0_tot_lay,
+                                                    g_0_tot_int,
+                                                    g_0,
+                                                    epsi,
+                                                    mu_star,
+                                                    scat,
+                                                    clouds);
             BENCH_POINT_I_S_PHY(debug_nstep,
                                 debug_col_idx,
                                 "Alf_comp_trans",
@@ -1123,154 +1123,184 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
 }
 
 double alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
-                                                  double* delta_colmass,        // in
-                                                  double* opac_wg_lay,          // in
-                                                  double* cloud_opac_lay,       // in
-                                                  double* meanmolmass_lay,      // in
-                                                  double* cloud_scat_cross_lay, // in
-                                                  double* g_0_tot_lay,          // in
-                                                  double  g_0,
-                                                  double  epsi,
-                                                  double  mu_star_,
-                                                  bool    scat,
-                                                  bool    clouds) {
-  double mu_star_wiggle_factor = 1.0;
+                                                    double* delta_colmass,        // in
+                                                    double* opac_wg_lay,          // in
+                                                    double* cloud_opac_lay,       // in
+                                                    double* meanmolmass_lay,      // in
+                                                    double* cloud_scat_cross_lay, // in
+                                                    double* g_0_tot_lay,          // in
+                                                    double  g_0,
+                                                    double  epsi,
+                                                    double  mu_star_,
+                                                    bool    scat,
+                                                    bool    clouds) {
+    double mu_star_wiggle_factor = 1.0;
 
-  bool hit_G_pm_denom_limit_h = false;  
-  do {
-    hit_G_pm_denom_limit_h = false;
-    cudaMemcpy(*hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
-  // set wiggle checker to 0;
-    int nbin = opacities.nbin;
+    bool hit_G_pm_denom_limit_h = false;
+    do {
+        hit_G_pm_denom_limit_h = false;
+        // set wiggle checker to 0;
+        cudaMemcpy(
+            *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
-    int ny = opacities.ny;
-    
+        int nbin = opacities.nbin;
 
-    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
-    dim3 block(16, 4, 4);
-    trans_iso<<<grid, block>>>(trans_wg,
-                               *delta_tau_wg,
-                               *M_term,
-                               *N_term,
-                               *P_term,
-                               *G_plus,
-                               *G_minus,
-                               delta_colmass,
-                               opac_wg_lay,
-                               cloud_opac_lay,
-                               meanmolmass_lay,
-                               *scatter_cross_section_lay,
-                               cloud_scat_cross_lay,
-                               *w_0,
-                               g_0_tot_lay,
-                               g_0,
-                               epsi,
-                               mu_star_,
-                               w_0_limit,
-                               scat,
-                               nbin,
-                               ny,
-                               nlayer,
-                               clouds,
-                               scat_corr,
-			       G_pm_limiter,
-			       G_pm_denom_limit,
-			       *hit_G_pm_denom_limit,
-			       debug,
-                               i2s_transition);
+        int ny = opacities.ny;
 
-    cudaDeviceSynchronize();
-    cudaMemcpy(&hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
-    if (hit_G_pm_denom_limit_h)
-      {
-	if (fabs(mu_star_) > 0.9) {
-	  mu_star_wiggle_factor -= mu_star_wiggle_increment;
-	}
-	else
-	  {
-	    mu_star_wiggle_factor += mu_star_wiggle_increment;
-	  }
-	printf("Hit G_pm denom limit, wiggle mu_star by: %g\n", 	mu_star_wiggle_factor);
-	
-	mu_star_ *= mu_star_wiggle_factor;
-      }
-    
-  } while (hit_G_pm_denom_limit_h);
+        dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
+        dim3 block(16, 4, 4);
+        trans_iso<<<grid, block>>>(trans_wg,
+                                   *delta_tau_wg,
+                                   *M_term,
+                                   *N_term,
+                                   *P_term,
+                                   *G_plus,
+                                   *G_minus,
+                                   delta_colmass,
+                                   opac_wg_lay,
+                                   cloud_opac_lay,
+                                   meanmolmass_lay,
+                                   *scatter_cross_section_lay,
+                                   cloud_scat_cross_lay,
+                                   *w_0,
+                                   g_0_tot_lay,
+                                   g_0,
+                                   epsi,
+                                   mu_star_,
+                                   w_0_limit,
+                                   scat,
+                                   nbin,
+                                   ny,
+                                   nlayer,
+                                   clouds,
+                                   scat_corr,
+                                   G_pm_limiter,
+                                   G_pm_denom_limit,
+                                   *hit_G_pm_denom_limit,
+                                   debug,
+                                   i2s_transition);
+
+        cudaDeviceSynchronize();
+        cudaMemcpy(
+            &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+
+        if (hit_G_pm_denom_limit_h) {
+            if (fabs(mu_star_) > 0.9) {
+                mu_star_wiggle_factor -= mu_star_wiggle_increment;
+            }
+            else {
+                mu_star_wiggle_factor += mu_star_wiggle_increment;
+            }
+            printf("Hit G_pm denom limit, wiggle mu_star by: %g\n", mu_star_wiggle_factor);
+
+            mu_star_ *= mu_star_wiggle_factor;
+        }
+
+    } while (hit_G_pm_denom_limit_h);
 
     return mu_star_;
 }
 
-bool alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
-                                                     double* trans_wg_lower,
-                                                     double* delta_col_upper,
-                                                     double* delta_col_lower,
-                                                     double* opac_wg_lay,
-                                                     double* opac_wg_int,
-                                                     double* cloud_opac_lay,
-                                                     double* cloud_opac_int,
-                                                     double* meanmolmass_lay,
-                                                     double* meanmolmass_int,
-                                                     double* cloud_scat_cross_lay,
-                                                     double* cloud_scat_cross_int,
-                                                     double* g_0_tot_lay,
-                                                     double* g_0_tot_int,
-                                                     double  g_0,
-                                                     double  epsi,
-                                                     double  mu_star,
-                                                     bool    scat,
-                                                     bool    clouds) {
-    int nbin = opacities.nbin;
+double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
+                                                       double* trans_wg_lower,
+                                                       double* delta_col_upper,
+                                                       double* delta_col_lower,
+                                                       double* opac_wg_lay,
+                                                       double* opac_wg_int,
+                                                       double* cloud_opac_lay,
+                                                       double* cloud_opac_int,
+                                                       double* meanmolmass_lay,
+                                                       double* meanmolmass_int,
+                                                       double* cloud_scat_cross_lay,
+                                                       double* cloud_scat_cross_int,
+                                                       double* g_0_tot_lay,
+                                                       double* g_0_tot_int,
+                                                       double  g_0,
+                                                       double  epsi,
+                                                       double  mu_star_,
+                                                       bool    scat,
+                                                       bool    clouds) {
+    double mu_star_wiggle_factor = 1.0;
 
-    int ny = opacities.ny;
+    bool hit_G_pm_denom_limit_h = false;
+    do {
+        hit_G_pm_denom_limit_h = false;
+        // set wiggle checker to 0;
+        cudaMemcpy(
+            *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
-    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
-    dim3 block(16, 4, 4);
+        int nbin = opacities.nbin;
 
-    trans_noniso<<<grid, block>>>(trans_wg_upper,
-                                  trans_wg_lower,
-                                  *delta_tau_wg_upper,
-                                  *delta_tau_wg_lower,
-                                  *M_upper,
-                                  *M_lower,
-                                  *N_upper,
-                                  *N_lower,
-                                  *P_upper,
-                                  *P_lower,
-                                  *G_plus_upper,
-                                  *G_plus_lower,
-                                  *G_minus_upper,
-                                  *G_minus_lower,
-                                  delta_col_upper,
-                                  delta_col_lower,
-                                  opac_wg_lay,
-                                  opac_wg_int,
-                                  cloud_opac_lay,
-                                  cloud_opac_int,
-                                  meanmolmass_lay,
-                                  meanmolmass_int,
-                                  *scatter_cross_section_lay,
-                                  *scatter_cross_section_inter,
-                                  cloud_scat_cross_lay,
-                                  cloud_scat_cross_int,
-                                  *w_0_upper,
-                                  *w_0_lower,
-                                  g_0_tot_lay,
-                                  g_0_tot_int,
-                                  g_0,
-                                  epsi,
-                                  mu_star,
-                                  w_0_limit,
-                                  scat,
-                                  nbin,
-                                  ny,
-                                  nlayer,
-                                  clouds,
-                                  scat_corr,
-                                  debug,
-                                  i2s_transition);
-    cudaDeviceSynchronize();
-    return true;
+        int ny = opacities.ny;
+
+        dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
+        dim3 block(16, 4, 4);
+
+        trans_noniso<<<grid, block>>>(trans_wg_upper,
+                                      trans_wg_lower,
+                                      *delta_tau_wg_upper,
+                                      *delta_tau_wg_lower,
+                                      *M_upper,
+                                      *M_lower,
+                                      *N_upper,
+                                      *N_lower,
+                                      *P_upper,
+                                      *P_lower,
+                                      *G_plus_upper,
+                                      *G_plus_lower,
+                                      *G_minus_upper,
+                                      *G_minus_lower,
+                                      delta_col_upper,
+                                      delta_col_lower,
+                                      opac_wg_lay,
+                                      opac_wg_int,
+                                      cloud_opac_lay,
+                                      cloud_opac_int,
+                                      meanmolmass_lay,
+                                      meanmolmass_int,
+                                      *scatter_cross_section_lay,
+                                      *scatter_cross_section_inter,
+                                      cloud_scat_cross_lay,
+                                      cloud_scat_cross_int,
+                                      *w_0_upper,
+                                      *w_0_lower,
+                                      g_0_tot_lay,
+                                      g_0_tot_int,
+                                      g_0,
+                                      epsi,
+                                      mu_star_,
+                                      w_0_limit,
+                                      scat,
+                                      nbin,
+                                      ny,
+                                      nlayer,
+                                      clouds,
+                                      scat_corr,
+                                      G_pm_limiter,
+                                      G_pm_denom_limit,
+                                      *hit_G_pm_denom_limit,
+                                      debug,
+                                      i2s_transition);
+
+        cudaMemcpy(
+            &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+
+        if (hit_G_pm_denom_limit_h) {
+            if (fabs(mu_star_) > 0.9) {
+                mu_star_wiggle_factor -= mu_star_wiggle_increment;
+            }
+            else {
+                mu_star_wiggle_factor += mu_star_wiggle_increment;
+            }
+            printf("Hit G_pm denom limit, wiggle mu_star by: %g\n", mu_star_wiggle_factor);
+
+            mu_star_ *= mu_star_wiggle_factor;
+        }
+
+    } while (hit_G_pm_denom_limit_h);
+
+    return mu_star_;
 }
 
 bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
