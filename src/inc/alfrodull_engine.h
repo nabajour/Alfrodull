@@ -71,7 +71,6 @@ public:
     double i2s_transition = 0.0;
     bool   debug          = false;
 
-    // TODO: add those as config options
     bool G_pm_limiter = true;
 
     double G_pm_denom_limit         = 1e-5;
