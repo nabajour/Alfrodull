@@ -418,7 +418,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_up_wg.allocate(ninterface_wg_nbin);
     F_dir_wg.allocate(ninterface_wg_nbin);
 
-    if (iso) {
+    if (!iso) {
         Fc_down_wg.allocate(ninterface_wg_nbin);
         Fc_up_wg.allocate(ninterface_wg_nbin);
         Fc_dir_wg.allocate(ninterface_wg_nbin);
@@ -987,7 +987,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
             // initialise delta_col_mass
             // TODO: should this go inside alf?
-            //printf("initialise_delta_colmass\n");
+            // printf("initialise_delta_colmass\n");
             if (iso) {
                 initialise_delta_colmass_iso<<<((num_layers + 1) / num_blocks) + 1, num_blocks>>>(
                     *alf.delta_col_mass, *pressure_int, gravit, num_layers);
@@ -1003,6 +1003,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             }
             cudaDeviceSynchronize();
             cuda_check_status_or_exit(__FILE__, __LINE__);
+            // printf("initialise_delta_colmass done\n");
 
             // get z_lay
             // TODO: z_lay for beam computation
