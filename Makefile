@@ -93,14 +93,14 @@ INCLUDE_DIRS = -I$(SHARED_MODULES_INCLUDE) -I$(THOR_INCLUDE) -I$(LOCAL_INCLUDE) 
 # target to reuse radiative transfer.
 
 $(BUILDDIR)/${OUTPUTDIR}/radiative_transfer.d: $(SHARED_MODULES_DIR)radiative_transfer.cu | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo $(BLUE)computing dependencies $@ $(END)
+	@echo -e '$(BLUE)computing dependencies $@ $(END)'
 	set -e; rm -f $@; \
 	$(CC) $(dependencies_flags) $(arch) $(cuda_dep_flags) $(h5include) $(INCLUDE_DIRS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
 $(BUILDDIR)/$(OUTPUTDIR)/radiative_transfer.o: $(SHARED_MODULES_DIR)radiative_transfer.cu $(BUILDDIR)/$(OUTPUTDIR)/radiative_transfer.d| $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo $(YELLOW)creating $@ $(END)
+	@echo -e '$(YELLOW)creating $@ $(END)'
 	if test $$CDB = "-MJ" ; then \
 		$(CC) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) $(h5libdir) $(INCLUDE_DIRS) $(CDB) $@.json -o $@ $<; \
 	else \
@@ -116,7 +116,7 @@ $(BUILDDIR)/$(OUTPUTDIR)/radiative_transfer.o: $(SHARED_MODULES_DIR)radiative_tr
 
 # for CUDA files
 $(BUILDDIR)/${OUTPUTDIR}/%.d: %.cu | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo $(BLUE)computing dependencies $@ $(END)
+	@echo -e '$(BLUE)computing dependencies $@ $(END)'
 	set -e; rm -f $@; \
 	$(CC) $(dependencies_flags) $(arch) $(cuda_dep_flags) $(h5include) $(INCLUDE_DIRS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
@@ -125,7 +125,7 @@ $(BUILDDIR)/${OUTPUTDIR}/%.d: %.cu | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 
 # for C++ files
 $(BUILDDIR)/${OUTPUTDIR}/%.d: %.cpp | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo $(BLUE)computing dependencies $@ $(END)
+	@echo -e '$(BLUE)computing dependencies $@ $(END)'
 	set -e; rm -f $@; \
 	$(CC) $(dependencies_flags) $(arch) $(cpp_dep_flags) $(h5include) $(INCLUDE_DIRS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
@@ -135,7 +135,7 @@ $(BUILDDIR)/${OUTPUTDIR}/%.d: %.cpp | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 # build objects
 # CUDA files
 $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cu $(BUILDDIR)/$(OUTPUTDIR)/%.d| $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo $(YELLOW)creating $@ $(END)
+	@echo -e '$(YELLOW)creating $@ $(END)'
 	if test $$CDB = "-MJ" ; then \
 		$(CC) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) $(h5libdir) $(INCLUDE_DIRS) $(CDB) $@.json -o $@ $<; \
 	else \
@@ -144,7 +144,7 @@ $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cu $(BUILDDIR)/$(OUTPUTDIR)/%.d| $(BUILDDIR)/$(O
 
 # C++ files
 $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cpp $(BUILDDIR)/$(OUTPUTDIR)/%.d| $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo $(YELLOW)creating $@ $(END)
+	@echo -e '$(YELLOW)creating $@ $(END)'
 	if test $$CDB = "-MJ" ; then \
 		$(CC) $(CC_comp_flag) $(arch) $(cpp_flags) $(h5include) -I$(includedir) $(CDB) $(INCLUDE_DIRS)  $@.json -o $@ $<; \
 	else \
@@ -153,24 +153,24 @@ $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cpp $(BUILDDIR)/$(OUTPUTDIR)/%.d| $(BUILDDIR)/$(
 
 
 libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/radiative_transfer.o $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o | $(BUILDDIR)
-	@echo $(YELLOW)creating $@ $(END)
-	@echo $(GREEN)Linking Modules into static lib $(END)
+	@echo -e '$(YELLOW)creating $@ $(END)'
+	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
 	ar rcs $@ $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/radiative_transfer.o
 
 #######################################################################
 # Cleanup
 .phony: clean,ar
 clean:
-	@echo $(CYAN)clean up library $(END)
+	@echo -e '$(CYAN)clean up library $(END)'
 	-$(RM) libphy_modules.a
-	@echo $(CYAN)clean up modules objects $(END)
+	@echo -e '$(CYAN)clean up modules objects $(END)'
 	-$(RM) $(BUILDDIR)/debug/*.o
 	-$(RM) $(BUILDDIR)/debug/*.o.json
 	-$(RM) $(BUILDDIR)/release/*.o
 	-$(RM) $(BUILDDIR)/release/*.o.json
 	-$(RM) $(BUILDDIR)/prof/*.o
 	-$(RM) $(BUILDDIR)/prof/*.o.json
-	@echo $(CYAN)clean up dependencies $(END)
+	@echo -e '$(CYAN)clean up dependencies $(END)'
 	-$(RM) $(BUILDDIR)/debug/*.d
 	-$(RM) $(BUILDDIR)/debug/*.d.*
 	-$(RM) $(BUILDDIR)/release/*.d
@@ -180,6 +180,6 @@ clean:
 	-$(RM) -d $(BUILDDIR)/debug/
 	-$(RM) -d $(BUILDDIR)/release/
 	-$(RM) -d $(BUILDDIR)/prof/
-	@echo $(CYAN)remove modules object dir $(END)
+	@echo -e '$(CYAN)remove modules object dir $(END)'
 	-$(RM) -d $(BUILDDIR)
 $(info -------------------------------------------------------------- )
