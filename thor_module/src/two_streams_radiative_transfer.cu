@@ -417,13 +417,13 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_down_wg.allocate(ninterface_wg_nbin);
     F_up_wg.allocate(ninterface_wg_nbin);
     F_dir_wg.allocate(ninterface_wg_nbin);
-    
+
     if (iso) {
-      Fc_down_wg.allocate(ninterface_wg_nbin);
-      Fc_up_wg.allocate(ninterface_wg_nbin);
-      Fc_dir_wg.allocate(ninterface_wg_nbin);
+        Fc_down_wg.allocate(ninterface_wg_nbin);
+        Fc_up_wg.allocate(ninterface_wg_nbin);
+        Fc_dir_wg.allocate(ninterface_wg_nbin);
     }
-    
+
     F_down_tot.allocate(esp.point_num * ninterface);
     F_up_tot.allocate(esp.point_num * ninterface);
     F_down_band.allocate(ninterface_nbin);
@@ -550,22 +550,33 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
 
 // initialise delta_colmass arrays from pressure
 // same as helios.source.host_functions.construct_grid
-__global__ void initialise_delta_colmass(double* delta_col_mass,
-                                         double* delta_col_mass_upper,
-                                         double* delta_col_mass_lower,
-                                         double* pressure_lay,
-                                         double* pressure_int,
-                                         double  gravit,
-                                         int     num_layers) {
+__global__ void initialise_delta_colmass_noniso(double* delta_col_mass_upper,
+                                                double* delta_col_mass_lower,
+                                                double* pressure_lay,
+                                                double* pressure_int,
+                                                double  gravit,
+                                                int     num_layers) {
+    int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (layer_idx < num_layers) {
+        delta_col_mass_upper[layer_idx] =
+            (pressure_lay[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
+        delta_col_mass_lower[layer_idx] =
+            (pressure_int[layer_idx] - pressure_lay[layer_idx]) / gravit;
+    }
+}
+
+// initialise delta_colmass arrays from pressure
+// same as helios.source.host_functions.construct_grid
+__global__ void initialise_delta_colmass_iso(double* delta_col_mass,
+                                             double* pressure_int,
+                                             double  gravit,
+                                             int     num_layers) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (layer_idx < num_layers) {
         delta_col_mass[layer_idx] =
             (pressure_int[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
-        delta_col_mass_upper[layer_idx] =
-            (pressure_lay[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
-        delta_col_mass_lower[layer_idx] =
-            (pressure_int[layer_idx] - pressure_lay[layer_idx]) / gravit;
     }
 }
 
@@ -822,11 +833,17 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
             F_up_wg.zero();
             F_down_wg.zero();
-
-            Fc_down_wg.zero();
-            Fc_up_wg.zero();
             F_dir_wg.zero();
-            Fc_dir_wg.zero();
+            if (iso) {
+            }
+            else {
+                Fc_down_wg.zero();
+                Fc_up_wg.zero();
+
+                Fc_dir_wg.zero();
+            }
+
+
             alf.reset();
 
             pressure_int.zero();
@@ -971,14 +988,19 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             // initialise delta_col_mass
             // TODO: should this go inside alf?
             //printf("initialise_delta_colmass\n");
-            initialise_delta_colmass<<<((num_layers + 1) / num_blocks) + 1, num_blocks>>>(
-                *alf.delta_col_mass,
-                *alf.delta_col_upper,
-                *alf.delta_col_lower,
-                column_layer_pressure,
-                *pressure_int,
-                gravit,
-                num_layers);
+            if (iso) {
+                initialise_delta_colmass_iso<<<((num_layers + 1) / num_blocks) + 1, num_blocks>>>(
+                    *alf.delta_col_mass, *pressure_int, gravit, num_layers);
+            }
+            else {
+                initialise_delta_colmass_noniso<<<((num_layers + 1) / num_blocks) + 1,
+                                                  num_blocks>>>(*alf.delta_col_upper,
+                                                                *alf.delta_col_lower,
+                                                                column_layer_pressure,
+                                                                *pressure_int,
+                                                                gravit,
+                                                                num_layers);
+            }
             cudaDeviceSynchronize();
             cuda_check_status_or_exit(__FILE__, __LINE__);
 

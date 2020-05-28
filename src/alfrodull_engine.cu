@@ -104,43 +104,36 @@ void alfrodull_engine::allocate_internal_variables() {
     int nlayer_wg_nbin     = nlayer * opacities.ny * opacities.nbin;
     int ninterface_wg_nbin = ninterface * opacities.ny * opacities.nbin;
 
-    // scatter cross section layer and interface
-    // those are shared for print out
-
-    scatter_cross_section_lay.allocate(nlayer_nbin);
-    scatter_cross_section_inter.allocate(ninterface_nbin);
-    planckband_lay.allocate(nlayer_plus2_nbin);
-    planckband_int.allocate(ninterface_nbin);
-
-
-    //    if (iso) {
-    delta_tau_wg.allocate(nlayer_wg_nbin);
-    //    }
-    //    else {
-    delta_tau_wg_upper.allocate(nlayer_wg_nbin);
-    delta_tau_wg_lower.allocate(nlayer_wg_nbin);
-    //    }
-
     if (iso) {
-        A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-        D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-        X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        delta_tau_wg.allocate(nlayer_wg_nbin);
     }
     else {
-        int num_th_layers             = nlayer * 2;
-        int num_th_interfaces         = num_th_layers + 1;
-        int num_th_interfaces_wg_nbin = num_th_interfaces * opacities.ny * opacities.nbin;
-        A_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-        B_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-        C_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-        D_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-        C_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
-        D_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
-        X_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+        delta_tau_wg_upper.allocate(nlayer_wg_nbin);
+        delta_tau_wg_lower.allocate(nlayer_wg_nbin);
+    }
+
+    if (thomas) {
+        if (iso) {
+            A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+            B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+            C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+            D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+            C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+            D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
+            X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+        }
+        else {
+            int num_th_layers             = nlayer * 2;
+            int num_th_interfaces         = num_th_layers + 1;
+            int num_th_interfaces_wg_nbin = num_th_interfaces * opacities.ny * opacities.nbin;
+            A_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+            B_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+            C_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+            D_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+            C_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
+            D_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
+            X_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+        }
     }
     // flux computation internal quantities
     if (iso) {
@@ -178,15 +171,25 @@ void alfrodull_engine::allocate_internal_variables() {
 
 
     meanmolmass_lay.allocate(nlayer);
-    meanmolmass_int.allocate(ninterface);
-
+    // scatter cross section layer and interface
+    // those are shared for print out
+    scatter_cross_section_lay.allocate(nlayer_nbin);
+    planckband_lay.allocate(nlayer_plus2_nbin);
     opac_wg_lay.allocate(nlayer_wg_nbin);
+
+    if (!iso) {
+        meanmolmass_int.allocate(ninterface);
+
+        scatter_cross_section_inter.allocate(ninterface_nbin);
+        planckband_int.allocate(ninterface_nbin);
+        opac_wg_int.allocate(ninterface_wg_nbin);
+    }
+
 
     if (iso) {
         trans_wg.allocate(nlayer_wg_nbin);
     }
     else {
-        opac_wg_int.allocate(ninterface_wg_nbin);
         trans_wg_upper.allocate(nlayer_wg_nbin);
         trans_wg_lower.allocate(nlayer_wg_nbin);
     }
@@ -246,7 +249,7 @@ void alfrodull_engine::allocate_internal_variables() {
 
 
         };
-        // TODO: add thomas algorithm variables
+        // TODO: add thomas algorithm variables - if needed
 
         /*
         A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
@@ -338,61 +341,65 @@ void alfrodull_engine::allocate_internal_variables() {
 
 // set internal arrays to zero before loop
 void alfrodull_engine::reset() {
-    scatter_cross_section_lay.zero();
-    scatter_cross_section_inter.zero();
-
-    // planck function
-    planckband_lay.zero();
-    planckband_int.zero();
-
     // delta tau, for weights. Only used internally (on device) for flux computations
     // and shared at the end for integration over wg
-    // iso
-    delta_tau_wg.zero();
-    // noiso
-    delta_tau_wg_upper.zero();
-    delta_tau_wg_lower.zero();
+    if (iso) {
+        delta_col_mass.zero();
+        delta_tau_wg.zero();
+        trans_wg.zero();
+        M_term.zero();
+        N_term.zero();
+        P_term.zero();
+        G_plus.zero();
+        G_minus.zero();
+        w_0.zero();
+    }
+    else {
+        // noiso
+        delta_tau_wg_upper.zero();
+        delta_tau_wg_lower.zero();
+        delta_col_upper.zero();
+        delta_col_lower.zero();
+        trans_wg_upper.zero();
+        trans_wg_lower.zero();
+        M_upper.zero();
+        M_lower.zero();
+        N_upper.zero();
+        N_lower.zero();
+        P_upper.zero();
+        P_lower.zero();
+        G_plus_upper.zero();
+        G_plus_lower.zero();
+        G_minus_upper.zero();
+        G_minus_lower.zero();
+        w_0_upper.zero();
+        w_0_lower.zero();
+    }
 
-    //
     dev_T_int.zero();
-    delta_col_mass.zero();
-    delta_col_upper.zero();
-    delta_col_lower.zero();
-    meanmolmass_int.zero();
+
     meanmolmass_lay.zero();
     opac_wg_lay.zero();
-    opac_wg_int.zero();
-    trans_wg.zero();
-    trans_wg_upper.zero();
-    trans_wg_lower.zero();
+    scatter_cross_section_lay.zero();
+    planckband_lay.zero();
 
-    M_term.zero();
-    N_term.zero();
-    P_term.zero();
-    G_plus.zero();
-    G_minus.zero();
-    w_0.zero();
+    if (!iso) {
+        meanmolmass_int.zero();
+        opac_wg_int.zero();
+        scatter_cross_section_inter.zero();
+        // planck function
+        planckband_int.zero();
+    }
 
-    A_buff.zero();       // thomas worker
-    B_buff.zero();       // thomas worker
-    C_buff.zero();       // thomas worker
-    D_buff.zero();       // thomas worker
-    C_prime_buff.zero(); // thomas worker
-    D_prime_buff.zero(); // thomas worker
-    X_buff.zero();       // thomas worker
-                         // noniso
-    M_upper.zero();
-    M_lower.zero();
-    N_upper.zero();
-    N_lower.zero();
-    P_upper.zero();
-    P_lower.zero();
-    G_plus_upper.zero();
-    G_plus_lower.zero();
-    G_minus_upper.zero();
-    G_minus_lower.zero();
-    w_0_upper.zero();
-    w_0_lower.zero();
+    if (thomas) {
+        A_buff.zero();       // thomas worker
+        B_buff.zero();       // thomas worker
+        C_buff.zero();       // thomas worker
+        D_buff.zero();       // thomas worker
+        C_prime_buff.zero(); // thomas worker
+        D_prime_buff.zero(); // thomas worker
+        X_buff.zero();       // thomas worker
+    }
 }
 
 // return device pointers for helios data save
