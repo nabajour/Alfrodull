@@ -80,7 +80,10 @@ using std::string;
 // dump TP profile to run in HELIOS for profile comparison
 //#define DUMP_HELIOS_TP
 // stride for column TP profile dump
+#ifdef DUMP_HELIOS_TP
 const int HELIOS_TP_STRIDE = 1;
+#endif // DUMP_HELIOS_TP
+
 //***************************************************************************************************
 // DEBUGGING TOOL: integrate weighted values in binned bands and then integrate over bands
 
@@ -734,7 +737,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
-    int nbin = alf.opacities.nbin;
     //  update global insolation properties if necessary
     if (sync_rot) {
         if (ecc > 1e-10) {

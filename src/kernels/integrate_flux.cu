@@ -1214,7 +1214,6 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
         int num_th_layers     = 2 * num_layers;
         int num_th_interfaces = num_th_layers + 1;
 
-        int      N       = numinterfaces;
         double4* A       = (double4*)&(A_buff[(x * ny + y) * num_th_interfaces * 4]);
         double4* B       = (double4*)&(B_buff[(x * ny + y) * num_th_interfaces * 4]);
         double4* C       = (double4*)&(C_buff[(x * ny + y) * num_th_interfaces * 4]);
