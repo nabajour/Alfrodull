@@ -416,10 +416,14 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     F_down_wg.allocate(ninterface_wg_nbin);
     F_up_wg.allocate(ninterface_wg_nbin);
-    Fc_down_wg.allocate(ninterface_wg_nbin);
-    Fc_up_wg.allocate(ninterface_wg_nbin);
     F_dir_wg.allocate(ninterface_wg_nbin);
-    Fc_dir_wg.allocate(ninterface_wg_nbin);
+    
+    if (iso) {
+      Fc_down_wg.allocate(ninterface_wg_nbin);
+      Fc_up_wg.allocate(ninterface_wg_nbin);
+      Fc_dir_wg.allocate(ninterface_wg_nbin);
+    }
+    
     F_down_tot.allocate(esp.point_num * ninterface);
     F_up_tot.allocate(esp.point_num * ninterface);
     F_down_band.allocate(ninterface_nbin);

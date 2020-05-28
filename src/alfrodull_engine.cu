@@ -143,37 +143,38 @@ void alfrodull_engine::allocate_internal_variables() {
         X_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
     }
     // flux computation internal quantities
-    // TODO: not needed to allocate everything, depending on iso or noniso
-    // if (iso) {
-    M_term.allocate(nlayer_wg_nbin);
-    N_term.allocate(nlayer_wg_nbin);
-    P_term.allocate(nlayer_wg_nbin);
-    G_plus.allocate(nlayer_wg_nbin);
-    G_minus.allocate(nlayer_wg_nbin);
-    w_0.allocate(nlayer_wg_nbin);
-    //    }
-    //  else {
-    M_upper.allocate(nlayer_wg_nbin);
-    M_lower.allocate(nlayer_wg_nbin);
-    N_upper.allocate(nlayer_wg_nbin);
-    N_lower.allocate(nlayer_wg_nbin);
-    P_upper.allocate(nlayer_wg_nbin);
-    P_lower.allocate(nlayer_wg_nbin);
-    G_plus_upper.allocate(nlayer_wg_nbin);
-    G_plus_lower.allocate(nlayer_wg_nbin);
-    G_minus_upper.allocate(nlayer_wg_nbin);
-    G_minus_lower.allocate(nlayer_wg_nbin);
-    w_0_upper.allocate(nlayer_wg_nbin);
-    w_0_lower.allocate(nlayer_wg_nbin);
-    //    }
+    if (iso) {
+        M_term.allocate(nlayer_wg_nbin);
+        N_term.allocate(nlayer_wg_nbin);
+        P_term.allocate(nlayer_wg_nbin);
+        G_plus.allocate(nlayer_wg_nbin);
+        G_minus.allocate(nlayer_wg_nbin);
+        w_0.allocate(nlayer_wg_nbin);
+
+        delta_col_mass.allocate(nlayer);
+    }
+    else {
+        M_upper.allocate(nlayer_wg_nbin);
+        M_lower.allocate(nlayer_wg_nbin);
+        N_upper.allocate(nlayer_wg_nbin);
+        N_lower.allocate(nlayer_wg_nbin);
+        P_upper.allocate(nlayer_wg_nbin);
+        P_lower.allocate(nlayer_wg_nbin);
+        G_plus_upper.allocate(nlayer_wg_nbin);
+        G_plus_lower.allocate(nlayer_wg_nbin);
+        G_minus_upper.allocate(nlayer_wg_nbin);
+        G_minus_lower.allocate(nlayer_wg_nbin);
+        w_0_upper.allocate(nlayer_wg_nbin);
+        w_0_lower.allocate(nlayer_wg_nbin);
+
+        delta_col_upper.allocate(nlayer);
+        delta_col_lower.allocate(nlayer);
+    }
 
     //  dev_T_int.allocate(ninterface);
 
     // column mass
     // TODO: computed by grid in helios, should be computed by alfrodull or comes from THOR?
-    delta_col_mass.allocate(nlayer);
-    delta_col_upper.allocate(nlayer);
-    delta_col_lower.allocate(nlayer);
 
 
     meanmolmass_lay.allocate(nlayer);
@@ -181,13 +182,14 @@ void alfrodull_engine::allocate_internal_variables() {
 
     opac_wg_lay.allocate(nlayer_wg_nbin);
 
-    trans_wg.allocate(nlayer_wg_nbin);
-
-    //    if (!iso) {
-    opac_wg_int.allocate(ninterface_wg_nbin);
-    trans_wg_upper.allocate(nlayer_wg_nbin);
-    trans_wg_lower.allocate(nlayer_wg_nbin);
-    //    }
+    if (iso) {
+        trans_wg.allocate(nlayer_wg_nbin);
+    }
+    else {
+        opac_wg_int.allocate(ninterface_wg_nbin);
+        trans_wg_upper.allocate(nlayer_wg_nbin);
+        trans_wg_lower.allocate(nlayer_wg_nbin);
+    }
 
     hit_G_pm_denom_limit.allocate(1);
 
