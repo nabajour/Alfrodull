@@ -1359,20 +1359,9 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
 
                 // lower part of layer calculations
                 if (i == 0) {
+		  // Boundary condition for lower layer, equivalent to isotermal solution
                     double pb_lay = planckband_lay[i + x * (numinterfaces - 1 + 2)];
-                    double pb_int = pb_lay;
-                    if (del_tau_low < delta_tau_limit) {
-                        // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
-                        planck_terms = (pb_int + pb_lay) / 2.0 * (N_low + M_low - P_low);
-                    }
-                    else {
-                        // non-isothermal solution -- standard case
-                        double pgrad_low = (pb_int - pb_lay) / del_tau_low;
-
-                        planck_terms = pb_int * (M_low + N_low) - pb_lay * P_low
-                                       + epsi / (E_low * (1.0 - w0_low * g0_low))
-                                             * (P_low - M_low + N_low) * pgrad_low;
-                    }
+		    planck_terms = pb_lay * (N_low + M_low - P_low);
                 }
                 else {
                     {
