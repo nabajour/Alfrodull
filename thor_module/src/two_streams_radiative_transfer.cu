@@ -1852,7 +1852,8 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
 
         FILE* output_file = fopen(output_file_name.c_str(), "w");
 
-        std::shared_ptr<double[]> qh_h = get_cuda_data(&((dgrt.qheat_d)[col_offset]), esp.nv);
+        std::shared_ptr<double[]> qh_h =
+            get_cuda_data(&((dgrt.get_debug_qheat_device_ptr())[col_offset]), esp.nv);
 
         fprintf(output_file, "level\tqheat\n");
 
