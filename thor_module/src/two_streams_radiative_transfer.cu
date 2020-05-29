@@ -230,7 +230,7 @@ void two_streams_radiative_transfer::print_config() {
 
     log::printf("Alf_thomas: %s\n", thomas ? "true" : "false");
     log::printf("Alf_scat_single_walk: %s\n", scat_single_walk ? "true" : "false");
-    log::printf("Alf_exp_opac_offset: %d\n", experimental_opacities_offset);
+    log::printf("Alf_exp_opac_offset: %g\n", experimental_opacities_offset);
 
     log::printf("Alf_T_surf: %f\n", T_surf);
     log::printf("Alf_albedo: %f\n", albedo);
