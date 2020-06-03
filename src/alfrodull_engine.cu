@@ -626,6 +626,7 @@ void alfrodull_engine::compute_radiative_transfer(
     double* F_down_band,
     double* F_up_band,
     double* F_dir_band,
+    double* F_up_TOA_spectrum,
     // double* gauss_weight
     //int num_interfaces, -> ninterface
     //int ny
@@ -868,6 +869,7 @@ void alfrodull_engine::compute_radiative_transfer(
                    F_down_band,
                    F_up_band,
                    F_dir_band,
+                   F_up_TOA_spectrum,
                    gauss_weight);
 
     BENCH_POINT_I_S_PHY(
@@ -1053,6 +1055,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
                                       double* F_down_band,
                                       double* F_up_band,
                                       double* F_dir_band,
+                                      double* F_up_TOA_spectrum,
                                       double* gauss_weight) {
     bool opt = true;
 
@@ -1072,6 +1075,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
                                                          F_down_band,
                                                          F_up_band,
                                                          F_dir_band,
+                                                         F_up_TOA_spectrum,
                                                          gauss_weight,
                                                          nbin,
                                                          ninterface,

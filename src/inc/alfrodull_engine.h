@@ -228,6 +228,7 @@ public:
                                     double*     F_down_band,
                                     double*     F_up_band,
                                     double*     F_dir_band,
+                                    double*     F_up_TOA_spectrum,
                                     double      mu_star);
 
     bool prepare_compute_flux(double*       dev_starflux,
@@ -256,6 +257,7 @@ public:
                         double* F_down_band,
                         double* F_up_band,
                         double* F_dir_band,
+                        double* F_up_TOA_spectrum,
                         double* gauss_weight);
 
     double calculate_transmission_iso(double* trans_wg,             // out

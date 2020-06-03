@@ -6,6 +6,7 @@ __global__ void integrate_flux_band(double* F_down_wg,    // in
                                     double* F_down_band,  // out
                                     double* F_up_band,    // out
                                     double* F_dir_band,   // out
+				    double* F_up_TOA_spectrum, // out
                                     double* gauss_weight, // in
                                     int     nbin,
                                     int     numinterfaces,

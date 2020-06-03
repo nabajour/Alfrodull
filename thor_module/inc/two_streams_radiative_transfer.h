@@ -214,6 +214,8 @@ private:
     cuda_device_memory<double> F_up_band;
     cuda_device_memory<double> F_dir_band;
 
+    // Top of atmosphere flux spectrum
+    cuda_device_memory<double> F_up_TOA_spectrum;
     cuda_device_memory<double> F_net;
     cuda_device_memory<double> F_net_diff;
 

@@ -14,7 +14,6 @@
 std::unique_ptr<alfrodull_engine> Alf_ptr = nullptr;
 
 
-
 void init_alfrodull() {
     printf("Create Alfrodull Engine\n");
 
@@ -161,7 +160,6 @@ void set_z_calc_function(std::function<void()>& func) {
 }
 
 
-
 void wrap_compute_radiative_transfer(
     // prepare_compute_flux
     long dev_starflux, // in: pil
@@ -190,40 +188,42 @@ void wrap_compute_radiative_transfer(
     long F_net,
     long F_down_band,
     long F_up_band,
-    long F_dir_band) {
-  if (Alf_ptr != nullptr)
-    Alf_ptr->compute_radiative_transfer(
-        (double*)dev_starflux, // in: pil
-        (double*)
-            dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
-        (double*)dev_T_int, // in: it, pii, ioi, mmmi, kii
-        (double*)dev_p_lay, // in: io, mmm, kil
-        (double*)dev_p_int, // in: ioi, mmmi, kii
-	true,
-        interp_and_calc_flux_step,
+    long F_dir_band,
+    long F_up_TOA_spectrum) {
+    if (Alf_ptr != nullptr)
+        Alf_ptr->compute_radiative_transfer(
+            (double*)dev_starflux, // in: pil
+            (double*)
+                dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+            (double*)dev_T_int, // in: it, pii, ioi, mmmi, kii
+            (double*)dev_p_lay, // in: io, mmm, kil
+            (double*)dev_p_int, // in: ioi, mmmi, kii
+            true,
+            interp_and_calc_flux_step,
 
-        // direct_beam_flux
-        (double*)z_lay,
-        // spectral flux loop
-        single_walk,
-        // populate_spectral_flux_noniso
-        (double*)F_down_wg,
-        (double*)F_up_wg,
-        (double*)Fc_down_wg,
-        (double*)Fc_up_wg,
-        (double*)F_dir_wg,
-        (double*)Fc_dir_wg,
-        delta_tau_limit,
-        // integrate_flux
-        (double*)F_down_tot,
-        (double*)F_up_tot,
-        (double*)F_net,
-        (double*)F_down_band,
-        (double*)F_up_band,
-        (double*)F_dir_band,
-	Alf_ptr->mu_star);
-  else
-    printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");
+            // direct_beam_flux
+            (double*)z_lay,
+            // spectral flux loop
+            single_walk,
+            // populate_spectral_flux_noniso
+            (double*)F_down_wg,
+            (double*)F_up_wg,
+            (double*)Fc_down_wg,
+            (double*)Fc_up_wg,
+            (double*)F_dir_wg,
+            (double*)Fc_dir_wg,
+            delta_tau_limit,
+            // integrate_flux
+            (double*)F_down_tot,
+            (double*)F_up_tot,
+            (double*)F_net,
+            (double*)F_down_band,
+            (double*)F_up_band,
+            (double*)F_dir_band,
+            (double*)F_up_TOA_spectrum,
+            Alf_ptr->mu_star);
+    else
+        printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");
 }
 
 void set_clouds_data(const bool& clouds_,

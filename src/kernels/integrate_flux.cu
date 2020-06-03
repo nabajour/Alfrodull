@@ -122,13 +122,14 @@ must sum:
 * over frequency bins into total flux per levels (up_tot, down_tot, net)
 */
 // first simple integration over weights
-__global__ void integrate_flux_band(double* F_down_wg,    // in
-                                    double* F_up_wg,      // in
-                                    double* F_dir_wg,     // in
-                                    double* F_down_band,  // out
-                                    double* F_up_band,    // out
-                                    double* F_dir_band,   // out
-                                    double* gauss_weight, // in
+__global__ void integrate_flux_band(double* F_down_wg,         // in
+                                    double* F_up_wg,           // in
+                                    double* F_dir_wg,          // in
+                                    double* F_down_band,       // out
+                                    double* F_up_band,         // out
+                                    double* F_dir_band,        // out
+                                    double* F_up_TOA_spectrum, // out
+                                    double* gauss_weight,      // in
                                     int     nbin,
                                     int     numinterfaces,
                                     int     ny) {
@@ -153,6 +154,10 @@ __global__ void integrate_flux_band(double* F_down_wg,    // in
             F_up_band[bin_offset] += 0.5 * w * F_up_wg[weight_offset];
             F_down_band[bin_offset] += 0.5 * w * F_down_wg[weight_offset];
         }
+
+        // copy TOA spectrum to spectra array for TOA at each col.
+        if (interface_idx == numinterfaces - 1)
+            F_up_TOA_spectrum[bin_idx] = F_up_band[bin_offset];
     }
 }
 
@@ -1358,9 +1363,9 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
 
                 // lower part of layer calculations
                 if (i == 0) {
-		  // Boundary condition for lower layer, equivalent to isotermal solution
+                    // Boundary condition for lower layer, equivalent to isotermal solution
                     double pb_lay = planckband_lay[i + x * (numinterfaces - 1 + 2)];
-		    planck_terms = pb_lay * (N_low + M_low - P_low);
+                    planck_terms  = pb_lay * (N_low + M_low - P_low);
                 }
                 else {
                     {

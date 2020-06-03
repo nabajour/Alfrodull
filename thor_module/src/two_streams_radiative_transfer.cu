@@ -432,6 +432,8 @@ bool two_streams_radiative_transfer::initialise_memory(
     // TODO: check, ninterface or nlayers ?
     F_net.allocate(esp.point_num * ninterface);
 
+    F_up_TOA_spectrum.allocate(esp.point_num * nbin);
+
     g_0_tot_lay.allocate(nlayer_nbin);
     g_0_tot_int.allocate(ninterface_nbin);
     cloud_opac_lay.allocate(nlayer);
@@ -823,6 +825,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         printf("\r\n");
         printf("\r\n");
         printf("\r\n");
+
+        int nbin = alf.opacities.nbin;
         // loop on columns
         for (int column_idx = 0; column_idx < esp.point_num; column_idx++) {
             alf.debug_col_idx = column_idx;
@@ -1039,6 +1043,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             double* F_col_net         = &((*F_net)[column_offset_int]);
             //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
             double* F_dir_band_col = &((*F_dir_band)[0]);
+
+            double* F_up_TOA_spectrum_col = &((*F_up_TOA_spectrum)[column_idx * nbin]);
+
             alf.compute_radiative_transfer(dev_starflux,          // dev_starflux
                                            *temperature_lay,      // dev_T_lay
                                            *temperature_int,      // dev_T_int
@@ -1061,6 +1068,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            *F_down_band,
                                            *F_up_band,
                                            F_dir_band_col,
+                                           F_up_TOA_spectrum_col,
                                            mu_star);
             cudaDeviceSynchronize();
             cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -1209,6 +1217,34 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
     std::shared_ptr<double[]> F_down_tot_h = F_down_tot.get_host_data();
     s.append_table(
         F_down_tot_h.get(), F_down_tot.get_size(), "/F_down_tot", "W m^-2", "Total downward flux");
+
+    std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();
+    s.append_table(F_up_TOA_spectrum_h.get(),
+                   F_up_TOA_spectrum.get_size(),
+                   "/F_up_TOA_spectrum",
+                   "W m^-2",
+                   "Upward Flux per bin at TOA");
+
+    std::shared_ptr<double[]> lambda_wave_h = alf.opacities.dev_opac_wave.get_host_data();
+    s.append_table(lambda_wave_h.get(),
+                   alf.opacities.dev_opac_wave.get_size(),
+                   "/lambda_wave",
+                   "m",
+                   "Center wavelength");
+
+    std::shared_ptr<double[]> lambda_interwave_h = alf.opacities.dev_opac_interwave.get_host_data();
+    s.append_table(lambda_interwave_h.get(),
+                   alf.opacities.dev_opac_interwave.get_size(),
+                   "/lambda_interwave",
+                   "m",
+                   "Interface wavelength");
+
+    std::shared_ptr<double[]> lambda_deltawave_h = alf.opacities.dev_opac_deltawave.get_host_data();
+    s.append_table(lambda_deltawave_h.get(),
+                   alf.opacities.dev_opac_deltawave.get_size(),
+                   "/lambda_deltawave",
+                   "m",
+                   "Wavelength width of bins");
 
     s.append_value(qheat_scaling, "/qheat_scaling", "-", "QHeat scaling");
 
