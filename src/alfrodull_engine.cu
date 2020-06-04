@@ -1064,9 +1064,10 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
 
     if (opt) {
         {
-            int  num_levels_per_block = 256 / nbin + 1;
-            dim3 gridsize(ninterface / num_levels_per_block + 1);
-            dim3 blocksize(num_levels_per_block, nbin);
+            int  num_levels_per_block = 16 ;
+	    int num_bins_per_block = 16;
+            dim3 gridsize(ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1 );
+            dim3 blocksize(num_levels_per_block, num_bins_per_block);
             //printf("nbin: %d, ny: %d\n", nbin, ny);
 
             integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
