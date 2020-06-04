@@ -55,6 +55,7 @@
 #include "physics_constants.h"
 
 #include "directories.h"
+#include "storage.h"
 
 #include <string>
 
@@ -84,6 +85,7 @@ using std::string;
 const int HELIOS_TP_STRIDE = 1;
 #endif // DUMP_HELIOS_TP
 
+void cuda_check_status_or_exit(const char* filename, const int& line);
 //***************************************************************************************************
 // DEBUGGING TOOL: integrate weighted values in binned bands and then integrate over bands
 
@@ -228,6 +230,8 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_real_star: %s\n", real_star ? "true" : "false");
     log::printf("Alf_fake_opac: %f\n", fake_opac);
 
+    log::printf("Alf_stellar_spectrum: %s\n", stellar_spectrum_file.c_str());
+
     log::printf("Alf_thomas: %s\n", thomas ? "true" : "false");
     log::printf("Alf_scat_single_walk: %s\n", scat_single_walk ? "true" : "false");
     log::printf("Alf_exp_opac_offset: %g\n", experimental_opacities_offset);
@@ -285,6 +289,8 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
         "Alf_exp_opac_offset", experimental_opacities_offset, experimental_opacities_offset);
     config_reader.append_config_var("Alf_iso", iso, iso);
     config_reader.append_config_var("Alf_real_star", real_star, real_star);
+    config_reader.append_config_var(
+        "Alf_stellar_spectrum", stellar_spectrum_file, stellar_spectrum_file);
     config_reader.append_config_var("Alf_fake_opac", fake_opac, fake_opac);
     config_reader.append_config_var("Alf_T_surf", T_surf, T_surf); // ?
     config_reader.append_config_var("Alf_albedo", albedo, albedo);
@@ -348,9 +354,6 @@ bool two_streams_radiative_transfer::initialise_memory(
     // w_0_limit
     w_0_limit = 1.0 - 1e-14;
 
-    // TODO load star flux.
-    real_star = false;
-
     double f_factor = 1.0;
 
     epsi = 1.0 / diffusivity;
@@ -405,14 +408,74 @@ bool two_streams_radiative_transfer::initialise_memory(
     int ninterface_nbin    = ninterface * nbin;
     int ninterface_wg_nbin = ninterface * ny * nbin;
 
+    if (real_star) {
+        // load star flux.
+        std::printf("Using Stellar Flux file %s\n", stellar_spectrum_file.c_str());
+        star_flux.allocate(nbin);
+        if (!path_exists(stellar_spectrum_file)) {
+            log::printf("Stellar spectrum file not found: %s\n", stellar_spectrum_file.c_str());
+            exit(EXIT_FAILURE);
+        }
+
+	double lambda_spectrum_scale = 1e-2;
+	double flux_scale = 1e-1;
+	
+        storage s(stellar_spectrum_file, true);
+        if (s.has_table("wavelength") && s.has_table("flux")) {
+            std::unique_ptr<double[]> lambda_ptr  = nullptr;
+            int                       lambda_size = 0;
+
+            std::unique_ptr<double[]> flux_ptr  = nullptr;
+            int                       flux_size = 0;
+
+            s.read_table("wavelength", lambda_ptr, lambda_size);
+            s.read_table("flux", flux_ptr, flux_size);
+
+            if (lambda_size != nbin || lambda_size != flux_size) {
+                log::printf("Wrong size for stellar size arrays\n");
+                log::printf("Lambda: %d\n", lambda_size);
+                log::printf("Flux: %d\n", flux_size);
+                log::printf("nbin: %d\n", nbin);
+                exit(EXIT_FAILURE);
+            }
+	    
+            bool   lambda_check = true;
+            double epsilon      = 1e-4;
+	    std::shared_ptr<double[]> star_flux_h = star_flux.get_host_data_ptr();
+            for (int i = 0; i < nbin; i++) {
+	      star_flux_h[i] = flux_ptr[i]*flux_scale;
+                 bool check = fabs(lambda_ptr[i]*lambda_spectrum_scale - alf.opacities.data_opac_wave[i])
+                                     / alf.opacities.data_opac_wave[i]
+                                 < epsilon;
+
+		 if (!check)
+		   printf("Missmatch in wavelength at idx [%d] l_spectrum(%g) != l_opac(%g) \n", i, lambda_ptr[i]*lambda_spectrum_scale,  alf.opacities.data_opac_wave[i]);
+		 lambda_check &= check;
+            }
+
+	    star_flux.put();
+	    
+            if (!lambda_check) {
+                log::printf("wavelength points mismatch between stellar spectrum and opacities\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+        else {
+            log::printf("table wavelength or flux not found in stellar flux file\n");
+            exit(EXIT_FAILURE);
+        }
+	printf("Stellar flux loaded\n");
+    }
+
+    // TODO: allocate here. Should be read in in case of real_star == true
+    //    star_flux.allocate(nbin);
     // allocate interface state variables to be interpolated
 
 
     pressure_int.allocate(ninterface);
     temperature_int.allocate(ninterface);
     temperature_lay.allocate(nlayer_plus1);
-    // TODO: allocate here. Should be read in in case of real_star == true
-    star_flux.allocate(nbin);
+
 
     F_down_wg.allocate(ninterface_wg_nbin);
     F_up_wg.allocate(ninterface_wg_nbin);
@@ -446,8 +509,6 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     Qheat.allocate(esp.point_num * nlayer);
 
-    // TODO: currently, realstar = false, no spectrum
-    star_flux.zero();
 
     // TODO: currently, all clouds set to zero. Not used.
 
@@ -471,6 +532,18 @@ bool two_streams_radiative_transfer::initialise_memory(
     if (dgrt_spinup_steps > 0) {
         dgrt.initialise_memory(esp, phy_modules_core_arrays);
     }
+
+    cudaError_t err = cudaGetLastError();
+
+    // Check device query
+    if (err != cudaSuccess) {
+        log::printf("[%s:%d] CUDA error check reports error: %s\n",
+                    __FILE__,
+                    __LINE__,
+                    cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
 #ifdef BENCHMARKING
     std::map<string, output_def> debug_arrays = {
         {"F_net", {F_net.ptr_ref(), esp.point_num * ninterface, "Fnet", "Fn", true, dummy}},
@@ -509,7 +582,7 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
 
     // this is only known here, comes from sim setup.
     alf.R_planet = sim.A;
-
+    cuda_check_status_or_exit(__FILE__, __LINE__);
     // initialise planck tables
     alf.prepare_planck_table();
     log::printf("Built Planck Table for %d bins, Star temp %g K\n", alf.opacities.nbin, alf.T_star);
@@ -518,7 +591,9 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
     // TODO: where to do this, check
     // TODO where does starflux come from?
     // correct_incident_energy
+
     alf.correct_incident_energy(*star_flux, real_star, true);
+
     // initialise Alfrodull
     sync_rot = sync_rot_config;
     if (sync_rot) {
@@ -545,6 +620,7 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
         printf("dgrt init\n");
         out &= dgrt.initial_conditions(esp, sim, s);
     }
+    cuda_check_status_or_exit(__FILE__, __LINE__);
 
 
     return out;
@@ -796,6 +872,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         printf("double gray scaling: %g \n", qheat_scaling);
     }
 
+    cuda_check_status_or_exit(__FILE__, __LINE__);
 
     if ((nstep % compute_every_n_iteration == 0 || start_up) && nstep > dgrt_spinup_steps) {
         compute_col_mu_star<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(*col_mu_star,
@@ -808,7 +885,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                                                               obliquity,
                                                                               sync_rot,
                                                                               esp.point_num);
-        cuda_check_status_or_exit();
+        cuda_check_status_or_exit(__FILE__, __LINE__);
 
         std::unique_ptr<double[]> loc_col_mu_star = std::make_unique<double[]>(esp.point_num);
         col_mu_star.fetch(loc_col_mu_star);
@@ -1019,8 +1096,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             double mu_star = loc_col_mu_star[column_idx];
             // internal to alfrodull_engine
 
-            // TODO: define star_flux
-            double* dev_starflux = nullptr;
+            double* dev_starflux = *star_flux;
             // limit where to switch from noniso to iso equations to keep model stable
             // as defined in host_functions.set_up_numerical_parameters
             double delta_tau_limit = 1e-4;

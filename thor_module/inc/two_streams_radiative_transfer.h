@@ -99,7 +99,7 @@ public:
     int    nlayer;
     bool   iso;
     double T_star;
-    bool   real_star;
+    bool   real_star = false;
     double fake_opac;
     double T_surf;
     double albedo;
@@ -133,6 +133,7 @@ public:
 
     string opacities_file;
 
+    string stellar_spectrum_file;
     void print_config();
 
     // insolation computation vars from rt module

@@ -19,6 +19,8 @@ public:
     opacity_table();
 
     bool load_opacity_table(const string& filename);
+
+      std::unique_ptr<double[]> data_opac_wave = nullptr;
     //private:
     string opacity_filename;
 
@@ -47,6 +49,8 @@ public:
     cuda_device_memory<double> dev_opac_interwave;
 
     cuda_device_memory<double> dev_opac_deltawave;
+
+
 
     // needed for interpolate_opacities
     // dev_T_lay

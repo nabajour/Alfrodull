@@ -57,6 +57,7 @@ int read_table_to_device(storage&               s,
 }
 
 opacity_table::opacity_table() {
+
 }
 
 bool opacity_table::load_opacity_table(const string& filename) {
@@ -82,9 +83,6 @@ bool opacity_table::load_opacity_table(const string& filename) {
     printf("Loading tables\n");
     storage s(filename, true);
 
-    //read_table_to_device<double>(s, "/kpoints", dev_kpoints, opacity_unit_conv, 0.00125);
-    //read_table_to_device<double>(s, "/kpoints", dev_kpoints, opacity_unit_conv, 0.025);
-    //read_table_to_device<double>(s, "/kpoints", dev_kpoints, opacity_unit_conv, 0.0025);
     read_table_to_device<double>(
         s, "/kpoints", dev_kpoints, opacity_unit_conv, experimental_opacities_offset);
     n_temperatures =
@@ -92,7 +90,7 @@ bool opacity_table::load_opacity_table(const string& filename) {
     n_pressures = read_table_to_device<double>(s, "/pressures", dev_pressures, pressures_unit_conv);
     read_table_to_device<double>(
         s, "/weighted Rayleigh cross-sections", dev_scat_cross_sections, scat_cross_unit_conv);
-    {
+    { 
         std::unique_ptr<double[]> data = nullptr;
         int                       size = 0;
 
@@ -102,13 +100,11 @@ bool opacity_table::load_opacity_table(const string& filename) {
         push_table_to_device<double>(data, size, dev_meanmolmass);
     }
 
-    std::unique_ptr<double[]> data_opac_wave = nullptr;
-
     if (s.has_table("/center wavelengths")) {
-        tie(data_opac_wave, nbin) = read_table_to_host<double>(s, "/center wavelengths");
+       tie(data_opac_wave, nbin) = read_table_to_host<double>(s, "/center wavelengths");
     }
     else {
-        tie(data_opac_wave, nbin) = read_table_to_host<double>(s, "/wavelengths");
+      tie(data_opac_wave, nbin) = read_table_to_host<double>(s, "/wavelengths");
     }
     for (int i = 0; i < nbin; i++)
         data_opac_wave[i] *= wavelength_unit_conv;
@@ -170,7 +166,17 @@ bool opacity_table::load_opacity_table(const string& filename) {
             //   printf("deltawave %d %g\n", i, data_opac_deltawave[i]);
         }
     }
+    
+    cudaError_t err = cudaGetLastError();
 
+    // Check device query
+    if (err != cudaSuccess) {
+        log::printf("[%s:%d] CUDA error check reports error: %s\n",
+                    __FILE__,
+                    __LINE__,
+                    cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
     return true;
 }
