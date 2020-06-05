@@ -489,6 +489,7 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     F_down_tot.allocate(esp.point_num * ninterface);
     F_up_tot.allocate(esp.point_num * ninterface);
+    F_dir_tot.allocate(esp.point_num * ninterface);
     F_down_band.allocate(ninterface_nbin);
     F_up_band.allocate(ninterface_nbin);
     F_dir_band.allocate(ninterface_nbin);
@@ -895,6 +896,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         Qheat.zero();
         F_down_tot.zero();
         F_up_tot.zero();
+	F_dir_tot.zero();
         F_up_band.zero();
         F_dir_band.zero();
         F_net.zero();
@@ -1116,7 +1118,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             int     column_offset_int = column_idx * ninterface;
             double* F_col_down_tot    = &((*F_down_tot)[column_offset_int]);
             double* F_col_up_tot      = &((*F_up_tot)[column_offset_int]);
-            double* F_col_net         = &((*F_net)[column_offset_int]);
+	    double* F_col_dir_tot      = &((*F_dir_tot)[column_offset_int]);
+	    double* F_col_net         = &((*F_net)[column_offset_int]);
             //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
             double* F_dir_band_col = &((*F_dir_band)[0]);
 
@@ -1140,6 +1143,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            delta_tau_limit,
                                            F_col_down_tot,
                                            F_col_up_tot,
+					   F_col_dir_tot,
                                            F_col_net,
                                            *F_down_band,
                                            *F_up_band,
@@ -1294,6 +1298,11 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
     s.append_table(
         F_down_tot_h.get(), F_down_tot.get_size(), "/F_down_tot", "W m^-2", "Total downward flux");
 
+    std::shared_ptr<double[]> F_dir_tot_h = F_dir_tot.get_host_data();
+    s.append_table(
+		   F_dir_tot_h.get(), F_dir_tot.get_size(), "/F_dir_tot", "W m^-2", "Total beam flux");
+
+    
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();
     s.append_table(F_up_TOA_spectrum_h.get(),
                    F_up_TOA_spectrum.get_size(),

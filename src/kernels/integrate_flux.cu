@@ -23,6 +23,7 @@
 __global__ void integrate_flux_double(double* deltalambda,  // in
                                       double* F_down_tot,   // out
                                       double* F_up_tot,     // out
+                                      double* F_dir_tot,    // out
                                       double* F_net,        // out
                                       double* F_down_wg,    // in
                                       double* F_up_wg,      // in
@@ -93,6 +94,8 @@ __global__ void integrate_flux_double(double* deltalambda,  // in
                 atomicAdd_double(&(F_down_tot[i]),
                                  (F_dir_band[x + nbin * i] + F_down_band[x + nbin * i])
                                      * deltalambda[x]);
+
+                atomicAdd_double(&(F_dir_tot[i]), F_dir_band[x + nbin * i] * deltalambda[x]);
 
                 x += blockDim.x;
             }
@@ -165,6 +168,7 @@ __global__ void integrate_flux_band(double* F_down_wg,         // in
 __global__ void integrate_flux_tot(double* deltalambda, // in
                                    double* F_down_tot,  // out
                                    double* F_up_tot,    // out
+                                   double* F_dir_tot,   // out
                                    double* F_net,       // out
                                    double* F_down_band, // out
                                    double* F_up_band,   // out
@@ -179,12 +183,14 @@ __global__ void integrate_flux_tot(double* deltalambda, // in
 
         F_up_tot[interface_idx]   = 0;
         F_down_tot[interface_idx] = 0;
+        F_dir_tot[interface_idx]  = 0;
 
         for (int bin = 0; bin < nbin; bin++) {
             int band_idx = interface_idx * nbin + bin;
             F_up_tot[interface_idx] += F_up_band[band_idx] * deltalambda[bin];
             F_down_tot[interface_idx] +=
                 (F_down_band[band_idx] + F_dir_band[band_idx]) * deltalambda[bin];
+            F_dir_tot[interface_idx] += F_dir_band[band_idx] * deltalambda[bin];
         }
 
         __syncthreads();

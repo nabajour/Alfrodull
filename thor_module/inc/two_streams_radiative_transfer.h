@@ -210,6 +210,7 @@ private:
     // total integrated flux
     cuda_device_memory<double> F_down_tot;
     cuda_device_memory<double> F_up_tot;
+    cuda_device_memory<double> F_dir_tot;
     // flux per freq band
     cuda_device_memory<double> F_down_band;
     cuda_device_memory<double> F_up_band;

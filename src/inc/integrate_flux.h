@@ -15,6 +15,7 @@ __global__ void integrate_flux_band(double* F_down_wg,    // in
 __global__ void integrate_flux_tot(double* deltalambda, // in
                                    double* F_down_tot,  // out
                                    double* F_up_tot,    // out
+				   double* F_dir_tot,    // out
                                    double* F_net,       // out
                                    double* F_down_band, // out
                                    double* F_up_band,   // out
@@ -26,6 +27,7 @@ __global__ void integrate_flux_tot(double* deltalambda, // in
 __global__ void integrate_flux_double(double* deltalambda,
                                       double* F_down_tot,
                                       double* F_up_tot,
+				      double* F_dir_tot,
                                       double* F_net,
                                       double* F_down_wg,
                                       double* F_up_wg,

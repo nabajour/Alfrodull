@@ -185,6 +185,7 @@ void wrap_compute_radiative_transfer(
     // integrate_flux
     long F_down_tot,
     long F_up_tot,
+    long F_dir_tot,
     long F_net,
     long F_down_band,
     long F_up_band,
@@ -216,6 +217,7 @@ void wrap_compute_radiative_transfer(
             // integrate_flux
             (double*)F_down_tot,
             (double*)F_up_tot,
+	    (double*)F_dir_tot,
             (double*)F_net,
             (double*)F_down_band,
             (double*)F_up_band,
