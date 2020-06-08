@@ -49,8 +49,6 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const double& T_star_,
                                       const bool&   real_star_,
                                       const double& fake_opac_,
-                                      const double& T_surf_,
-                                      const double& surf_albedo_,
                                       const double& g_0_,
                                       const double& epsi_,
                                       const double& mu_star_,
@@ -63,7 +61,6 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const bool&   geom_zenith_corr_,
                                       const double& f_factor_,
                                       const double& w_0_limit_,
-                                      const double& albedo_,
                                       const double& i2s_transition_,
                                       const bool&   debug_) {
     nlayer     = nlayer_;
@@ -73,8 +70,6 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
 
     real_star        = real_star_;
     fake_opac        = fake_opac_;
-    T_surf           = T_surf_;
-    surf_albedo      = surf_albedo_;
     g_0              = g_0_;
     epsi             = epsi_;
     mu_star          = mu_star_;
@@ -87,7 +82,6 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     geom_zenith_corr = geom_zenith_corr_;
     f_factor         = f_factor_;
     w_0_limit        = w_0_limit_;
-    albedo           = albedo_;
 
     i2s_transition = i2s_transition;
     debug          = debug_;
@@ -589,7 +583,6 @@ void alfrodull_engine::compute_radiative_transfer(
     //int     ny,
     //double  epsi,
     // double w_0_limit,
-    // double albedo,
     // populate_spectral_flux_noniso
     double* F_down_wg,
     double* F_up_wg,
@@ -612,7 +605,6 @@ void alfrodull_engine::compute_radiative_transfer(
     double delta_tau_limit,
     //int     dir_beam,
     //int     clouds,
-    //double  albedo, -> surf_albedo
     // double* trans_wg_upper,
     // double* trans_wg_lower,
 
@@ -652,8 +644,6 @@ void alfrodull_engine::compute_radiative_transfer(
         *meanmolmass_int, // out: mmmi
         real_star,        // pil
         fake_opac,        // io
-        T_surf,           // csp, cse, pil
-        surf_albedo,      // cse
         interpolate_temp_and_pres,
         interp_and_calc_flux_step);
 
@@ -767,8 +757,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                               epsi,
                                               w_0_limit,
                                               dir_beam,
-                                              clouds,
-                                              albedo);
+                                              clouds);
         }
         else {
             populate_spectral_flux_noniso_thomas(F_down_wg,
@@ -790,7 +779,6 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  delta_tau_limit,
                                                  dir_beam,
                                                  clouds,
-                                                 albedo,
                                                  *trans_wg_upper,
                                                  *trans_wg_lower);
         }
@@ -824,8 +812,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                            epsi,
                                            w_0_limit,
                                            dir_beam,
-                                           clouds,
-                                           albedo);
+                                           clouds);
             }
             else {
                 populate_spectral_flux_noniso(F_down_wg,
@@ -847,7 +834,6 @@ void alfrodull_engine::compute_radiative_transfer(
                                               delta_tau_limit,
                                               dir_beam,
                                               clouds,
-                                              albedo,
                                               *trans_wg_upper,
                                               *trans_wg_lower);
             }
@@ -903,8 +889,6 @@ bool alfrodull_engine::prepare_compute_flux(
     double*       dev_meanmolmass_int, // out: mmmi
     const bool&   real_star,           // pil
     const double& fake_opac,           // io
-    const double& T_surf,              // csp, cse, pil
-    const double& surf_albedo,         // cse
     const bool&   interpolate_temp_and_pres,
     const bool&   interp_and_calc_flux_step) {
 
@@ -1387,8 +1371,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg,   //
                                                          double  epsi,
                                                          double  w_0_limit,
                                                          bool    dir_beam,
-                                                         bool    clouds,
-                                                         double  albedo) {
+                                                         bool    clouds) {
 
     int nbin = opacities.nbin;
 
@@ -1427,7 +1410,6 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg,   //
                                       dir_beam,
                                       clouds,
                                       scat_corr,
-                                      albedo,
                                       debug,
                                       i2s_transition);
 
@@ -1449,8 +1431,7 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
                                                   double  epsi,
                                                   double  w_0_limit,
                                                   bool    dir_beam,
-                                                  bool    clouds,
-                                                  double  albedo) {
+                                                  bool    clouds) {
 
     int nbin = opacities.nbin;
 
@@ -1482,7 +1463,6 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
                                       dir_beam,
                                       clouds,
                                       scat_corr,
-                                      albedo,
                                       debug,
                                       i2s_transition);
 
@@ -1510,7 +1490,6 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double  delta_tau_limit,
                                                      bool    dir_beam,
                                                      bool    clouds,
-                                                     double  albedo,
                                                      double* trans_wg_upper,
                                                      double* trans_wg_lower) {
     int nbin = opacities.nbin;
@@ -1559,7 +1538,6 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                          dir_beam,
                                          clouds,
                                          scat_corr,
-                                         albedo,
                                          debug,
                                          i2s_transition);
 
@@ -1588,7 +1566,6 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                                             double  delta_tau_limit,
                                                             bool    dir_beam,
                                                             bool    clouds,
-                                                            double  albedo,
                                                             double* trans_wg_upper,
                                                             double* trans_wg_lower) {
     int nbin = opacities.nbin;
@@ -1644,7 +1621,6 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                          dir_beam,
                                          clouds,
                                          scat_corr,
-                                         albedo,
                                          debug,
                                          i2s_transition);
 

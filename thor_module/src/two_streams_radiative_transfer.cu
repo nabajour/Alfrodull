@@ -225,7 +225,8 @@ two_streams_radiative_transfer::~two_streams_radiative_transfer() {
 }
 
 void two_streams_radiative_transfer::print_config() {
-    log::printf("Tstar: %f\n", T_star);
+    log::printf("Tstar: %g\n", T_star);
+    log::printf("T_intern: %g", T_internal);
     log::printf("Alf_iso: %s\n", iso ? "true" : "false");
     log::printf("Alf_real_star: %s\n", real_star ? "true" : "false");
     log::printf("Alf_fake_opac: %f\n", fake_opac);
@@ -236,8 +237,6 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_scat_single_walk: %s\n", scat_single_walk ? "true" : "false");
     log::printf("Alf_exp_opac_offset: %g\n", experimental_opacities_offset);
 
-    log::printf("Alf_T_surf: %f\n", T_surf);
-    log::printf("Alf_albedo: %f\n", albedo);
     log::printf("Alf_g_0: %f\n", g_0);
     log::printf("Alf_diffusivity: %f\n", diffusivity);
 
@@ -278,7 +277,9 @@ void two_streams_radiative_transfer::print_config() {
 }
 
 bool two_streams_radiative_transfer::configure(config_file& config_reader) {
+    // variables reused from DG
     config_reader.append_config_var("Tstar", T_star, T_star);
+    config_reader.append_config_var("Tint", T_internal, T_internal);
     config_reader.append_config_var(
         "planet_star_dist", planet_star_dist_config, planet_star_dist_config);
     config_reader.append_config_var("radius_star", R_star_config, R_star_config);
@@ -292,8 +293,7 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var(
         "Alf_stellar_spectrum", stellar_spectrum_file, stellar_spectrum_file);
     config_reader.append_config_var("Alf_fake_opac", fake_opac, fake_opac);
-    config_reader.append_config_var("Alf_T_surf", T_surf, T_surf); // ?
-    config_reader.append_config_var("Alf_albedo", albedo, albedo);
+
     config_reader.append_config_var("Alf_g_0", g_0, g_0);
     config_reader.append_config_var("Alf_diffusivity", diffusivity, diffusivity);
     config_reader.append_config_var("Alf_G_pm_max_limiter", G_pm_limiter, G_pm_limiter);
@@ -369,8 +369,6 @@ bool two_streams_radiative_transfer::initialise_memory(
                        T_star,              // const double& T_star_,
                        real_star,           // const bool&   real_star_,
                        fake_opac,           // const double& fake_opac_,
-                       T_surf,              // const double& T_surf_,
-                       albedo,              // const double& surf_albedo_,
                        g_0,                 // const double& g_0_,
                        epsi,                // const double& epsi_,
                        mu_star,             // const double& mu_star_,
@@ -383,7 +381,6 @@ bool two_streams_radiative_transfer::initialise_memory(
                        geom_zenith_corr,    // const bool&   geom_zenith_corr_,
                        f_factor,            // const double& f_factor_,
                        w_0_limit,           // const double& w_0_limit_,
-                       albedo,              // const double& albedo_,
                        i2s_transition,      // const double& i2s_transition_,
                        false);              // const bool&   debug_
 
@@ -417,9 +414,9 @@ bool two_streams_radiative_transfer::initialise_memory(
             exit(EXIT_FAILURE);
         }
 
-	double lambda_spectrum_scale = 1e-2;
-	double flux_scale = 1e-1;
-	
+        double lambda_spectrum_scale = 1e-2;
+        double flux_scale            = 1e-1;
+
         storage s(stellar_spectrum_file, true);
         if (s.has_table("wavelength") && s.has_table("flux")) {
             std::unique_ptr<double[]> lambda_ptr  = nullptr;
@@ -438,23 +435,27 @@ bool two_streams_radiative_transfer::initialise_memory(
                 log::printf("nbin: %d\n", nbin);
                 exit(EXIT_FAILURE);
             }
-	    
-            bool   lambda_check = true;
-            double epsilon      = 1e-4;
-	    std::shared_ptr<double[]> star_flux_h = star_flux.get_host_data_ptr();
-            for (int i = 0; i < nbin; i++) {
-	      star_flux_h[i] = flux_ptr[i]*flux_scale;
-                 bool check = fabs(lambda_ptr[i]*lambda_spectrum_scale - alf.opacities.data_opac_wave[i])
-                                     / alf.opacities.data_opac_wave[i]
-                                 < epsilon;
 
-		 if (!check)
-		   printf("Missmatch in wavelength at idx [%d] l_spectrum(%g) != l_opac(%g) \n", i, lambda_ptr[i]*lambda_spectrum_scale,  alf.opacities.data_opac_wave[i]);
-		 lambda_check &= check;
+            bool                      lambda_check = true;
+            double                    epsilon      = 1e-4;
+            std::shared_ptr<double[]> star_flux_h  = star_flux.get_host_data_ptr();
+            for (int i = 0; i < nbin; i++) {
+                star_flux_h[i] = flux_ptr[i] * flux_scale;
+                bool check =
+                    fabs(lambda_ptr[i] * lambda_spectrum_scale - alf.opacities.data_opac_wave[i])
+                        / alf.opacities.data_opac_wave[i]
+                    < epsilon;
+
+                if (!check)
+                    printf("Missmatch in wavelength at idx [%d] l_spectrum(%g) != l_opac(%g) \n",
+                           i,
+                           lambda_ptr[i] * lambda_spectrum_scale,
+                           alf.opacities.data_opac_wave[i]);
+                lambda_check &= check;
             }
 
-	    star_flux.put();
-	    
+            star_flux.put();
+
             if (!lambda_check) {
                 log::printf("wavelength points mismatch between stellar spectrum and opacities\n");
                 exit(EXIT_FAILURE);
@@ -464,7 +465,7 @@ bool two_streams_radiative_transfer::initialise_memory(
             log::printf("table wavelength or flux not found in stellar flux file\n");
             exit(EXIT_FAILURE);
         }
-	printf("Stellar flux loaded\n");
+        printf("Stellar flux loaded\n");
     }
 
     // TODO: allocate here. Should be read in in case of real_star == true
@@ -615,7 +616,7 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
 
 
     // internal flux from internal temperature
-    F_intern = STEFANBOLTZMANN * pow(T_surf, 4);
+    F_intern = STEFANBOLTZMANN * pow(T_internal, 4);
 
     if (dgrt_spinup_steps > 0) {
         printf("dgrt init\n");
@@ -896,7 +897,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         Qheat.zero();
         F_down_tot.zero();
         F_up_tot.zero();
-	F_dir_tot.zero();
+        F_dir_tot.zero();
         F_up_band.zero();
         F_dir_band.zero();
         F_net.zero();
@@ -1010,7 +1011,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                                                  column_density,
                                                                  esp.Altitude_d,
                                                                  esp.Altitudeh_d,
-                                                                 T_surf,
+                                                                 T_internal,
                                                                  gravit,
                                                                  num_layers);
             cudaDeviceSynchronize();
@@ -1118,8 +1119,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             int     column_offset_int = column_idx * ninterface;
             double* F_col_down_tot    = &((*F_down_tot)[column_offset_int]);
             double* F_col_up_tot      = &((*F_up_tot)[column_offset_int]);
-	    double* F_col_dir_tot      = &((*F_dir_tot)[column_offset_int]);
-	    double* F_col_net         = &((*F_net)[column_offset_int]);
+            double* F_col_dir_tot     = &((*F_dir_tot)[column_offset_int]);
+            double* F_col_net         = &((*F_net)[column_offset_int]);
             //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
             double* F_dir_band_col = &((*F_dir_band)[0]);
 
@@ -1143,7 +1144,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                            delta_tau_limit,
                                            F_col_down_tot,
                                            F_col_up_tot,
-					   F_col_dir_tot,
+                                           F_col_dir_tot,
                                            F_col_net,
                                            *F_down_band,
                                            *F_up_band,
@@ -1242,8 +1243,6 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
 
     s.append_value(alf.opacities.ny, "/alf_ny", "-", "number of weights in bins");
 
-
-    s.append_value(albedo, "/alf_surface_albedo", "-", "Alfrodull surface albedo");
     s.append_value(i2s_transition, "/alf_i2s_transition", "-", "i2s transition");
 
     s.append_value(compute_every_n_iteration,
@@ -1300,9 +1299,9 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
 
     std::shared_ptr<double[]> F_dir_tot_h = F_dir_tot.get_host_data();
     s.append_table(
-		   F_dir_tot_h.get(), F_dir_tot.get_size(), "/F_dir_tot", "W m^-2", "Total beam flux");
+        F_dir_tot_h.get(), F_dir_tot.get_size(), "/F_dir_tot", "W m^-2", "Total beam flux");
 
-    
+
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();
     s.append_table(F_up_TOA_spectrum_h.get(),
                    F_up_TOA_spectrum.get_size(),

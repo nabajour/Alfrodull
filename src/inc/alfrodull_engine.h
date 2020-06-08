@@ -23,8 +23,6 @@ public:
                         const double& T_star_,
                         const bool&   real_star,
                         const double& fake_opac,
-                        const double& T_surf,
-                        const double& surf_albedo,
                         const double& g_0,
                         const double& epsi,
                         const double& mu_star,
@@ -37,7 +35,6 @@ public:
                         const bool&   geom_zenith_corr,
                         const double& f_factor,
                         const double& w_0_limit,
-                        const double& albedo,
                         const double& i2s_transition,
                         const bool&   debug);
 
@@ -47,8 +44,6 @@ public:
 
     bool   real_star   = false;
     double fake_opac   = false;
-    double T_surf      = 0.0;
-    double surf_albedo = 0.0;
     double g_0         = 0.0;
     double epsi        = 0.0;
     double mu_star     = 0.0;
@@ -63,7 +58,6 @@ public:
 
     double f_factor  = 0.0;
     double w_0_limit = 0.0;
-    double albedo    = 0.0;
 
     int debug_nstep   = 0;
     int debug_col_idx = 0;
@@ -243,8 +237,6 @@ public:
                               double*       dev_meanmolmass_int,
                               const bool&   real_star,
                               const double& fake_opac,
-                              const double& T_surf,
-                              const double& surf_albedo,
                               const bool&   interp_temp_and_pres,
                               const bool&   interp_and_calc_flux_step);
 
@@ -318,8 +310,7 @@ public:
                                            double  epsi,
                                            double  w_0_limit,
                                            bool    dir_beam,
-                                           bool    clouds,
-                                           double  albedo);
+                                           bool    clouds);
 
     bool populate_spectral_flux_iso(double* F_down_wg,   // out
                                     double* F_up_wg,     // out
@@ -334,8 +325,7 @@ public:
                                     double  epsi,
                                     double  w_0_limit,
                                     bool    dir_beam,
-                                    bool    clouds,
-                                    double  albedo);
+                                    bool    clouds);
 
     bool populate_spectral_flux_noniso(double* F_down_wg,
                                        double* F_up_wg,
@@ -356,7 +346,6 @@ public:
                                        double  delta_tau_limit,
                                        bool    dir_beam,
                                        bool    clouds,
-                                       double  albedo,
                                        double* trans_wg_upper,
                                        double* trans_wg_lower);
 
@@ -379,7 +368,6 @@ public:
                                               double  delta_tau_limit,
                                               bool    dir_beam,
                                               bool    clouds,
-                                              double  albedo,
                                               double* trans_wg_upper,
                                               double* trans_wg_lower);
 };

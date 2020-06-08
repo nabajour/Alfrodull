@@ -96,7 +96,6 @@ __global__ void fband_iso_notabu(double* F_down_wg,
                                  bool    dir_beam,
                                  bool    clouds,
                                  bool    scat_corr,
-                                 double  albedo,
                                  bool    debug,
                                  double  i2s_transition);
 
@@ -140,7 +139,6 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                     bool    dir_beam,
                                     bool    clouds,
                                     bool    scat_corr,
-                                    double  albedo,
                                     bool    debug,
                                     double  i2s_transition);
 
@@ -177,7 +175,6 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  bool    dir_beam,
                                  bool    clouds,
                                  bool    scat_corr,
-                                 double  albedo,
                                  bool    debug,
                                  double  i2s_transition);
 
@@ -227,6 +224,5 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                                     bool    dir_beam,
                                     bool    clouds,
                                     bool    scat_corr,
-                                    double  albedo,
                                     bool    debug,
                                     double  i2s_transition);

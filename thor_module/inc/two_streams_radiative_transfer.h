@@ -99,10 +99,9 @@ public:
     int    nlayer;
     bool   iso;
     double T_star;
+    double T_internal = 100.0;
     bool   real_star = false;
     double fake_opac;
-    double T_surf;
-    double albedo;
     double g_0;
     double epsi;
     double diffusivity = 2.0;

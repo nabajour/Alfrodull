@@ -39,8 +39,6 @@ void init_parameters(const int&    nlayer_,
                      const double& Tstar_,
                      const bool&   real_star,
                      const double& fake_opac,
-                     const double& T_surf,
-                     const double& surf_albedo,
                      const double& g_0,
                      const double& epsi,
                      const double& mu_star,
@@ -53,7 +51,6 @@ void init_parameters(const int&    nlayer_,
                      const bool&   geom_zenith_corr,
                      const double& f_factor,
                      const double& w_0_limit,
-                     const double& albedo,
                      const double& i2s_transition,
                      const bool&   debug) {
     if (Alf_ptr == nullptr) {
@@ -66,8 +63,6 @@ void init_parameters(const int&    nlayer_,
                             Tstar_,
                             real_star,
                             fake_opac,
-                            T_surf,
-                            surf_albedo,
                             g_0,
                             epsi,
                             mu_star,
@@ -80,7 +75,6 @@ void init_parameters(const int&    nlayer_,
                             geom_zenith_corr,
                             f_factor,
                             w_0_limit,
-                            albedo,
                             i2s_transition,
                             debug);
 }
@@ -249,11 +243,3 @@ void set_clouds_data(const bool& clouds_,
                              (double*)g_0_tot_int_);
 }
 
-void set_surface_temperature(const double& T_surf) {
-    if (Alf_ptr == nullptr) {
-        printf("ERROR: Alfrodull Engine not initialised");
-        return;
-    }
-
-    Alf_ptr->T_surf = T_surf;
-}
