@@ -47,6 +47,7 @@
 
 #include "binary_test.h"
 #include "debug.h"
+#include "debug_helpers.h"
 
 #include "alfrodull_engine.h"
 
@@ -85,7 +86,6 @@ using std::string;
 const int HELIOS_TP_STRIDE = 1;
 #endif // DUMP_HELIOS_TP
 
-void cuda_check_status_or_exit(const char* filename, const int& line);
 //***************************************************************************************************
 // DEBUGGING TOOL: integrate weighted values in binned bands and then integrate over bands
 
@@ -767,35 +767,6 @@ __global__ void compute_column_Qheat(double* F_net, // net flux, layer
 }
 
 
-void cuda_check_status_or_exit() {
-    cudaError_t err = cudaGetLastError();
-
-    // Check device query
-    if (err != cudaSuccess) {
-        log::printf("[%s:%d] CUDA error check reports error: %s\n",
-                    __FILE__,
-                    __LINE__,
-                    cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-}
-
-
-void cuda_check_status_or_exit(const char* filename, const int& line) {
-    cudaError_t err = cudaGetLastError();
-
-
-    // Check device query
-    if (err != cudaSuccess) {
-        log::printf("[%s:%d] CUDA error check reports error: %s\n",
-                    filename,
-                    line,
-                    cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-}
-
-
 bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               const SimulationSetup& sim,
                                               int                    nstep, // Step number
@@ -858,7 +829,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         //                                                                       esp.point_num);
         // cuda_check_status_or_exit(__FILE__, __LINE__);
 
-        double* zenith_angle_h = esp.insolation.get_host_zenith_angle();
+        std::shared_ptr<double[]> col_zenith_angle_h = esp.insolation.get_host_zenith_angles();
 
         Qheat.zero();
         F_down_tot.zero();
@@ -922,6 +893,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             double* column_density                = &(esp.Rho_d[column_offset]);
             // initialise interpolated T and P
 
+            // use mu_star per column
+            double mu_star = -col_zenith_angle_h[column_idx];
+
 #ifdef DUMP_HELIOS_TP
 
 
@@ -934,9 +908,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                              + std::to_string(column_idx) + "/";
                 create_output_dir(DBG_OUTPUT_DIR);
 
-                double                    lon     = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
-                double                    lat     = esp.lonlat_h[column_idx * 2 + 1] * 180 / M_PI;
-                double                    cmustar = loc_col_mu_star[column_idx];
+                double                    lon = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
+                double                    lat = esp.lonlat_h[column_idx * 2 + 1] * 180 / M_PI;
                 std::shared_ptr<double[]> pressure_h = get_cuda_data(column_layer_pressure, esp.nv);
                 std::shared_ptr<double[]> temperature_h =
                     get_cuda_data(column_layer_temperature_thor, esp.nv);
@@ -952,12 +925,11 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
                 string comment        = "# Helios TP profile table at lat: [" + std::to_string(lon)
                                  + "] lon: [" + std::to_string(lat) + "] mustar: ["
-                                 + std::to_string(cmustar) + "] P_BOA: [" + std::to_string(p_boa)
+                                 + std::to_string(mu_star) + "] P_BOA: [" + std::to_string(p_boa)
                                  + "] P_TOA: [" + std::to_string(p_toa) + "]\n";
 
                 fprintf(tp_output_file, comment.c_str());
                 fprintf(tp_output_file, "#\tT[K]\tP[bar]\n");
-
 
                 for (int i = 0; i < esp.nv; i++) {
                     fprintf(
@@ -985,9 +957,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
             BENCH_POINT_I_S_PHY(
                 nstep, column_idx, "Alf_interpTnP", (), ("T_lay", "T_int", "P_int"));
-
-            // use mu_star per column
-            double mu_star = -col_zenith_angle_h[column_idx];
 
 #ifdef DUMP_HELIOS_TP
             // dump a TP profile for HELIOS input
