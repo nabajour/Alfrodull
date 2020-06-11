@@ -262,16 +262,6 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_dgrt_spinup_steps: %d\n", dgrt_spinup_steps);
     log::printf("Alf_spinup_steps: %d\n", N_spinup_steps);
 
-
-    // // orbit/insolation properties
-    // log::printf("    Synchronous rotation        = %s.\n", sync_rot_config ? "true" : "false");
-    // log::printf("    Orbital mean motion         = %f rad/s.\n", mean_motion_config);
-    // log::printf("    Host star initial right asc = %f deg.\n", alpha_i_config);
-    // log::printf("    Planet true initial long    = %f.\n", true_long_i_config);
-    // log::printf("    Orbital eccentricity        = %f.\n", ecc_config);
-    // log::printf("    Obliquity                   = %f deg.\n", obliquity_config);
-    // log::printf("    Longitude of periastron     = %f deg.\n", longp_config);
-
     if (dgrt_spinup_steps > 0) {
         log::printf("Double Gray Radiative Transfer enabled\n");
         dgrt.print_config();
@@ -316,16 +306,6 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
 
     config_reader.append_config_var("Alf_dgrt_spinup_steps", dgrt_spinup_steps, dgrt_spinup_steps);
     config_reader.append_config_var("Alf_spinup_steps", N_spinup_steps, N_spinup_steps);
-
-
-    // // orbit/insolation properties
-    // config_reader.append_config_var("sync_rot", sync_rot_config, sync_rot_config);
-    // config_reader.append_config_var("mean_motion", mean_motion_config, mean_motion_config);
-    // config_reader.append_config_var("alpha_i", alpha_i_config, alpha_i_config);
-    // config_reader.append_config_var("true_long_i", true_long_i_config, true_long_i_config);
-    // config_reader.append_config_var("ecc", ecc_config, ecc_config);
-    // config_reader.append_config_var("obliquity", obliquity_config, obliquity_config);
-    // config_reader.append_config_var("longp", longp_config, longp_config);
 
     // TODO: frequency bins? // loaded from opacities!
     dgrt.configure(config_reader);
@@ -508,11 +488,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     cloud_scat_cross_lay.allocate(nlayer_nbin);
     cloud_scat_cross_int.allocate(ninterface_nbin);
 
-    // col_mu_star.allocate(esp.point_num);
-    // col_mu_star.zero();
-
     Qheat.allocate(esp.point_num * nlayer);
-
 
     // TODO: currently, all clouds set to zero. Not used.
 
@@ -597,25 +573,6 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
     // correct_incident_energy
 
     alf.correct_incident_energy(*star_flux, real_star, true);
-
-    // // initialise Alfrodull
-    // sync_rot = sync_rot_config;
-    // if (sync_rot) {
-    //     mean_motion = sim.Omega; //just set for the sync_rot, obl != 0 case
-    // }
-    // else {
-    //     mean_motion = mean_motion_config;
-    // }
-
-    // true_long_i           = true_long_i_config * M_PI / 180.0;
-    // longp                 = longp_config * M_PI / 180.0;
-    // ecc                   = ecc_config;
-    // double true_anomaly_i = fmod(true_long_i - longp, (2 * M_PI));
-    // double ecc_anomaly_i  = alf_true2ecc_anomaly(true_anomaly_i, ecc);
-    // mean_anomaly_i        = fmod(ecc_anomaly_i - ecc * sin(ecc_anomaly_i), (2 * M_PI));
-    // alpha_i               = alpha_i_config * M_PI / 180.0;
-    // obliquity             = obliquity_config * M_PI / 180.0;
-
 
     // internal flux from internal temperature
     F_intern = STEFANBOLTZMANN * pow(T_internal, 4);
@@ -774,16 +731,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
-    // //  update global insolation properties if necessary
-    // if (sync_rot) {
-    //     if (ecc > 1e-10) {
-    //         update_spin_orbit(nstep * time_step, sim.Omega);
-    //     }
-    // }
-    // else {
-    //     update_spin_orbit(nstep * time_step, sim.Omega);
-    // }
-
     alf.debug_nstep = nstep;
 
     const int num_blocks = 256;
@@ -819,18 +766,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     cuda_check_status_or_exit(__FILE__, __LINE__);
 
     if ((nstep % compute_every_n_iteration == 0 || start_up) && nstep > dgrt_spinup_steps) {
-        // compute_col_mu_star<<<(esp.point_num / num_blocks) + 1, num_blocks>>>(*col_mu_star,
-        //                                                                       esp.lonlat_d,
-        //                                                                       alpha,
-        //                                                                       alpha_i,
-        //                                                                       sin_decl,
-        //                                                                       cos_decl,
-        //                                                                       ecc,
-        //                                                                       obliquity,
-        //                                                                       sync_rot,
-        //                                                                       esp.point_num);
-        // cuda_check_status_or_exit(__FILE__, __LINE__);
-
         std::shared_ptr<double[]> col_zenith_angle_h = esp.insolation.get_host_zenith_angles();
 
         Qheat.zero();
@@ -1136,12 +1071,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     }
     last_step = nstep;
 
-    // if (nstep * time_step < (2 * M_PI / mean_motion)) {
-    //     // stationary orbit/obliquity
-    //     // calculate annually average of insolation for the first orbit
-    //     annual_insol<<<NBRT, NTH>>>(insol_ann_d, insol_d, nstep, esp.point_num);
-    // }
-
     BENCH_POINT_I_PHY(nstep, "Alf_phy_loop_E", (), ("F_up_tot", "F_down_tot", "AlfQheat"));
 
     return true;
@@ -1195,22 +1124,6 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
                    "-",
                    "Geometric zenith angle correction");
 
-    // if (!s.has_table("/sync_rot"))
-    //     s.append_value(sync_rot ? 1.0 : 0.0, "/sync_rot", "-", "enforce synchronous rotation");
-    // if (!s.has_table("/mean_motion"))
-    //     s.append_value(mean_motion, "/mean_motion", "rad/s", "orbital mean motion");
-    // if (!s.has_table("/alpha_i"))
-    //     s.append_value(alpha_i * 180 / M_PI, "/alpha_i", "deg", "initial RA of host star");
-    // if (!s.has_table("/true_long_i"))
-    //     s.append_value(
-    //         true_long_i * 180 / M_PI, "/true_long_i", "deg", "initial orbital position of planet");
-    // if (!s.has_table("/ecc"))
-    //     s.append_value(ecc, "/ecc", "-", "orbital eccentricity");
-    // if (!s.has_table("/obliquity"))
-    //     s.append_value(obliquity * 180 / M_PI, "/obliquity", "deg", "tilt of spin axis");
-    // if (!s.has_table("/longp"))
-    //     s.append_value(longp * 180 / M_PI, "/longp", "deg", "longitude of periastron");
-
     return true;
 }
 //***************************************************************************************************
@@ -1221,10 +1134,6 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
 
     std::shared_ptr<double[]> Qheat_h = Qheat.get_host_data();
     s.append_table(Qheat_h.get(), Qheat.get_size(), "/Alf_Qheat", "W m^-3", "Alfrodull Qheat");
-
-    // std::shared_ptr<double[]> col_mu_star_h = col_mu_star.get_host_data();
-    // s.append_table(
-    //     col_mu_star_h.get(), col_mu_star.get_size(), "/col_mu_star", "-", "mu star pre column");
 
     std::shared_ptr<double[]> F_up_tot_h = F_up_tot.get_host_data();
     s.append_table(
@@ -1284,24 +1193,6 @@ bool two_streams_radiative_transfer::free_memory() {
     }
     return true;
 }
-
-// void two_streams_radiative_transfer::update_spin_orbit(double time, double Omega) {
-
-//     // Update the insolation related parameters for spin and orbit
-//     double ecc_anomaly, true_long;
-
-//     mean_anomaly = fmod((mean_motion * time + mean_anomaly_i), (2 * M_PI));
-
-//     ecc_anomaly = fmod(alf_solve_kepler(mean_anomaly, ecc), (2 * M_PI));
-
-//     r_orb     = alf_calc_r_orb(ecc_anomaly, ecc);
-//     true_long = fmod((alf_ecc2true_anomaly(ecc_anomaly, ecc) + longp), (2 * M_PI));
-
-//     sin_decl = sin(obliquity) * sin(true_long);
-//     cos_decl = sqrt(1.0 - sin_decl * sin_decl);
-//     alpha    = -Omega * time + true_long - true_long_i + alpha_i;
-// }
-
 
 // ***************************************************************************************************************
 void two_streams_radiative_transfer::print_weighted_band_data_to_file(
