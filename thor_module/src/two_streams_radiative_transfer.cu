@@ -72,7 +72,7 @@ using std::string;
 
 
 // show progress bar
-#define COLUMN_LOOP_PROGRESS_BAR
+//#define COLUMN_LOOP_PROGRESS_BAR
 
 // Dont show column progress bar in comparison mode
 #ifdef BENCH_POINT_COMPARE
