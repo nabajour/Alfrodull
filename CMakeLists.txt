@@ -112,8 +112,7 @@ if (DEFINED THOR_MODULE)
   # build as THOR module
   set(SRC_THOR_MODULE
     thor_module/src/phy_modules.cu
-    thor_module/src/two_streams_radiative_transfer.cu
-    ${THOR_BASE_FOLDER}/src/physics/modules/src/radiative_transfer.cu)
+    thor_module/src/two_streams_radiative_transfer.cu)
   
   
   set(LIBRARY_OUTPUT_PATH)

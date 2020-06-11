@@ -49,9 +49,6 @@
 #include "cuda_device_memory.h"
 #include "phy_module_base.h"
 
-#include "radiative_transfer.h"
-
-
 class two_streams_radiative_transfer : public phy_module_base
 {
 public:
@@ -151,19 +148,19 @@ public:
 
     bool start_up = true;
 
-    int  N_spinup_steps    = 0;
     bool store_weight_flux = true;
     bool store_band_flux   = true;
     bool store_updown_flux = true;
     bool store_net_flux    = true;
 
 
-    // double gray RT spinup
-    int                dgrt_spinup_steps = 0;
-    radiative_transfer dgrt;
-
-
 private:
+    int spinup_start_step = -1;
+    int spinup_stop_step  = -1;
+
+    int spindown_start_step = -1;
+    int spindown_stop_step  = -1;
+
     int              last_step = 0;
     alfrodull_engine alf;
 

@@ -52,7 +52,7 @@ $(info Sub Makefile variables)
 $(info THOR root from submakefile: $(THOR_ROOT))
 
 ######################################################################
-all: libphy_modules.a
+all: libphy_modules.a libalfrodull.a
 
 # path to local module code
 vpath %.cu src src/kernels src/opacities thor_module/src
@@ -104,16 +104,6 @@ $(info Dependencies dir: $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR))
 INCLUDE_DIRS = -I$(SHARED_MODULES_INCLUDE) -I$(THOR_INCLUDE) -I$(LOCAL_INCLUDE) -I$(LOCAL_INCLUDE_PHY) 
 
 
-
-#######################################################################
-# target to reuse radiative transfer.
-
-$(BUILDDIR)/$(OUTPUTDIR)/radiative_transfer.o: $(SHARED_MODULES_DIR)radiative_transfer.cu  $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/radiative_transfer.d | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo -e '$(BLUE)creating dependencies for $@ $(END)'
-	$(CC) $(cuda_dependencies_flags) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) $(INCLUDE_DIRS)  -I$(includedir) $(CDB) -o $@ $<
-	@echo -e '$(YELLOW)creating object file for $@ $(END)'
-	$(CC) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) -I$(includedir) $(INCLUDE_DIRS)   $(CDB) -o $@ $<
-
 #######################################################################
 # build objects
 # CUDA files
@@ -132,11 +122,18 @@ $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cpp $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d | $(B
 	$(CC) $(dependencies_flags) $(CC_comp_flag) $(arch) $(cpp_flags) $(h5include) $(INCLUDE_DIRS)  -I$(includedir) $(CDB) -o $@ $<
 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
-libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(BUILDDIR)/${OUTPUTDIR}/radiative_transfer.o | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
+libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(YELLOW)creating $@ $(END)'
 	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/	
-	ar rcs $@ $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/radiative_transfer.o
+	ar rcs $@ $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) 
+	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
+
+libalfrodull.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
+	@echo -e '$(YELLOW)creating $@ $(END)'
+	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
+	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/	
+	ar rcs $@ $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj))
 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
 $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d: ;

@@ -849,7 +849,7 @@ void alfrodull_engine::compute_radiative_transfer(
     integrate_flux(deltalambda,
                    F_down_tot,
                    F_up_tot,
-		   F_dir_tot,
+                   F_dir_tot,
                    F_net,
                    F_down_wg,
                    F_up_wg,
@@ -1034,7 +1034,7 @@ bool alfrodull_engine::prepare_compute_flux(
 void alfrodull_engine::integrate_flux(double* deltalambda,
                                       double* F_down_tot,
                                       double* F_up_tot,
-				      double* F_dir_tot,
+                                      double* F_dir_tot,
                                       double* F_net,
                                       double* F_down_wg,
                                       double* F_up_wg,
@@ -1051,9 +1051,9 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
 
     if (opt) {
         {
-            int  num_levels_per_block = 16 ;
-	    int num_bins_per_block = 16;
-            dim3 gridsize(ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1 );
+            int  num_levels_per_block = 16;
+            int  num_bins_per_block   = 16;
+            dim3 gridsize(ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1);
             dim3 blocksize(num_levels_per_block, num_bins_per_block);
             //printf("nbin: %d, ny: %d\n", nbin, ny);
 
@@ -1079,7 +1079,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
             integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
                                                         F_down_tot,
                                                         F_up_tot,
-							F_dir_tot,
+                                                        F_dir_tot,
                                                         F_net,
                                                         F_down_band,
                                                         F_up_band,
@@ -1099,7 +1099,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
         integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
                                                               F_down_tot,
                                                               F_up_tot,
-							      F_dir_tot,
+                                                              F_dir_tot,
                                                               F_net,
                                                               F_down_wg,
                                                               F_up_wg,
@@ -1128,7 +1128,9 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
                                                     double  mu_star_,
                                                     bool    scat,
                                                     bool    clouds) {
-    double mu_star_wiggle_factor = 1.0;
+    double mu_star_wiggle_factor = 0.0;
+
+    double mu_star_local = mu_star_;
 
     bool hit_G_pm_denom_limit_h = false;
     do {
@@ -1161,7 +1163,7 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
                                    g_0_tot_lay,
                                    g_0,
                                    epsi,
-                                   mu_star_,
+                                   mu_star_local,
                                    w_0_limit,
                                    scat,
                                    nbin,
@@ -1180,20 +1182,18 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
             &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
         if (hit_G_pm_denom_limit_h) {
-            if (fabs(mu_star_) > 0.9) {
-                mu_star_wiggle_factor -= mu_star_wiggle_increment;
-            }
-            else {
-                mu_star_wiggle_factor += mu_star_wiggle_increment;
-            }
-            printf("Hit G_pm denom limit, wiggle mu_star by: %g\n", mu_star_wiggle_factor);
+            double zenith_angle = acos(mu_star_);
+            mu_star_wiggle_factor += 1.0;
 
-            mu_star_ *= mu_star_wiggle_factor;
+            printf("Hit G_pm denom limit, wiggle mu_star by %g degree\n",
+                   mu_star_wiggle_factor * mu_star_wiggle_increment);
+            mu_star_local =
+                cos(zenith_angle + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
         }
 
     } while (hit_G_pm_denom_limit_h);
 
-    return mu_star_;
+    return mu_star_local;
 }
 
 double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
@@ -1215,7 +1215,9 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                                        double  mu_star_,
                                                        bool    scat,
                                                        bool    clouds) {
-    double mu_star_wiggle_factor = 1.0;
+    double mu_star_wiggle_factor = 0.0;
+
+    double mu_star_local = mu_star_;
 
     bool hit_G_pm_denom_limit_h = false;
     do {
@@ -1263,7 +1265,7 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       g_0_tot_int,
                                       g_0,
                                       epsi,
-                                      mu_star_,
+                                      mu_star_local,
                                       w_0_limit,
                                       scat,
                                       nbin,
@@ -1281,20 +1283,18 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
             &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
         if (hit_G_pm_denom_limit_h) {
-            if (fabs(mu_star_) > 0.9) {
-                mu_star_wiggle_factor -= mu_star_wiggle_increment;
-            }
-            else {
-                mu_star_wiggle_factor += mu_star_wiggle_increment;
-            }
-            printf("Hit G_pm denom limit, wiggle mu_star by: %g\n", mu_star_wiggle_factor);
+            double zenith_angle = acos(mu_star_);
+            mu_star_wiggle_factor += 1.0;
 
-            mu_star_ *= mu_star_wiggle_factor;
+            printf("Hit G_pm denom limit, wiggle mu_star by %g degree\n",
+                   mu_star_wiggle_factor * mu_star_wiggle_increment);
+            mu_star_local =
+                cos(zenith_angle + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
         }
 
     } while (hit_G_pm_denom_limit_h);
 
-    return mu_star_;
+    return mu_star_local;
 }
 
 bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
