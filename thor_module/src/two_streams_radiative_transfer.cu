@@ -63,6 +63,8 @@
 #include <functional>
 #include <map>
 
+#include "insolation.h"
+
 USE_BENCHMARK();
 
 
