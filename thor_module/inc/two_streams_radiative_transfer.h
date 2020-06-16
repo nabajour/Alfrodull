@@ -100,7 +100,8 @@ public:
     bool   real_star  = false;
     double fake_opac;
     double g_0;
-    double epsi;
+    double epsi        = 1.0 / 2.0;
+    double epsilon_2   = 2.0 / 3.0;
     double diffusivity = 2.0;
     double mu_star; // not a config
     bool   scat;

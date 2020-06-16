@@ -25,6 +25,7 @@ public:
                         const double& fake_opac,
                         const double& g_0,
                         const double& epsi,
+                        const double& epsilon2,
                         const double& mu_star,
                         const bool&   scat,
                         const bool&   scat_corr,
@@ -45,7 +46,8 @@ public:
     bool   real_star = false;
     double fake_opac = 0.0;
     double g_0       = 0.0;
-    double epsi      = 0.0;
+    double epsi      = 0.5;
+    double epsilon2  = 2.0 / 3.0;
     double mu_star   = 0.0;
     bool   scat      = false;
     bool   scat_corr = false;
@@ -263,6 +265,7 @@ public:
                                       double* g_0_tot_lay,          // in
                                       double  g_0,
                                       double  epsi,
+                                      double  epsilon_2_,
                                       double  mu_star,
                                       bool    scat,
                                       bool    clouds);
@@ -283,6 +286,7 @@ public:
                                          double* g_0_tot_int,
                                          double  g_0,
                                          double  epsi,
+                                         double  epsilon_2_,
                                          double  mu_star,
                                          bool    scat,
                                          bool    clouds);

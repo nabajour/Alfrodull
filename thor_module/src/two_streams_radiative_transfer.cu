@@ -238,7 +238,8 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_exp_opac_offset: %g\n", experimental_opacities_offset);
 
     log::printf("Alf_g_0: %f\n", g_0);
-    log::printf("Alf_diffusivity: %f\n", diffusivity);
+    //    log::printf("Alf_diffusivity: %f\n", diffusivity);
+    log::printf("Alf_epsilon_2: %f\n", epsilon_2);
 
     log::printf("Alf_G_pm_max_limiter: %s\n", G_pm_limiter ? "true" : "false");
     log::printf("Alf_G_pm_denom_limit: %f\n", G_pm_denom_limit);
@@ -347,6 +348,7 @@ bool two_streams_radiative_transfer::initialise_memory(
                        fake_opac,           // const double& fake_opac_,
                        g_0,                 // const double& g_0_,
                        epsi,                // const double& epsi_,
+                       epsilon_2,           // const double& epsilon_2_,
                        mu_star,             // const double& mu_star_,
                        scat,                // const bool&   scat_,
                        scat_corr,           // const bool&   scat_corr_,

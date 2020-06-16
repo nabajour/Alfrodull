@@ -51,6 +51,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const double& fake_opac_,
                                       const double& g_0_,
                                       const double& epsi_,
+                                      const double& epsilon_2_,
                                       const double& mu_star_,
                                       const bool&   scat_,
                                       const bool&   scat_corr_,
@@ -72,6 +73,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     fake_opac        = fake_opac_;
     g_0              = g_0_;
     epsi             = epsi_;
+    epsilon2         = epsilon_2_;
     mu_star          = mu_star_;
     scat             = scat_;
     scat_corr        = scat_corr_;
@@ -673,6 +675,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  g_0_tot_lay,          // in
                                                  g_0,
                                                  epsi,
+                                                 epsilon2,
                                                  mu_star,
                                                  scat,
                                                  clouds);
@@ -704,6 +707,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                                     g_0_tot_int,
                                                     g_0,
                                                     epsi,
+                                                    epsilon2,
                                                     mu_star,
                                                     scat,
                                                     clouds);
@@ -1125,6 +1129,7 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
                                                     double* g_0_tot_lay,          // in
                                                     double  g_0,
                                                     double  epsi,
+                                                    double  epsilon2_,
                                                     double  mu_star_,
                                                     bool    scat,
                                                     bool    clouds) {
@@ -1163,6 +1168,7 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
                                    g_0_tot_lay,
                                    g_0,
                                    epsi,
+                                   epsilon2_,
                                    mu_star_local,
                                    w_0_limit,
                                    scat,
@@ -1212,6 +1218,7 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                                        double* g_0_tot_int,
                                                        double  g_0,
                                                        double  epsi,
+                                                       double  epsilon2_,
                                                        double  mu_star_,
                                                        bool    scat,
                                                        bool    clouds) {
@@ -1265,6 +1272,7 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       g_0_tot_int,
                                       g_0,
                                       epsi,
+                                      epsilon2_,
                                       mu_star_local,
                                       w_0_limit,
                                       scat,
