@@ -110,7 +110,7 @@ INCLUDE_DIRS = -I$(SHARED_MODULES_INCLUDE) -I$(THOR_INCLUDE) -I$(LOCAL_INCLUDE) 
 $(BUILDDIR)/${OUTPUTDIR}/%.o: %.cu $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d  | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR) 
 	@echo -e '$(BLUE)creating dependencies for $@ $(END)'
 	set -e; rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
-	$(CC) $(cuda_dependencies_flags) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) $(INCLUDE_DIRS)   -I$(includedir) $(CDB) $< > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$; \
+	$(CC) $(cuda_dependencies_flags) $(arch)  $(cuda_flags) $(h5include) $(INCLUDE_DIRS)   -I$(includedir) $(CDB) $< > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$ > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
 	rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$
 	@echo -e '$(YELLOW)creating object file for $@ $(END)'
@@ -120,7 +120,7 @@ $(BUILDDIR)/${OUTPUTDIR}/%.o: %.cu $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d  | $(B
 $(BUILDDIR)/${OUTPUTDIR}/%.o: %.cpp $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d  | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(BLUE)creating dependencies for $@ $(END)'
 	set -e; rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
-	$(CC) $(dependencies_flags) $(CC_comp_flag) $(arch)  $(cpp_flags) $(h5include) $(h5include) $(INCLUDE_DIRS) -I$(includedir) $(CDB) $< > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$; \
+	$(CC) $(dependencies_flags) $(arch) $(cpp_flags) $(h5include) $(h5include) $(INCLUDE_DIRS) -I$(includedir) $(CDB) $< > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$ > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
 	rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$
 	@echo -e '$(YELLOW)creating object file for $@  $(END)'
