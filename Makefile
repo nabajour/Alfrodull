@@ -131,7 +131,7 @@ libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OU
 
 libalfrodull.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(YELLOW)creating $@ $(END)'
-	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
+	@echo -e '$(GREEN)Linking Class into static lib $(END)'
 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/	
 	ar rcs $@ $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj))
 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
@@ -148,6 +148,7 @@ $(DEPFILES):
 clean:
 	@echo -e '$(CYAN)clean up library $(END)'
 	-$(RM) libphy_modules.a
+	-$(RM) libalfrodull.a
 	@echo -e '$(CYAN)clean up modules objects $(END)'
 	-$(RM) $(BUILDDIR)/debug/*.o
 	-$(RM) $(BUILDDIR)/debug/*.o.json
