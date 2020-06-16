@@ -52,7 +52,8 @@ $(info Sub Makefile variables)
 $(info THOR root from submakefile: $(THOR_ROOT))
 
 ######################################################################
-all: libphy_modules.a libalfrodull.a
+# all: libphy_modules.a libalfrodull.a
+all: libalfrodull.a
 
 # path to local module code
 vpath %.cu src src/kernels src/opacities thor_module/src
@@ -122,12 +123,12 @@ $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cpp $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d | $(B
 	$(CC) $(dependencies_flags) $(CC_comp_flag) $(arch) $(cpp_flags) $(h5include) $(INCLUDE_DIRS)  -I$(includedir) $(CDB) -o $@ $<
 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
-libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo -e '$(YELLOW)creating $@ $(END)'
-	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/	
-	ar rcs $@ $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) 
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
+# libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
+# 	@echo -e '$(YELLOW)creating $@ $(END)'
+# 	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
+# 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/	
+# 	ar rcs $@ $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) 
+# 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
 libalfrodull.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(YELLOW)creating $@ $(END)'
@@ -136,10 +137,7 @@ libalfrodull.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) | $(BUILDDIR)/$(OU
 	ar rcs $@ $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj))
 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
-$(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d: ;
-
-
-DEPFILES := $($(obj):%.o=$(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d)
+DEPFILES := $(obj:%.o=$(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d)
 $(DEPFILES):
 
 #######################################################################
