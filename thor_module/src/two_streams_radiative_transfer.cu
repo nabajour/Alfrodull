@@ -714,7 +714,7 @@ __global__ void compute_column_Qheat(double* F_net, // net flux, layer
         // F_net positive in upward direction (F_up - F_down)
         // F_intern positive, flux out of bottom surface
         // Qheat negative when net flux differential out of layer is positive
-        Qheat[layer_idx] = -((F_net[1] - (F_net[0] + F_intern))) / (z_int[1] - z_int[0]);
+        Qheat[layer_idx] = -((F_net[1] - F_net[0])) / (z_int[1] - z_int[0]);
     }
     else if (layer_idx < num_layers) {
         // delta_flux/delta_z
