@@ -79,10 +79,8 @@ ifndef VERBOSE
 .SILENT:
 endif
 
-dependencies_flags = --compiler-options -MMD,-MP,"-MT $(BUILDDIR)/$(OUTPUTDIR)/$(notdir $(basename $@)).o","-MF $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/$(notdir $(basename $@)).d"
-
-cuda_dependencies_flags = --generate-nonsystem-dependencies -MF $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/$(notdir $(basename $@)).d -MT "$(BUILDDIR)/$(OUTPUTDIR)/$(notdir $(basename $@)).o $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/$(notdir $(basename $@)).d" 
-
+dependencies_flags = --generate-dependencies
+cuda_dependencies_flags = --generate-dependencies
 
 #######################################################################
 # create directory
@@ -108,15 +106,26 @@ INCLUDE_DIRS = -I$(SHARED_MODULES_INCLUDE) -I$(THOR_INCLUDE) -I$(LOCAL_INCLUDE) 
 #######################################################################
 # build objects
 # CUDA files
-$(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cu $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
+
+$(BUILDDIR)/${OUTPUTDIR}/%.o: %.cu $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d  | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR) 
 	@echo -e '$(BLUE)creating dependencies for $@ $(END)'
-	$(CC) $(cuda_dependencies_flags) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) $(INCLUDE_DIRS)   -I$(includedir) $(CDB) -o $@ $<
+	set -e; rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
+	$(CC) $(cuda_dependencies_flags) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) $(INCLUDE_DIRS)   -I$(includedir) $(CDB) $< > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$ > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
+	rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$
 	@echo -e '$(YELLOW)creating object file for $@ $(END)'
-	$(CC) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) -I$(includedir) $(INCLUDE_DIRS)  $(CDB) -o $@ $<
+	$(CC) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) -I$(includedir) $(INCLUDE_DIRS) $(CDB) -o $@ $<
+
 # C++ files
-$(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cpp $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-	@echo -e '$(YELLOW)creating dependencies and object file for $@  $(END)'
-	$(CC) $(dependencies_flags) $(CC_comp_flag) $(arch) $(cpp_flags) $(h5include) $(INCLUDE_DIRS)  -I$(includedir) $(CDB) -o $@ $<
+$(BUILDDIR)/${OUTPUTDIR}/%.o: %.cpp $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d  | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
+	@echo -e '$(BLUE)creating dependencies for $@ $(END)'
+	set -e; rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
+	$(CC) $(dependencies_flags) $(CC_comp_flag) $(arch)  $(cpp_flags) $(h5include) $(h5include) $(INCLUDE_DIRS) -I$(includedir) $(CDB) $< > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$ > $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d; \
+	rm -f $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/$*.d.$$$$
+	@echo -e '$(YELLOW)creating object file for $@  $(END)'
+	$(CC) $(CC_comp_flag) $(arch) $(cpp_flags) $(h5include) $(INCLUDE_DIRS) -I$(includedir) $(CDB) -o $@ $<
+
 
 # libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 # 	@echo -e '$(YELLOW)creating $@ $(END)'
