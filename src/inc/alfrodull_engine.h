@@ -42,17 +42,17 @@ public:
         opacities.experimental_opacities_offset = opac;
     };
 
-    bool   real_star   = false;
-    double fake_opac   = false;
-    double g_0         = 0.0;
-    double epsi        = 0.0;
-    double mu_star     = 0.0;
-    bool   scat        = false;
-    bool   scat_corr   = false;
-    double R_planet    = 0.0;
-    double R_star      = 0.0;
-    double a           = 0.0;
-    bool   dir_beam    = false;
+    bool   real_star = false;
+    double fake_opac = 0.0;
+    double g_0       = 0.0;
+    double epsi      = 0.0;
+    double mu_star   = 0.0;
+    bool   scat      = false;
+    bool   scat_corr = false;
+    double R_planet  = 0.0;
+    double R_star    = 0.0;
+    double a         = 0.0;
+    bool   dir_beam  = false;
 
     bool geom_zenith_corr = false;
 
@@ -218,7 +218,7 @@ public:
                                     double      delta_tau_limit,
                                     double*     F_down_tot,
                                     double*     F_up_tot,
-				    double*     F_dir_tot,
+                                    double*     F_dir_tot,
                                     double*     F_net,
                                     double*     F_down_band,
                                     double*     F_up_band,
@@ -243,7 +243,7 @@ public:
     void integrate_flux(double* deltalambda,
                         double* F_down_tot,
                         double* F_up_tot,
-			double* F_dir_tot,
+                        double* F_dir_tot,
                         double* F_net,
                         double* F_down_wg,
                         double* F_up_wg,
