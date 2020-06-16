@@ -111,31 +111,22 @@ INCLUDE_DIRS = -I$(SHARED_MODULES_INCLUDE) -I$(THOR_INCLUDE) -I$(LOCAL_INCLUDE) 
 $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cu $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(BLUE)creating dependencies for $@ $(END)'
 	$(CC) $(cuda_dependencies_flags) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) $(INCLUDE_DIRS)   -I$(includedir) $(CDB) -o $@ $<
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 	@echo -e '$(YELLOW)creating object file for $@ $(END)'
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 	$(CC) $(CC_comp_flag) $(arch)  $(cuda_flags) $(h5include) -I$(includedir) $(INCLUDE_DIRS)  $(CDB) -o $@ $<
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 # C++ files
 $(BUILDDIR)/$(OUTPUTDIR)/%.o: %.cpp $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d | $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR) $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(YELLOW)creating dependencies and object file for $@  $(END)'
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 	$(CC) $(dependencies_flags) $(CC_comp_flag) $(arch) $(cpp_flags) $(h5include) $(INCLUDE_DIRS)  -I$(includedir) $(CDB) -o $@ $<
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
 # libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 # 	@echo -e '$(YELLOW)creating $@ $(END)'
 # 	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
-# 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/	
 # 	ar rcs $@ $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) 
-# 	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
 libalfrodull.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(YELLOW)creating $@ $(END)'
 	@echo -e '$(GREEN)Linking Class into static lib $(END)'
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/	
 	ar rcs $@ $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj))
-	ls $(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/
 
 DEPFILES := $(obj:%.o=$(BUILDDIR)/$(OUTPUTDIR)/$(DEPDIR)/%.d)
 $(DEPFILES):
