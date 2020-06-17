@@ -63,6 +63,8 @@
 
 #include "insolation.h"
 
+#include "math_helpers.h"
+
 USE_BENCHMARK();
 
 
@@ -86,125 +88,7 @@ using std::string;
 const int HELIOS_TP_STRIDE = 1;
 #endif // DUMP_HELIOS_TP
 
-//***************************************************************************************************
-// DEBUGGING TOOL: integrate weighted values in binned bands and then integrate over bands
 
-// first simple integration over weights
-__global__ void integrate_val_band(double* val_wg,       // in
-                                   double* val_band,     // out
-                                   double* gauss_weight, // in
-                                   int     nbin,
-                                   int     num_val,
-                                   int     ny) {
-
-    int val_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int bin_idx = blockIdx.y * blockDim.y + threadIdx.y;
-
-
-    if (val_idx < num_val && bin_idx < nbin) {
-        // set memory to 0.
-
-        val_band[bin_idx + nbin * val_idx] = 0;
-
-
-        int bin_offset = bin_idx + nbin * val_idx;
-
-        for (int y = 0; y < ny; y++) {
-            double w             = gauss_weight[y];
-            int    weight_offset = y + ny * bin_idx + ny * nbin * val_idx;
-
-            val_band[bin_offset] += 0.5 * w * val_wg[weight_offset];
-        }
-    }
-}
-
-// simple integration over bins/bands
-__global__ void integrate_val_tot(double* val_tot,     // out
-                                  double* val_band,    // in
-                                  double* deltalambda, // in
-                                  int     nbin,
-                                  int     num_val) {
-
-
-    int val_idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (val_idx < num_val) {
-
-        val_tot[val_idx] = 0.0;
-
-        for (int bin = 0; bin < nbin; bin++) {
-            int band_idx = val_idx * nbin + bin;
-            val_tot[val_idx] += val_band[band_idx] * deltalambda[bin];
-        }
-    }
-}
-
-std::shared_ptr<double[]>
-integrate_band(double* val, double* gauss_weight, int num_val, int nbin, int ny) {
-    cuda_device_memory<double> val_band;
-
-    val_band.allocate(num_val * nbin);
-
-    {
-        int  num_levels_per_block = 256 / nbin + 1;
-        dim3 gridsize(num_val / num_levels_per_block + 1);
-        dim3 blocksize(num_levels_per_block, nbin);
-
-        integrate_val_band<<<gridsize, blocksize>>>(val,          // in
-                                                    *val_band,    // out
-                                                    gauss_weight, // in
-                                                    nbin,
-                                                    num_val,
-                                                    ny);
-
-        cudaDeviceSynchronize();
-    }
-    return val_band.get_host_data();
-}
-
-std::shared_ptr<double[]> integrate_wg_band(double* val,
-                                            double* gauss_weight,
-                                            double* deltalambda,
-                                            int     num_val,
-                                            int     nbin,
-                                            int     ny) {
-    cuda_device_memory<double> val_band;
-    cuda_device_memory<double> val_tot;
-
-    val_band.allocate(num_val * nbin);
-
-    val_tot.allocate(num_val);
-
-    {
-        int  num_levels_per_block = 256 / nbin + 1;
-        dim3 gridsize(num_val / num_levels_per_block + 1);
-        dim3 blocksize(num_levels_per_block, nbin);
-
-        integrate_val_band<<<gridsize, blocksize>>>(val,          // in
-                                                    *val_band,    // out
-                                                    gauss_weight, // in
-                                                    nbin,
-                                                    num_val,
-                                                    ny);
-
-        cudaDeviceSynchronize();
-    }
-
-    {
-        int  num_levels_per_block = 256;
-        dim3 gridsize(num_val / num_levels_per_block + 1);
-        dim3 blocksize(num_levels_per_block);
-        integrate_val_tot<<<gridsize, blocksize>>>(*val_tot,    // out
-                                                   *val_band,   // in
-                                                   deltalambda, // in
-                                                   nbin,
-                                                   num_val);
-
-        cudaDeviceSynchronize();
-    }
-
-    return val_tot.get_host_data();
-}
 //***************************************************************************************************
 
 const char PBSTR[] = "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||";
@@ -258,6 +142,9 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("Alf_opacities_file: %s\n", opacities_file.c_str());
     log::printf("Alf_compute_every_nstep: %d\n", compute_every_n_iteration);
 
+    log::printf("Alf_clouds: %s\n", clouds ? "true" : "false");
+    log::printf("Alf_fcloud: %g\n", fcloud);
+    log::printf("Alf_cloudfile: %s\n", cloud_filename.c_str());
     // spinup-spindown parameters
     log::printf("    Spin up start step          = %d.\n", spinup_start_step);
     log::printf("    Spin up stop step           = %d.\n", spinup_stop_step);
@@ -306,6 +193,10 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_spinup_stop", spinup_stop_step, spinup_stop_step);
     config_reader.append_config_var("Alf_spindown_start", spindown_start_step, spindown_start_step);
     config_reader.append_config_var("Alf_spindown_stop", spindown_stop_step, spindown_stop_step);
+
+    config_reader.append_config_var("Alf_clouds", clouds, clouds);
+    config_reader.append_config_var("Alf_fcloud", fcloud, fcloud);
+    config_reader.append_config_var("Alf_cloudfile", cloud_filename, cloud_filename);
 
     return true;
 }
@@ -476,6 +367,10 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     F_up_TOA_spectrum.allocate(esp.point_num * nbin);
 
+    // output for storage
+    g0_tot.allocate(esp.point_num * nlayer);
+    w0_tot.allocate(esp.point_num * nlayer);
+
     g_0_tot_lay.allocate(nlayer_nbin);
     g_0_tot_int.allocate(ninterface_nbin);
     cloud_opac_lay.allocate(nlayer);
@@ -485,8 +380,12 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     Qheat.allocate(esp.point_num * nlayer);
 
-    // TODO: currently, all clouds set to zero. Not used.
 
+    // output for storage
+    g0_tot.zero();
+    w0_tot.zero();
+
+    // TODO: currently, all clouds set to zero. Not used.
     g_0_tot_lay.zero();
     g_0_tot_int.zero();
     cloud_opac_lay.zero();
@@ -494,7 +393,9 @@ bool two_streams_radiative_transfer::initialise_memory(
     cloud_scat_cross_lay.zero();
     cloud_scat_cross_int.zero();
 
-    bool clouds = false;
+    {
+        // load cloud file
+    }
 
     alf.set_clouds_data(clouds,
                         *cloud_opac_lay,
@@ -502,7 +403,8 @@ bool two_streams_radiative_transfer::initialise_memory(
                         *cloud_scat_cross_lay,
                         *cloud_scat_cross_int,
                         *g_0_tot_lay,
-                        *g_0_tot_int);
+                        *g_0_tot_int,
+                        fcloud);
 
     cudaError_t err = cudaGetLastError();
 
@@ -780,6 +682,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             F_dir_band.zero();
             F_net.zero();
 
+            g0_tot.zero();
+            w0_tot.zero();
+
             printf("\r\n");
             printf("\r\n");
             printf("\r\n");
@@ -1002,6 +907,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 double* F_col_up_tot      = &((*F_up_tot)[column_offset_int]);
                 double* F_col_dir_tot     = &((*F_dir_tot)[column_offset_int]);
                 double* F_col_net         = &((*F_net)[column_offset_int]);
+
                 //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
                 double* F_dir_band_col = &((*F_dir_band)[0]);
 
@@ -1034,8 +940,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                                mu_star);
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
-
-
+                // get the g0 and w0 integrated
+                // TODO could be optimised by storing band values and integrate only on output
+                // but takes up more space
+                double* g0_tot_col = &((*g0_tot)[column_idx * nlayer]);
+                double* w0_tot_col = &((*w0_tot)[column_idx * nlayer]);
+                alf.get_column_integrated_g0_w0(g0_tot_col, w0_tot_col);
                 // compute Delta flux
 
                 // set Qheat
@@ -1137,6 +1047,13 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
     std::shared_ptr<double[]> F_dir_tot_h = F_dir_tot.get_host_data();
     s.append_table(
         F_dir_tot_h.get(), F_dir_tot.get_size(), "/F_dir_tot", "W m^-2", "Total beam flux");
+
+    std::shared_ptr<double[]> w0_tot_h = w0_tot.get_host_data();
+    s.append_table(
+        w0_tot_h.get(), w0_tot.get_size(), "/w0_tot", " ", "Total single scattering albedo");
+
+    std::shared_ptr<double[]> g0_tot_h = g0_tot.get_host_data();
+    s.append_table(g0_tot_h.get(), g0_tot.get_size(), "/g0_tot", " ", "Total asymmetry");
 
 
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();
@@ -1517,9 +1434,9 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
     if (iso) {
         // Print out single scattering albedo data
 
-        int                       num_val = alf.w_0.get_size() / (nbin * ny);
+        int                       num_val = alf.w0_wg.get_size() / (nbin * ny);
         std::shared_ptr<double[]> w0_h =
-            integrate_band(*alf.w_0, *alf.gauss_weights, num_val, nbin, ny);
+            integrate_band(*alf.w0_wg, *alf.gauss_weights, num_val, nbin, ny);
 
 
         string output_file_name = DBG_OUTPUT_DIR + "single_scat_band_profile.dat";
@@ -1551,9 +1468,9 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
         {
             // Print out single scattering albedo data
 
-            int                       num_val = alf.w_0_upper.get_size() / (nbin * ny);
+            int                       num_val = alf.w0_wg_upper.get_size() / (nbin * ny);
             std::shared_ptr<double[]> w0_h =
-                integrate_band(*alf.w_0_upper, *alf.gauss_weights, num_val, nbin, ny);
+                integrate_band(*alf.w0_wg_upper, *alf.gauss_weights, num_val, nbin, ny);
 
 
             string output_file_name = DBG_OUTPUT_DIR + "single_scat_band_upper_profile.dat";
@@ -1585,9 +1502,9 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
         {
             // Print out single scattering albedo data
 
-            int                       num_val = alf.w_0_lower.get_size() / (nbin * ny);
+            int                       num_val = alf.w0_wg_lower.get_size() / (nbin * ny);
             std::shared_ptr<double[]> w0_h =
-                integrate_band(*alf.w_0_lower, *alf.gauss_weights, num_val, nbin, ny);
+                integrate_band(*alf.w0_wg_lower, *alf.gauss_weights, num_val, nbin, ny);
 
 
             string output_file_name = DBG_OUTPUT_DIR + "single_scat_band_lower_profile.dat";

@@ -1,13 +1,13 @@
 // calculates the integrated upwards and downwards fluxes
 
-__global__ void integrate_flux_band(double* F_down_wg,    // in
-                                    double* F_up_wg,      // in
-                                    double* F_dir_wg,     // in
-                                    double* F_down_band,  // out
-                                    double* F_up_band,    // out
-                                    double* F_dir_band,   // out
-				    double* F_up_TOA_spectrum, // out
-                                    double* gauss_weight, // in
+__global__ void integrate_flux_band(double* F_down_wg,         // in
+                                    double* F_up_wg,           // in
+                                    double* F_dir_wg,          // in
+                                    double* F_down_band,       // out
+                                    double* F_up_band,         // out
+                                    double* F_dir_band,        // out
+                                    double* F_up_TOA_spectrum, // out
+                                    double* gauss_weight,      // in
                                     int     nbin,
                                     int     numinterfaces,
                                     int     ny);
@@ -15,7 +15,7 @@ __global__ void integrate_flux_band(double* F_down_wg,    // in
 __global__ void integrate_flux_tot(double* deltalambda, // in
                                    double* F_down_tot,  // out
                                    double* F_up_tot,    // out
-				   double* F_dir_tot,    // out
+                                   double* F_dir_tot,   // out
                                    double* F_net,       // out
                                    double* F_down_band, // out
                                    double* F_up_band,   // out
@@ -27,7 +27,7 @@ __global__ void integrate_flux_tot(double* deltalambda, // in
 __global__ void integrate_flux_double(double* deltalambda,
                                       double* F_down_tot,
                                       double* F_up_tot,
-				      double* F_dir_tot,
+                                      double* F_dir_tot,
                                       double* F_net,
                                       double* F_down_wg,
                                       double* F_up_wg,
@@ -45,6 +45,7 @@ __global__ void fdir_iso(double* F_dir_wg,
                          double* delta_tau_wg,
                          double* z_lay,
                          double  mu_star,
+                         double  mu_star_limit,
                          double  R_planet,
                          double  R_star,
                          double  a,
@@ -61,6 +62,7 @@ __global__ void fdir_noniso(double* F_dir_wg,
                             double* delta_tau_wg_lower,
                             double* z_lay,
                             double  mu_star,
+                            double  mu_star_limit,
                             double  R_planet,
                             double  R_star,
                             double  a,
@@ -82,8 +84,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,
                                  double* P_term,
                                  double* G_plus,
                                  double* G_minus,
-                                 double* g_0_tot_lay,
-                                 double  g_0,
+                                 double* g_0_tot,
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -123,9 +124,8 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                     double* G_plus_lower,
                                     double* G_minus_upper,
                                     double* G_minus_lower,
-                                    double* g_0_tot_lay,
-                                    double* g_0_tot_int,
-                                    double  g_0,
+                                    double* g_0_tot_upper,
+                                    double* g_0_tot_lower,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -154,7 +154,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* P_term,         // in
                                  double* G_plus,         // in
                                  double* G_minus,        // in
-                                 double* g_0_tot_lay,    // in (clouds)
+                                 double* g_0_tot,        // in (clouds)
                                  double* A_buff,         // thomas worker
                                  double* B_buff,         // thomas worker
                                  double* C_buff,         // thomas worker
@@ -162,7 +162,6 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* C_prime_buff,   // thomas worker
                                  double* D_prime_buff,   // thomas worker
                                  double* X_buff,         // thomas worker
-                                 double  g_0,
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -208,9 +207,8 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                                     double* C_prime_buff, // thomas worker
                                     double* D_prime_buff, // thomas worker
                                     double* X_buff,       // thomas worker
-                                    double* g_0_tot_lay,
-                                    double* g_0_tot_int,
-                                    double  g_0,
+                                    double* g_0_tot_upper,
+                                    double* g_0_tot_lower,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,

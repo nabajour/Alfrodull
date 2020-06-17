@@ -11,6 +11,7 @@
 #include <functional>
 #include <map>
 
+#include "math_helpers.h"
 
 using std::string;
 
@@ -138,7 +139,11 @@ void alfrodull_engine::allocate_internal_variables() {
         P_term.allocate(nlayer_wg_nbin);
         G_plus.allocate(nlayer_wg_nbin);
         G_minus.allocate(nlayer_wg_nbin);
-        w_0.allocate(nlayer_wg_nbin);
+        w0_wg.allocate(nlayer_wg_nbin);
+        g0_wg.allocate(nlayer_wg_nbin);
+
+        g0_band.allocate(nlayer_nbin);
+        w0_band.allocate(nlayer_nbin);
 
         delta_col_mass.allocate(nlayer);
     }
@@ -153,8 +158,19 @@ void alfrodull_engine::allocate_internal_variables() {
         G_plus_lower.allocate(nlayer_wg_nbin);
         G_minus_upper.allocate(nlayer_wg_nbin);
         G_minus_lower.allocate(nlayer_wg_nbin);
-        w_0_upper.allocate(nlayer_wg_nbin);
-        w_0_lower.allocate(nlayer_wg_nbin);
+        w0_wg_upper.allocate(nlayer_wg_nbin);
+        w0_wg_lower.allocate(nlayer_wg_nbin);
+
+        // used to store layer value for output
+        w0_wg.allocate(nlayer_wg_nbin);
+        g0_wg.allocate(nlayer_wg_nbin);
+
+        g0_band.allocate(nlayer_nbin);
+        w0_band.allocate(nlayer_nbin);
+
+        // for computations
+        g0_wg_upper.allocate(nlayer_wg_nbin);
+        g0_wg_lower.allocate(nlayer_wg_nbin);
 
         delta_col_upper.allocate(nlayer);
         delta_col_lower.allocate(nlayer);
@@ -339,7 +355,7 @@ void alfrodull_engine::reset() {
         P_term.zero();
         G_plus.zero();
         G_minus.zero();
-        w_0.zero();
+        w0_wg.zero();
     }
     else {
         // noiso
@@ -359,8 +375,8 @@ void alfrodull_engine::reset() {
         G_plus_lower.zero();
         G_minus_upper.zero();
         G_minus_lower.zero();
-        w_0_upper.zero();
-        w_0_lower.zero();
+        w0_wg_upper.zero();
+        w0_wg_lower.zero();
     }
 
     dev_T_int.zero();
@@ -493,15 +509,17 @@ void alfrodull_engine::set_clouds_data(const bool& clouds_,
                                        double*     cloud_scat_cross_lay_,
                                        double*     cloud_scat_cross_int_,
                                        double*     g_0_tot_lay_,
-                                       double*     g_0_tot_int_) {
+                                       double*     g_0_tot_int_,
+                                       double      fcloud_) {
     cloud_opac_lay       = cloud_opac_lay_;
     cloud_opac_int       = cloud_opac_int_;
     cloud_scat_cross_lay = cloud_scat_cross_lay_;
     cloud_scat_cross_int = cloud_scat_cross_int_;
-    g_0_tot_lay          = g_0_tot_lay_;
-    g_0_tot_int          = g_0_tot_int_;
+    g_0_cloud_lay        = g_0_tot_lay_;
+    g_0_cloud_int        = g_0_tot_int_;
 
     clouds = clouds_;
+    fcloud = fcloud_;
 }
 
 
@@ -672,7 +690,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  cloud_opac_lay,       // in
                                                  *meanmolmass_lay,     // in
                                                  cloud_scat_cross_lay, // in
-                                                 g_0_tot_lay,          // in
+                                                 g_0_cloud_lay,        // in
                                                  g_0,
                                                  epsi,
                                                  epsilon2,
@@ -703,8 +721,8 @@ void alfrodull_engine::compute_radiative_transfer(
                                                     *meanmolmass_int,
                                                     cloud_scat_cross_lay,
                                                     cloud_scat_cross_int,
-                                                    g_0_tot_lay,
-                                                    g_0_tot_int,
+                                                    g_0_cloud_lay,
+                                                    g_0_cloud_int,
                                                     g_0,
                                                     epsi,
                                                     epsilon2,
@@ -748,11 +766,10 @@ void alfrodull_engine::compute_radiative_transfer(
 
     if (thomas) {
         if (iso) {
-            populate_spectral_flux_iso_thomas(F_down_wg,   // out
-                                              F_up_wg,     // out
-                                              F_dir_wg,    // in
-                                              g_0_tot_lay, // in
-                                              g_0,
+            populate_spectral_flux_iso_thomas(F_down_wg, // out
+                                              F_up_wg,   // out
+                                              F_dir_wg,  // in
+                                              *g0_wg,    // in
                                               single_walk,
                                               R_star,
                                               a,
@@ -770,9 +787,8 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  Fc_up_wg,
                                                  F_dir_wg,
                                                  Fc_dir_wg,
-                                                 g_0_tot_lay,
-                                                 g_0_tot_int,
-                                                 g_0,
+                                                 *g0_wg_upper,
+                                                 *g0_wg_lower,
                                                  single_walk,
                                                  R_star,
                                                  a,
@@ -803,11 +819,10 @@ void alfrodull_engine::compute_radiative_transfer(
 
         for (int scat_iter = 0; scat_iter < nscat_step + 1; scat_iter++) {
             if (iso) {
-                populate_spectral_flux_iso(F_down_wg,   // out
-                                           F_up_wg,     // out
-                                           F_dir_wg,    // in
-                                           g_0_tot_lay, // in
-                                           g_0,
+                populate_spectral_flux_iso(F_down_wg, // out
+                                           F_up_wg,   // out
+                                           F_dir_wg,  // in
+                                           *g0_wg,    // in
                                            single_walk,
                                            R_star,
                                            a,
@@ -825,9 +840,8 @@ void alfrodull_engine::compute_radiative_transfer(
                                               Fc_up_wg,
                                               F_dir_wg,
                                               Fc_dir_wg,
-                                              g_0_tot_lay,
-                                              g_0_tot_int,
-                                              g_0,
+                                              *g0_wg_upper,
+                                              *g0_wg_lower,
                                               single_walk,
                                               R_star,
                                               a,
@@ -1164,7 +1178,8 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
                                    meanmolmass_lay,
                                    *scatter_cross_section_lay,
                                    cloud_scat_cross_lay,
-                                   *w_0,
+                                   *w0_wg,
+                                   *g0_wg,
                                    g_0_tot_lay,
                                    g_0,
                                    epsi,
@@ -1175,6 +1190,7 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
                                    nbin,
                                    ny,
                                    nlayer,
+                                   fcloud,
                                    clouds,
                                    scat_corr,
                                    G_pm_limiter,
@@ -1266,8 +1282,10 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       *scatter_cross_section_inter,
                                       cloud_scat_cross_lay,
                                       cloud_scat_cross_int,
-                                      *w_0_upper,
-                                      *w_0_lower,
+                                      *w0_wg_upper,
+                                      *w0_wg_lower,
+                                      *g0_wg_upper,
+                                      *g0_wg_lower,
                                       g_0_tot_lay,
                                       g_0_tot_int,
                                       g_0,
@@ -1279,6 +1297,7 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       nbin,
                                       ny,
                                       nlayer,
+                                      fcloud,
                                       clouds,
                                       scat_corr,
                                       G_pm_limiter,
@@ -1329,6 +1348,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                   *delta_tau_wg,
                                   z_lay,
                                   mu_star,
+                                  mu_star_limit,
                                   R_planet,
                                   R_star,
                                   a,
@@ -1351,6 +1371,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                      *delta_tau_wg_lower,
                                      z_lay,
                                      mu_star,
+                                     mu_star_limit,
                                      R_planet,
                                      R_star,
                                      a,
@@ -1366,11 +1387,10 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
     return true;
 }
 
-bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg,   // out
-                                                         double* F_up_wg,     // out
-                                                         double* F_dir_wg,    // in
-                                                         double* g_0_tot_lay, // in
-                                                         double  g_0,
+bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // out
+                                                         double* F_up_wg,   // out
+                                                         double* F_dir_wg,  // in
+                                                         double* g_0_tot,   // in
                                                          bool    singlewalk,
                                                          double  Rstar,
                                                          double  a,
@@ -1391,7 +1411,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg,   //
                                       F_up_wg,
                                       F_dir_wg,
                                       *planckband_lay,
-                                      *w_0,
+                                      *w0_wg,
                                       *M_term,
                                       *N_term,
                                       *P_term,
@@ -1404,8 +1424,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg,   //
                                       *C_prime_buff, // thomas worker
                                       *D_prime_buff, // thomas worker
                                       *X_buff,       // thomas worker
-                                      g_0_tot_lay,
-                                      g_0,
+                                      g_0_tot,
                                       singlewalk,
                                       Rstar,
                                       a,
@@ -1426,11 +1445,10 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg,   //
     return true;
 }
 
-bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
-                                                  double* F_up_wg,     // out
-                                                  double* F_dir_wg,    // in
-                                                  double* g_0_tot_lay, // in
-                                                  double  g_0,
+bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg, // out
+                                                  double* F_up_wg,   // out
+                                                  double* F_dir_wg,  // in
+                                                  double* g_0_tot,   // in
                                                   bool    singlewalk,
                                                   double  Rstar,
                                                   double  a,
@@ -1451,14 +1469,13 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg,   // out
                                       F_up_wg,
                                       F_dir_wg,
                                       *planckband_lay,
-                                      *w_0,
+                                      *w0_wg,
                                       *M_term,
                                       *N_term,
                                       *P_term,
                                       *G_plus,
                                       *G_minus,
-                                      g_0_tot_lay,
-                                      g_0,
+                                      g_0_tot,
                                       singlewalk,
                                       Rstar,
                                       a,
@@ -1485,9 +1502,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double* Fc_up_wg,
                                                      double* F_dir_wg,
                                                      double* Fc_dir_wg,
-                                                     double* g_0_tot_lay,
-                                                     double* g_0_tot_int,
-                                                     double  g_0,
+                                                     double* g_0_tot_upper,
+                                                     double* g_0_tot_lower,
                                                      bool    singlewalk,
                                                      double  Rstar,
                                                      double  a,
@@ -1516,8 +1532,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                          Fc_dir_wg,
                                          *planckband_lay,
                                          *planckband_int,
-                                         *w_0_upper,
-                                         *w_0_lower,
+                                         *w0_wg_upper,
+                                         *w0_wg_lower,
                                          *delta_tau_wg_upper,
                                          *delta_tau_wg_lower,
                                          *M_upper,
@@ -1530,9 +1546,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                          *G_plus_lower,
                                          *G_minus_upper,
                                          *G_minus_lower,
-                                         g_0_tot_lay,
-                                         g_0_tot_int,
-                                         g_0,
+                                         g_0_tot_upper,
+                                         g_0_tot_lower,
                                          singlewalk,
                                          Rstar,
                                          a,
@@ -1561,9 +1576,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                                             double* Fc_up_wg,
                                                             double* F_dir_wg,
                                                             double* Fc_dir_wg,
-                                                            double* g_0_tot_lay,
-                                                            double* g_0_tot_int,
-                                                            double  g_0,
+                                                            double* g_0_tot_upper,
+                                                            double* g_0_tot_lower,
                                                             bool    singlewalk,
                                                             double  Rstar,
                                                             double  a,
@@ -1592,8 +1606,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                          Fc_dir_wg,
                                          *planckband_lay,
                                          *planckband_int,
-                                         *w_0_upper,
-                                         *w_0_lower,
+                                         *w0_wg_upper,
+                                         *w0_wg_lower,
                                          *delta_tau_wg_upper,
                                          *delta_tau_wg_lower,
                                          *M_upper,
@@ -1613,9 +1627,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                          *C_prime_buff, // thomas worker
                                          *D_prime_buff, // thomas worker
                                          *X_buff,       // thomas worker
-                                         g_0_tot_lay,
-                                         g_0_tot_int,
-                                         g_0,
+                                         g_0_tot_upper,
+                                         g_0_tot_lower,
                                          singlewalk,
                                          Rstar,
                                          a,
@@ -1634,5 +1647,50 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
 
     cudaDeviceSynchronize();
 
+    return true;
+}
+
+bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_) {
+
+    int nbin = opacities.nbin;
+    int ny   = opacities.ny;
+
+    if (!iso) {
+        // compute mean of upper and lower band
+        int  num_val              = nlayer * nbin * ny;
+        int  num_levels_per_block = 256;
+        dim3 gridsize(num_val / num_levels_per_block + 1);
+        dim3 blocksize(num_levels_per_block);
+
+        arrays_mean<<<gridsize, blocksize>>>(*w0_wg_upper, *w0_wg_lower, *w0_wg, num_val);
+        arrays_mean<<<gridsize, blocksize>>>(*g0_wg_upper, *g0_wg_lower, *g0_wg, num_val);
+    }
+
+    {
+        int  num_levels_per_block = 16;
+        int  num_bins_per_block   = 16;
+        dim3 gridsize(nlayer / num_levels_per_block + 1, nbin / num_bins_per_block + 1);
+        dim3 blocksize(num_levels_per_block, num_bins_per_block);
+
+        integrate_val_band<<<gridsize, blocksize>>>(
+            *w0_wg, *w0_band, *gauss_weights, nbin, nlayer, ny);
+        integrate_val_band<<<gridsize, blocksize>>>(
+            *g0_wg, *g0_band, *gauss_weights, nbin, nlayer, ny);
+
+        cudaDeviceSynchronize();
+    }
+
+    {
+        int  num_levels_per_block = 256;
+        dim3 gridsize(ninterface / num_levels_per_block + 1);
+        dim3 blocksize(num_levels_per_block);
+
+        double* deltalambda = *opacities.dev_opac_deltawave;
+
+        integrate_val_tot<<<gridsize, blocksize>>>(g0_, *g0_band, deltalambda, nbin, nlayer);
+        integrate_val_tot<<<gridsize, blocksize>>>(w0_, *w0_band, deltalambda, nbin, nlayer);
+
+        cudaDeviceSynchronize();
+    }
     return true;
 }

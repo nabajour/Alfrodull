@@ -205,6 +205,7 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                          double* delta_tau_wg,   // in
                          double* z_lay,          // in
                          double  mu_star,
+                         double  mu_star_limit,
                          double  R_planet,
                          double  R_star,
                          double  a,
@@ -225,8 +226,12 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-        if (dir_beam)
-            F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+        if (dir_beam) {
+            if (fabs(mu_star) < mu_star_limit)
+                F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
+            else
+                F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+        }
         else
             F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
         double mu_star_layer_j;
@@ -259,6 +264,7 @@ __global__ void fdir_noniso(double* F_dir_wg,
                             double* delta_tau_wg_lower,
                             double* z_lay,
                             double  mu_star,
+                            double  mu_star_limit,
                             double  R_planet,
                             double  R_star,
                             double  a,
@@ -279,8 +285,12 @@ __global__ void fdir_noniso(double* F_dir_wg,
                        * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
 
         // initialize each flux value
-        if (dir_beam)
-            F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+        if (dir_beam) {
+            if (fabs(mu_star) < mu_star_limit)
+                F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
+            else
+                F_dir_wg[y + ny * x + ny * nbin * i] = -mu_star * I_dir;
+        }
         else
             F_dir_wg[y + ny * x + ny * nbin * i] = 0.0;
 
@@ -322,8 +332,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                                  double* P_term,         // in
                                  double* G_plus,         // in
                                  double* G_minus,        // in
-                                 double* g_0_tot_lay,    // in (clouds)
-                                 double  g_0,
+                                 double* g_0_tot,        // in (clouds)
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -377,7 +386,7 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                 P     = P_term[y + ny * x + ny * nbin * i];
                 G_pl  = G_plus[y + ny * x + ny * nbin * i];
                 G_min = G_minus[y + ny * x + ny * nbin * i];
-                g0    = g_0;
+                g0    = g_0_tot[y + ny * x + ny * nbin * i];
 
                 // DBG:
                 // printf("%g %g %g %g %g %g %g\n",
@@ -392,11 +401,6 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                 E = 1.0;
                 if (scat_corr) {
                     E = E_parameter(w0, g0, i2s_transition);
-                }
-
-                // experimental clouds functionality
-                if (clouds) {
-                    g0 = g_0_tot_lay[x + nbin * i];
                 }
 
                 // isothermal solution
@@ -461,17 +465,12 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                 P     = P_term[y + ny * x + ny * nbin * (i - 1)];
                 G_pl  = G_plus[y + ny * x + ny * nbin * (i - 1)];
                 G_min = G_minus[y + ny * x + ny * nbin * (i - 1)];
-                g0    = g_0;
+                g0    = g_0_tot[y + ny * x + ny * nbin * (i - 1)];
 
                 // improved scattering correction factor E
                 E = 1.0;
                 if (scat_corr) {
                     E = E_parameter(w0, g0, i2s_transition);
-                }
-
-                // experimental clouds functionality
-                if (clouds) {
-                    g0 = g_0_tot_lay[x + nbin * (i - 1)];
                 }
 
                 // isothermal solution
@@ -527,9 +526,8 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                     double* G_plus_lower,
                                     double* G_minus_upper,
                                     double* G_minus_lower,
-                                    double* g_0_tot_lay,
-                                    double* g_0_tot_int,
-                                    double  g_0,
+                                    double* g_0_tot_upper,
+                                    double* g_0_tot_lower,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -596,7 +594,8 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 P_up       = P_upper[y + ny * x + ny * nbin * i];
                 G_pl_up    = G_plus_upper[y + ny * x + ny * nbin * i];
                 G_min_up   = G_minus_upper[y + ny * x + ny * nbin * i];
-                g0_up      = g_0;
+                g0_up      = g_0_tot_upper[y + ny * x + ny * nbin * i];
+                ;
 
                 // lower part of layer quantities
                 w0_low      = w_0_lower[y + ny * x + ny * nbin * i];
@@ -606,7 +605,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 P_low       = P_lower[y + ny * x + ny * nbin * i];
                 G_pl_low    = G_plus_lower[y + ny * x + ny * nbin * i];
                 G_min_low   = G_minus_lower[y + ny * x + ny * nbin * i];
-                g0_low      = g_0;
+                g0_low      = g_0_tot_lower[y + ny * x + ny * nbin * i];
 
                 // improved scattering correction factor E
                 E_up  = 1.0;
@@ -616,12 +615,6 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 if (scat_corr) {
                     E_up  = E_parameter(w0_up, g0_up, i2s_transition);
                     E_low = E_parameter(w0_low, g0_low, i2s_transition);
-                }
-
-                // experimental clouds functionality
-                if (clouds) {
-                    g0_up  = (g_0_tot_lay[x + nbin * i] + g_0_tot_int[x + nbin * (i + 1)]) / 2.0;
-                    g0_low = (g_0_tot_int[x + nbin * i] + g_0_tot_lay[x + nbin * i]) / 2.0;
                 }
 
                 // upper part of layer calculations
@@ -737,7 +730,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 P_low       = P_lower[y + ny * x + ny * nbin * (i - 1)];
                 G_pl_low    = G_plus_lower[y + ny * x + ny * nbin * (i - 1)];
                 G_min_low   = G_minus_lower[y + ny * x + ny * nbin * (i - 1)];
-                g0_low      = g_0;
+                g0_low      = g_0_tot_lower[y + ny * x + ny * nbin * (i - 1)];
 
                 // upper part of layer quantities
                 w0_up      = w_0_upper[y + ny * x + ny * nbin * (i - 1)];
@@ -747,7 +740,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 P_up       = P_upper[y + ny * x + ny * nbin * (i - 1)];
                 G_pl_up    = G_plus_upper[y + ny * x + ny * nbin * (i - 1)];
                 G_min_up   = G_minus_upper[y + ny * x + ny * nbin * (i - 1)];
-                g0_up      = g_0;
+                g0_up      = g_0_tot_upper[y + ny * x + ny * nbin * (i - 1)];
 
                 // improved scattering correction factor E
                 E_low = 1.0;
@@ -757,13 +750,6 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 if (scat_corr) {
                     E_up  = E_parameter(w0_up, g0_up, i2s_transition);
                     E_low = E_parameter(w0_low, g0_low, i2s_transition);
-                }
-
-                // experimental clouds functionanlity
-                if (clouds) {
-                    g0_low =
-                        (g_0_tot_int[x + nbin * (i - 1)] + g_0_tot_lay[x + nbin * (i - 1)]) / 2.0;
-                    g0_up = (g_0_tot_lay[x + nbin * (i - 1)] + g_0_tot_int[x + nbin * i]) / 2.0;
                 }
 
                 // lower part of layer calculations
@@ -870,7 +856,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* P_term,         // in
                                  double* G_plus,         // in
                                  double* G_minus,        // in
-                                 double* g_0_tot_lay,    // in (clouds)
+                                 double* g_0_tot,        // in (clouds)
                                  double* A_buff,         // thomas worker
                                  double* B_buff,         // thomas worker
                                  double* C_buff,         // thomas worker
@@ -878,7 +864,6 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* C_prime_buff,   // thomas worker
                                  double* D_prime_buff,   // thomas worker
                                  double* X_buff,         // thomas worker
-                                 double  g_0,
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -943,7 +928,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             //   }
 
             double w0_N = w_0[y + ny * x + ny * nbin * 0];
-            double g0_N = g_0;
+            double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
             // improved scattering correction factor E
             double E_N = 1.0;
             if (scat_corr) {
@@ -961,18 +946,13 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             double P_0     = P_term[y + ny * x + ny * nbin * 0];
             double G_pl_0  = G_plus[y + ny * x + ny * nbin * 0];
             double G_min_0 = G_minus[y + ny * x + ny * nbin * 0];
-            double g0_0    = g_0;
+            double g0_0    = g_0_tot[y + ny * x + ny * nbin * 0];
 
 
             // improved scattering correction factor E
             double E_0 = 1.0;
             if (scat_corr) {
                 E_0 = E_parameter(w0_0, g0_0, i2s_transition);
-            }
-
-            // experimental clouds functionality
-            if (clouds) {
-                g0_0 = g_0_tot_lay[x + nbin * 0];
             }
 
             double B_down = planckband_lay[0 + x * (numinterfaces - 1 + 2)] * (N_0 + M_0 - P_0);
@@ -1015,7 +995,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             double P_down     = P_term[y + ny * x + ny * nbin * i];
             double G_pl_down  = G_plus[y + ny * x + ny * nbin * i];
             double G_min_down = G_minus[y + ny * x + ny * nbin * i];
-            double g0_down    = g_0;
+            double g0_down    = g_0_tot[y + ny * x + ny * nbin * i];
 
             double w0_up    = w_0[y + ny * x + ny * nbin * (i - 1)];
             double M_up     = M_term[y + ny * x + ny * nbin * (i - 1)];
@@ -1023,7 +1003,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             double P_up     = P_term[y + ny * x + ny * nbin * (i - 1)];
             double G_pl_up  = G_plus[y + ny * x + ny * nbin * (i - 1)];
             double G_min_up = G_minus[y + ny * x + ny * nbin * (i - 1)];
-            double g0_up    = g_0;
+            double g0_up    = g_0_tot[y + ny * x + ny * nbin * (i - 1)];
 
             // improved scattering correction factor E
             double E_down = 1.0;
@@ -1031,12 +1011,6 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             if (scat_corr) {
                 E_down = E_parameter(w0_down, g0_down, i2s_transition);
                 E_up   = E_parameter(w0_up, g0_up, i2s_transition);
-            }
-
-            // experimental clouds functionality
-            if (clouds) {
-                g0_down = g_0_tot_lay[x + nbin * i];
-                g0_up   = g_0_tot_lay[x + nbin * (i - 1)];
             }
 
             double B_down =
@@ -1093,17 +1067,12 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
             double P_N     = P_term[y + ny * x + ny * nbin * (N - 2)];
             double G_pl_N  = G_plus[y + ny * x + ny * nbin * (N - 2)];
             double G_min_N = G_minus[y + ny * x + ny * nbin * (N - 2)];
-            double g0_N    = g_0;
+            double g0_N    = g_0_tot[y + ny * x + ny * nbin * (N - 2)];
 
             // improved scattering correction factor E
             double E_N = 1.0;
             if (scat_corr) {
                 E_N = E_parameter(w0_N, g0_N, i2s_transition);
-            }
-
-            // experimental clouds functionality
-            if (clouds) {
-                g0_N = g_0_tot_lay[x + nbin * (N - 2)];
             }
 
             double B_up = planckband_lay[(N - 2) + x * (numinterfaces - 1 + 2)] * (N_N + M_N - P_N);
@@ -1189,9 +1158,8 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                                     double* C_prime_buff, // thomas worker
                                     double* D_prime_buff, // thomas worker
                                     double* X_buff,       // thomas worker
-                                    double* g_0_tot_lay,
-                                    double* g_0_tot_int,
-                                    double  g_0,
+                                    double* g_0_tot_upper,
+                                    double* g_0_tot_lower,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -1297,7 +1265,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                 P_up       = P_upper[y + ny * x + ny * nbin * i];
                 G_pl_up    = G_plus_upper[y + ny * x + ny * nbin * i];
                 G_min_up   = G_minus_upper[y + ny * x + ny * nbin * i];
-                g0_up      = g_0;
+                g0_up      = g_0_tot_upper[y + ny * x + ny * nbin * i];
 
                 // lower part of layer quantities
                 w0_low      = w_0_lower[y + ny * x + ny * nbin * i];
@@ -1307,7 +1275,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                 P_low       = P_lower[y + ny * x + ny * nbin * i];
                 G_pl_low    = G_plus_lower[y + ny * x + ny * nbin * i];
                 G_min_low   = G_minus_lower[y + ny * x + ny * nbin * i];
-                g0_low      = g_0;
+                g0_low      = g_0_tot_lower[y + ny * x + ny * nbin * i];
 
                 // improved scattering correction factor E
                 E_up  = 1.0;
@@ -1317,12 +1285,6 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                 if (scat_corr) {
                     E_up  = E_parameter(w0_up, g0_up, i2s_transition);
                     E_low = E_parameter(w0_low, g0_low, i2s_transition);
-                }
-
-                // experimental clouds functionality
-                if (clouds) {
-                    g0_up  = (g_0_tot_lay[x + nbin * i] + g_0_tot_int[x + nbin * (i + 1)]) / 2.0;
-                    g0_low = (g_0_tot_int[x + nbin * i] + g_0_tot_lay[x + nbin * i]) / 2.0;
                 }
 
                 // upper part of layer calculations
@@ -1444,7 +1406,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                 P_low       = P_lower[y + ny * x + ny * nbin * (i - 1)];
                 G_pl_low    = G_plus_lower[y + ny * x + ny * nbin * (i - 1)];
                 G_min_low   = G_minus_lower[y + ny * x + ny * nbin * (i - 1)];
-                g0_low      = g_0;
+                g0_low      = g_0_tot_lower[y + ny * x + ny * nbin * (i - 1)];
 
                 // upper part of layer quantities
                 w0_up      = w_0_upper[y + ny * x + ny * nbin * (i - 1)];
@@ -1454,7 +1416,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                 P_up       = P_upper[y + ny * x + ny * nbin * (i - 1)];
                 G_pl_up    = G_plus_upper[y + ny * x + ny * nbin * (i - 1)];
                 G_min_up   = G_minus_upper[y + ny * x + ny * nbin * (i - 1)];
-                g0_up      = g_0;
+                g0_up      = g_0_tot_upper[y + ny * x + ny * nbin * (i - 1)];
 
                 // improved scattering correction factor E
                 E_low = 1.0;
@@ -1464,13 +1426,6 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                 if (scat_corr) {
                     E_up  = E_parameter(w0_up, g0_up, i2s_transition);
                     E_low = E_parameter(w0_low, g0_low, i2s_transition);
-                }
-
-                // experimental clouds functionanlity
-                if (clouds) {
-                    g0_low =
-                        (g_0_tot_int[x + nbin * (i - 1)] + g_0_tot_lay[x + nbin * (i - 1)]) / 2.0;
-                    g0_up = (g_0_tot_lay[x + nbin * (i - 1)] + g_0_tot_int[x + nbin * i]) / 2.0;
                 }
 
                 // lower part of layer calculations

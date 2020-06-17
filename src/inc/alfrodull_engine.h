@@ -43,18 +43,19 @@ public:
         opacities.experimental_opacities_offset = opac;
     };
 
-    bool   real_star = false;
-    double fake_opac = 0.0;
-    double g_0       = 0.0;
-    double epsi      = 0.5;
-    double epsilon2  = 2.0 / 3.0;
-    double mu_star   = 0.0;
-    bool   scat      = false;
-    bool   scat_corr = false;
-    double R_planet  = 0.0;
-    double R_star    = 0.0;
-    double a         = 0.0;
-    bool   dir_beam  = false;
+    bool   real_star     = false;
+    double fake_opac     = 0.0;
+    double g_0           = 0.0;
+    double epsi          = 0.5;
+    double epsilon2      = 2.0 / 3.0;
+    double mu_star       = 0.0;
+    double mu_star_limit = 0.02; // about 2 degree off
+    bool   scat          = false;
+    bool   scat_corr     = false;
+    double R_planet      = 0.0;
+    double R_star        = 0.0;
+    double a             = 0.0;
+    bool   dir_beam      = false;
 
     bool geom_zenith_corr = false;
 
@@ -79,17 +80,19 @@ public:
                          double*     cloud_opac_int,
                          double*     cloud_scat_cross_lay,
                          double*     cloud_scat_cross_int,
-                         double*     g_0_tot_lay,
-                         double*     g_0_tot_int);
+                         double*     g_0_cloud_lay,
+                         double*     g_0_cloud_int,
+                         double      fcloud);
 
     double* cloud_opac_lay       = nullptr;
     double* cloud_opac_int       = nullptr;
     double* cloud_scat_cross_lay = nullptr;
     double* cloud_scat_cross_int = nullptr;
-    double* g_0_tot_lay          = nullptr;
-    double* g_0_tot_int          = nullptr;
+    double* g_0_cloud_lay        = nullptr;
+    double* g_0_cloud_int        = nullptr;
 
-    bool clouds = false;
+    bool   clouds = false;
+    double fcloud = 0.5;
 
     bool thomas = false;
     void allocate_internal_variables();
@@ -123,6 +126,8 @@ public:
 
     void set_z_calc_func(std::function<void()>& fun);
     void call_z_callback();
+
+    bool get_column_integrated_g0_w0(double* g0_, double* w0_);
 
     //private:
     opacity_table opacities;
@@ -179,7 +184,8 @@ public:
     cuda_device_memory<double> P_term;
     cuda_device_memory<double> G_plus;
     cuda_device_memory<double> G_minus;
-    cuda_device_memory<double> w_0;
+    cuda_device_memory<double> w0_wg;
+    cuda_device_memory<double> g0_wg;
 
     cuda_device_memory<double> A_buff;       // thomas worker
     cuda_device_memory<double> B_buff;       // thomas worker
@@ -199,8 +205,14 @@ public:
     cuda_device_memory<double> G_plus_lower;
     cuda_device_memory<double> G_minus_upper;
     cuda_device_memory<double> G_minus_lower;
-    cuda_device_memory<double> w_0_upper;
-    cuda_device_memory<double> w_0_lower;
+    cuda_device_memory<double> w0_wg_upper;
+    cuda_device_memory<double> w0_wg_lower;
+    cuda_device_memory<double> g0_wg_upper;
+    cuda_device_memory<double> g0_wg_lower;
+
+    // for output
+    cuda_device_memory<double> w0_band;
+    cuda_device_memory<double> g0_band;
 
     void compute_radiative_transfer(double*     dev_starflux,
                                     double*     dev_T_lay,
@@ -301,11 +313,10 @@ public:
                           bool    dir_beam,
                           bool    geom_zenith_corr);
 
-    bool populate_spectral_flux_iso_thomas(double* F_down_wg,   // out
-                                           double* F_up_wg,     // out
-                                           double* F_dir_wg,    // in
-                                           double* g_0_tot_lay, // in
-                                           double  g_0,
+    bool populate_spectral_flux_iso_thomas(double* F_down_wg, // out
+                                           double* F_up_wg,   // out
+                                           double* F_dir_wg,  // in
+                                           double* g_0_tot,   // in
                                            bool    singlewalk,
                                            double  Rstar,
                                            double  a,
@@ -316,11 +327,10 @@ public:
                                            bool    dir_beam,
                                            bool    clouds);
 
-    bool populate_spectral_flux_iso(double* F_down_wg,   // out
-                                    double* F_up_wg,     // out
-                                    double* F_dir_wg,    // in
-                                    double* g_0_tot_lay, // in
-                                    double  g_0,
+    bool populate_spectral_flux_iso(double* F_down_wg, // out
+                                    double* F_up_wg,   // out
+                                    double* F_dir_wg,  // in
+                                    double* g_0_tot,   // in
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -337,9 +347,8 @@ public:
                                        double* Fc_up_wg,
                                        double* F_dir_wg,
                                        double* Fc_dir_wg,
-                                       double* g_0_tot_lay,
-                                       double* g_0_tot_int,
-                                       double  g_0,
+                                       double* g_0_tot_upper,
+                                       double* g_0_tot_lower,
                                        bool    singlewalk,
                                        double  Rstar,
                                        double  a,
@@ -359,9 +368,8 @@ public:
                                               double* Fc_up_wg,
                                               double* F_dir_wg,
                                               double* Fc_dir_wg,
-                                              double* g_0_tot_lay,
-                                              double* g_0_tot_int,
-                                              double  g_0,
+                                              double* g_0_tot_upper,
+                                              double* g_0_tot_lower,
                                               bool    singlewalk,
                                               double  Rstar,
                                               double  a,

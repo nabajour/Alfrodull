@@ -154,6 +154,10 @@ public:
     bool store_updown_flux = true;
     bool store_net_flux    = true;
 
+    bool   clouds = false;
+    double fcloud = 0.5;
+
+    string cloud_filename;
 
 private:
     int spinup_start_step = -1;
@@ -202,6 +206,8 @@ private:
 
     cuda_device_memory<double> Qheat;
 
+    cuda_device_memory<double> w0_tot;
+    cuda_device_memory<double> g0_tot;
     // Debug print out function
     void debug_print_columns(ESP &esp, double cmustar, int nstep, int column_idx);
     void print_weighted_band_data_to_file(ESP &                       esp,

@@ -224,13 +224,14 @@ void wrap_compute_radiative_transfer(
         printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");
 }
 
-void set_clouds_data(const bool& clouds_,
-                     const long& cloud_opac_lay_,
-                     const long& cloud_opac_int_,
-                     const long& cloud_scat_cross_lay_,
-                     const long& cloud_scat_cross_int_,
-                     const long& g_0_tot_lay_,
-                     const long& g_0_tot_int_) {
+void set_clouds_data(const bool&   clouds_,
+                     const long&   cloud_opac_lay_,
+                     const long&   cloud_opac_int_,
+                     const long&   cloud_scat_cross_lay_,
+                     const long&   cloud_scat_cross_int_,
+                     const long&   g_0_tot_lay_,
+                     const long&   g_0_tot_int_,
+                     const double& fcloud_) {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
         return;
@@ -242,5 +243,6 @@ void set_clouds_data(const bool& clouds_,
                              (double*)cloud_scat_cross_lay_,
                              (double*)cloud_scat_cross_int_,
                              (double*)g_0_tot_lay_,
-                             (double*)g_0_tot_int_);
+                             (double*)g_0_tot_int_,
+                             fcloud_);
 }
