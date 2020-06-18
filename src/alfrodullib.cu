@@ -42,7 +42,6 @@ void init_parameters(const int&    nlayer_,
                      const double& g_0,
                      const double& epsi,
                      const double& epsilon2,
-                     const double& mu_star,
                      const bool&   scat,
                      const bool&   scat_corr,
                      const double& R_planet,
@@ -67,7 +66,6 @@ void init_parameters(const int&    nlayer_,
                             g_0,
                             epsi,
                             epsilon2,
-                            mu_star,
                             scat,
                             scat_corr,
                             R_planet,
@@ -179,14 +177,15 @@ void wrap_compute_radiative_transfer(
     long   Fc_dir_wg,
     double delta_tau_limit,
     // integrate_flux
-    long F_down_tot,
-    long F_up_tot,
-    long F_dir_tot,
-    long F_net,
-    long F_down_band,
-    long F_up_band,
-    long F_dir_band,
-    long F_up_TOA_spectrum) {
+    long   F_down_tot,
+    long   F_up_tot,
+    long   F_dir_tot,
+    long   F_net,
+    long   F_down_band,
+    long   F_up_band,
+    long   F_dir_band,
+    long   F_up_TOA_spectrum,
+    double mu_star) {
     if (Alf_ptr != nullptr)
         Alf_ptr->compute_radiative_transfer(
             (double*)dev_starflux, // in: pil
@@ -219,7 +218,7 @@ void wrap_compute_radiative_transfer(
             (double*)F_up_band,
             (double*)F_dir_band,
             (double*)F_up_TOA_spectrum,
-            Alf_ptr->mu_star);
+            mu_star);
     else
         printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");
 }

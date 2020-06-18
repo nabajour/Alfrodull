@@ -26,7 +26,6 @@ public:
                         const double& g_0,
                         const double& epsi,
                         const double& epsilon2,
-                        const double& mu_star,
                         const bool&   scat,
                         const bool&   scat_corr,
                         const double& R_planet,
@@ -48,7 +47,6 @@ public:
     double g_0           = 0.0;
     double epsi          = 0.5;
     double epsilon2      = 2.0 / 3.0;
-    double mu_star       = 0.0;
     double mu_star_limit = 0.02; // about 2 degree off
     bool   scat          = false;
     bool   scat_corr     = false;

@@ -53,7 +53,6 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const double& g_0_,
                                       const double& epsi_,
                                       const double& epsilon_2_,
-                                      const double& mu_star_,
                                       const bool&   scat_,
                                       const bool&   scat_corr_,
                                       const double& R_planet_,
@@ -75,7 +74,6 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     g_0              = g_0_;
     epsi             = epsi_;
     epsilon2         = epsilon_2_;
-    mu_star          = mu_star_;
     scat             = scat_;
     scat_corr        = scat_corr_;
     R_planet         = R_planet_;
@@ -241,15 +239,15 @@ void alfrodull_engine::allocate_internal_variables() {
               dummy}},
             {"delta_tau_wg",
              {delta_tau_wg.ptr_ref(), nlayer_wg_nbin, "delta_tau_wg", "dtw", true, dummy}},
-            {"delta_col_mass",
-             {delta_col_mass.ptr_ref(), nlayer, "delta_col_mass", "dcm", true, dummy}},
+            {"delta_colmass",
+             {delta_col_mass.ptr_ref(), nlayer, "delta_colmass", "dcm", true, dummy}},
             {"M_term", {M_term.ptr_ref(), nlayer_wg_nbin, "M_term", "Mt", true, dummy}},
             {"N_term", {N_term.ptr_ref(), nlayer_wg_nbin, "N_term", "Nt", true, dummy}},
             {"P_term", {P_term.ptr_ref(), nlayer_wg_nbin, "P_term", "Pt", true, dummy}},
             {"G_plus", {G_plus.ptr_ref(), nlayer_wg_nbin, "G_plus", "Gp", true, dummy}},
             {"G_minus", {G_minus.ptr_ref(), nlayer_wg_nbin, "G_minus", "Gm", true, dummy}},
-            {"w_0", {w_0.ptr_ref(), nlayer_wg_nbin, "w_0", "w0", true, dummy}},
-
+            {"w_0", {w0_wg.ptr_ref(), nlayer_wg_nbin, "w_0", "w0", true, dummy}},
+            {"g_0", {g0_wg.ptr_ref(), (int)g0_wg.get_size(), "g_0", "g0", true, dummy}},
 
         };
         // TODO: add thomas algorithm variables - if needed
@@ -333,8 +331,8 @@ void alfrodull_engine::allocate_internal_variables() {
              {G_minus_lower.ptr_ref(), nlayer_wg_nbin, "G_minus_lower", "Gml", true, dummy}},
 
 
-            {"w_0_upper", {w_0_upper.ptr_ref(), nlayer_wg_nbin, "w_0_upper", "w0u", true, dummy}},
-            {"w_0_lower", {w_0_lower.ptr_ref(), nlayer_wg_nbin, "w_0_lower", "w0l", true, dummy}},
+            {"w_0_upper", {w0_wg_upper.ptr_ref(), nlayer_wg_nbin, "w_0_upper", "w0u", true, dummy}},
+            {"w_0_lower", {w0_wg_lower.ptr_ref(), nlayer_wg_nbin, "w_0_lower", "w0l", true, dummy}},
 
         };
         BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
@@ -669,20 +667,21 @@ void alfrodull_engine::compute_radiative_transfer(
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
 
-    BENCH_POINT_I_S_PHY(debug_nstep,
-                        debug_col_idx,
-                        "Alf_prep_flx",
-                        (),
-                        ("opac_wg_lay",
-                         "opac_wg_int",
-                         "meanmolmass_lay",
-                         "meanmolmass_int",
-                         "cloud_scat_cross_lay"));
+    BENCH_POINT_I_S(debug_nstep,
+                    debug_col_idx,
+                    "Alf_prep_flx",
+                    (),
+                    ("opac_wg_lay",
+                     "opac_wg_int",
+                     "meanmolmass_lay",
+                     "meanmolmass_int",
+                     "cloud_scat_cross_lay",
+                     "planckband_lay"));
 
 
     if (interp_and_calc_flux_step) {
         if (iso) {
-            BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
+            BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
 
             mu_star = calculate_transmission_iso(*trans_wg,            // out
                                                  delta_colmass,        // in
@@ -698,17 +697,30 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  scat,
                                                  clouds);
 
-            BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_comp_trans", (), ("trans_wg_lay"));
+            BENCH_POINT_I_S(debug_nstep,
+                            debug_col_idx,
+                            "Alf_comp_trans",
+                            (),
+                            ("delta_colmass",
+                             "trans_wg",
+                             "delta_tau_wg",
+                             "M_term",
+                             "N_term",
+                             "P_term",
+                             "w_0",
+                             "g_0",
+                             "G_plus",
+                             "G_minus"));
         }
         else {
-            BENCH_POINT_I_S_PHY(debug_nstep,
-                                debug_col_idx,
-                                "Alf_prep_II",
-                                (),
-                                ("delta_col_upper", "delta_col_lower",
+            BENCH_POINT_I_S(debug_nstep,
+                            debug_col_idx,
+                            "Alf_prep_II",
+                            (),
+                            ("delta_col_upper", "delta_col_lower",
 
 
-                                 ));
+                             ));
             mu_star = calculate_transmission_noniso(*trans_wg_upper,
                                                     *trans_wg_lower,
                                                     *delta_col_upper,
@@ -729,28 +741,28 @@ void alfrodull_engine::compute_radiative_transfer(
                                                     mu_star,
                                                     scat,
                                                     clouds);
-            BENCH_POINT_I_S_PHY(debug_nstep,
-                                debug_col_idx,
-                                "Alf_comp_trans",
-                                (),
-                                ("trans_wg_upper",
-                                 "trans_wg_lower",
-                                 "delta_tau_wg_upper",
-                                 "delta_tau_wg_lower",
-                                 "planckband_lay",
-                                 "planckband_int",
-                                 "M_upper",
-                                 "M_lower",
-                                 "N_upper",
-                                 "N_lower",
-                                 "P_upper",
-                                 "P_lower",
-                                 "G_plus_upper",
-                                 "G_plus_lower",
-                                 "G_minus_upper",
-                                 "G_minus_lower",
-                                 "w_0_upper",
-                                 "w_0_lower"));
+            BENCH_POINT_I_S(debug_nstep,
+                            debug_col_idx,
+                            "Alf_comp_trans",
+                            (),
+                            ("trans_wg_upper",
+                             "trans_wg_lower",
+                             "delta_tau_wg_upper",
+                             "delta_tau_wg_lower",
+                             "planckband_lay",
+                             "planckband_int",
+                             "M_upper",
+                             "M_lower",
+                             "N_upper",
+                             "N_lower",
+                             "P_upper",
+                             "P_lower",
+                             "G_plus_upper",
+                             "G_plus_lower",
+                             "G_minus_upper",
+                             "G_minus_lower",
+                             "w_0_upper",
+                             "w_0_lower"));
         }
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -759,7 +771,7 @@ void alfrodull_engine::compute_radiative_transfer(
         direct_beam_flux(
             F_dir_wg, Fc_dir_wg, z_lay, mu_star, R_planet, R_star, a, dir_beam, geom_zenith_corr);
 
-        BENCH_POINT_I_S_PHY(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
+        BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
     }
@@ -804,7 +816,7 @@ void alfrodull_engine::compute_radiative_transfer(
         }
         cuda_check_status_or_exit(__FILE__, __LINE__);
 
-        BENCH_POINT_I_S_PHY(
+        BENCH_POINT_I_S(
             debug_nstep, debug_col_idx, "Alf_pop_spec_flx_thomas", (), ("F_up_wg", "F_down_wg"));
     }
     else {
@@ -859,7 +871,7 @@ void alfrodull_engine::compute_radiative_transfer(
             cuda_check_status_or_exit(__FILE__, __LINE__);
         }
 
-        BENCH_POINT_I_S_PHY(
+        BENCH_POINT_I_S(
             debug_nstep, debug_col_idx, "Alf_pop_spec_flx", (), ("F_up_wg", "F_down_wg"));
     }
 
@@ -878,7 +890,7 @@ void alfrodull_engine::compute_radiative_transfer(
                    F_up_TOA_spectrum,
                    gauss_weight);
 
-    BENCH_POINT_I_S_PHY(
+    BENCH_POINT_I_S(
         debug_nstep, debug_col_idx, "Alf_int_flx", (), ("F_up_band", "F_down_band", "F_dir_band"));
 
 

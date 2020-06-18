@@ -74,11 +74,6 @@ using std::string;
 // show progress bar
 #define COLUMN_LOOP_PROGRESS_BAR
 
-// Dont show column progress bar in comparison mode
-#ifdef BENCH_POINT_COMPARE
-#    undef COLUMN_LOOP_PROGRESS_BAR
-#endif // BENCH_POINT_COMPARE
-
 // debugging printout
 //#define DEBUG_PRINTOUT_ARRAYS
 // dump TP profile to run in HELIOS for profile comparison
@@ -211,8 +206,6 @@ bool two_streams_radiative_transfer::initialise_memory(
     // TODO: understand what needs to be stored per column. and what can be global for internal conputation
     // what needs to be passed outside or stored should be global, others can be per column
 
-    float mu_star = 0.0;
-
     R_star_SI = R_star_config * R_SUN;
 
     planet_star_dist_SI = planet_star_dist_config * AU;
@@ -240,7 +233,6 @@ bool two_streams_radiative_transfer::initialise_memory(
                        g_0,                 // const double& g_0_,
                        epsi,                // const double& epsi_,
                        epsilon_2,           // const double& epsilon_2_,
-                       mu_star,             // const double& mu_star_,
                        scat,                // const bool&   scat_,
                        scat_corr,           // const bool&   scat_corr_,
                        0.0,                 // const double& R_planet_, filled in later
@@ -440,7 +432,6 @@ bool two_streams_radiative_transfer::initialise_memory(
 
         //        {"col_mu_star", {col_mu_star.ptr_ref(), esp.point_num, "col_mu_star", "cMu", true, dummy}},
         {"AlfQheat", {Qheat.ptr_ref(), esp.point_num * nlayer, "AlfQheat", "aQh", true, dummy}}};
-
     BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
 #endif // BENCHMARKING
     return out;
@@ -741,7 +732,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
                 // use mu_star per column
                 double mu_star = -col_cos_zenith_angle_h[column_idx];
-
 #ifdef DUMP_HELIOS_TP
 
 
@@ -805,7 +795,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
 
-                BENCH_POINT_I_S_PHY(
+                BENCH_POINT_I_S(
                     nstep, column_idx, "Alf_interpTnP", (), ("T_lay", "T_int", "P_int"));
 
 #ifdef DUMP_HELIOS_TP
@@ -977,7 +967,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     }
     last_step = nstep;
 
-    BENCH_POINT_I_PHY(nstep, "Alf_phy_loop_E", (), ("F_up_tot", "F_down_tot", "AlfQheat"));
+    BENCH_POINT_I(nstep, "Alf_phy_loop_E", (), ("F_up_tot", "F_down_tot", "AlfQheat"));
 
     return true;
 }

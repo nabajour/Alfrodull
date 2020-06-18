@@ -177,13 +177,16 @@ __global__ void trans_iso(double* trans_wg,             // out
 
 
         if (scat) {
-            ray_cross   = scat_cross_lay[x + nbin * i];
-            cloud_cross = cloud_scat_cross_lay[x + nbin * i];
+            ray_cross = scat_cross_lay[x + nbin * i];
+            if (clouds)
+                cloud_cross = cloud_scat_cross_lay[x + nbin * i];
+            else
+                cloud_cross = 0.0;
             // DBG: cloud_cross = 0.0;
         }
         else {
-            ray_cross   = 0;
-            cloud_cross = 0;
+            ray_cross   = 0.0;
+            cloud_cross = 0.0;
         }
 
         if (clouds) {
@@ -238,7 +241,10 @@ __global__ void trans_iso(double* trans_wg,             // out
         // 	 N_term[y + ny * x + ny * nbin * i], zeta_min, trans, zeta_pl,
         // 	 epsi, w0, del_tau, g0);
 
-
+        epsi     = 0.5;
+        epsilon2 = 2.0 / 3.0;
+        //mu_star  = -0.89;
+        E = 1.0;
         if (fabs(G_pm_denom(w0, g0, epsi, mu_star, E)) < G_pm_denom_limit_for_mu_star_wiggler)
             *hit_G_pm_limit = true;
 
@@ -252,6 +258,11 @@ __global__ void trans_iso(double* trans_wg,             // out
             G_plus[y + ny * x + ny * nbin * i]  = G_plus_func(w0, g0, epsi, epsilon2, mu_star, E);
             G_minus[y + ny * x + ny * nbin * i] = G_minus_func(w0, g0, epsi, epsilon2, mu_star, E);
         }
+
+        // if (!isfinite(G_plus[y + ny * x + ny * nbin * i] ))
+        // printf("abnormal G_p\n");
+        // if (!isfinite(G_minus[y + ny * x + ny * nbin * i] ))
+        // printf("abnormal G_m\n");
     }
 }
 
@@ -327,11 +338,17 @@ __global__ void trans_noniso(double* trans_wg_upper,
             ray_cross_up =
                 (scat_cross_lay[x + nbin * i] + scat_cross_int[x + nbin * (i + 1)]) / 2.0;
             ray_cross_low = (scat_cross_int[x + nbin * i] + scat_cross_lay[x + nbin * i]) / 2.0;
-            cloud_cross_up =
-                (cloud_scat_cross_lay[x + nbin * i] + cloud_scat_cross_int[x + nbin * (i + 1)])
-                / 2.0;
-            cloud_cross_low =
-                (cloud_scat_cross_int[x + nbin * i] + cloud_scat_cross_lay[x + nbin * i]) / 2.0;
+            if (clouds) {
+                cloud_cross_up =
+                    (cloud_scat_cross_lay[x + nbin * i] + cloud_scat_cross_int[x + nbin * (i + 1)])
+                    / 2.0;
+                cloud_cross_low =
+                    (cloud_scat_cross_int[x + nbin * i] + cloud_scat_cross_lay[x + nbin * i]) / 2.0;
+            }
+            else {
+                cloud_cross_up  = 0.0;
+                cloud_cross_low = 0.0;
+            }
         }
         else {
             ray_cross_up    = 0;

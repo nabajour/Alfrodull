@@ -24,12 +24,13 @@ void wrap_compute_radiative_transfer(
     long   Fc_dir_wg,
     double delta_tau_limit,
     // integrate_flux
-    long F_down_tot,
-    long F_up_tot,
-    long F_net,
-    long F_down_band,
-    long F_up_band,
-    long F_dir_band);
+    long   F_down_tot,
+    long   F_up_tot,
+    long   F_net,
+    long   F_down_band,
+    long   F_up_band,
+    long   F_dir_band,
+    double mu_star);
 
 void init_alfrodull();
 void init_parameters(const int&    nlayer_,
@@ -40,7 +41,6 @@ void init_parameters(const int&    nlayer_,
                      const double& g_0,
                      const double& epsi,
                      const double& epsilon2,
-                     const double& mu_star,
                      const bool&   scat,
                      const bool&   scat_corr,
                      const double& R_planet,
