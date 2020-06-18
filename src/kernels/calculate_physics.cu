@@ -88,7 +88,7 @@ __device__ double G_limiter(double G, bool debug) {
 
 // calculates the single scattering albedo w0
 __device__ double single_scat_alb(double gas_scat_cross,
-                                  double opac_abs,
+                                  double gas_abs,
                                   double meanmolmass,
                                   double fcloud,
                                   double cloud_scat_cross,
@@ -97,17 +97,14 @@ __device__ double single_scat_alb(double gas_scat_cross,
 
     return min(
         (gas_scat_cross + fcloud * cloud_scat_cross)
-            / (gas_scat_cross + opac_abs * meanmolmass + fcloud * (cloud_scat_cross + cloud_abs)),
+            / (gas_scat_cross + gas_abs * meanmolmass + fcloud * (cloud_scat_cross + cloud_abs)),
         w_0_limit);
 }
 
-__device__ double g0_calc(double g0_gas,
-                          double gas_scat_cross,
-                          double fcloud,
-                          double cloud_scat_cross,
-                          double g0_cloud) {
-    double frac = gas_scat_cross + fcloud * cloud_scat_cross;
-    return (g0_gas * gas_scat_cross + fcloud * cloud_scat_cross * g0_cloud) / frac;
+// calculates the asymmetry parameter g0
+__device__ double
+g0_calc(double gas_scat_cross, double fcloud, double cloud_scat_cross, double g0_cloud) {
+    return (fcloud * cloud_scat_cross * g0_cloud) / (gas_scat_cross + fcloud * cloud_scat_cross);
 }
 
 // calculates the two-stream coupling coefficient Zeta_minus with the scattering coefficient E
