@@ -176,7 +176,7 @@ __global__ void trans_iso(double* trans_wg,             // out
         if (scat) {
             ray_cross = scat_cross_lay[x + nbin * i];
             if (clouds)
-                cloud_cross = cloud_scat_cross_lay[x + nbin * i];
+                cloud_cross = cloud_scat_cross_lay[x];
             else
                 cloud_cross = 0.0;
             // DBG: cloud_cross = 0.0;
@@ -187,17 +187,17 @@ __global__ void trans_iso(double* trans_wg,             // out
         }
 
         if (clouds) {
-            g0_cloud = g_0_tot_lay[x + nbin * i];
+            g0_cloud = g_0_tot_lay[x];
         }
 
-        g0 = g0_calc(g_0_gas, ray_cross, fcloud, cloud_cross, g0_cloud);
+        g0 = g0_calc(ray_cross, fcloud, cloud_cross, g0_cloud);
 
         double w0 = single_scat_alb(ray_cross,
                                     opac_wg_lay[y + ny * x + ny * nbin * i],
                                     meanmolmass_lay[i],
                                     fcloud,
                                     cloud_cross,
-                                    cloud_opac_lay[i],
+                                    cloud_opac_lay[x],
                                     w_0_limit);
 
 
@@ -210,12 +210,23 @@ __global__ void trans_iso(double* trans_wg,             // out
 
         delta_tau_wg[y + ny * x + ny * nbin * i] =
             delta_colmass[i]
-            * (opac_wg_lay[y + ny * x + ny * nbin * i] + fcloud * cloud_opac_lay[i]
-               + (ray_cross + fcloud * cloud_cross) / meanmolmass_lay[i]);
+            * (opac_wg_lay[y + ny * x + ny * nbin * i] + fcloud * (cloud_opac_lay[x] + cloud_cross)
+               + ray_cross / meanmolmass_lay[i]);
         double del_tau                       = delta_tau_wg[y + ny * x + ny * nbin * i];
         trans_wg[y + ny * x + ny * nbin * i] = trans_func(epsi, del_tau, w0, g0, E);
         double trans                         = trans_wg[y + ny * x + ny * nbin * i];
 
+        // printf("%d: w0: %g, g0: %g dtau: %g sc: %g csc: %g mabs: %g, cabs: %g cg0: %g mmm: %g\n",
+        //        x,
+        //        w0,
+        //        g0,
+        //        del_tau,
+        //        ray_cross,
+        //        cloud_cross,
+        //        opac_wg_lay[y + ny * x + ny * nbin * i],
+        //        cloud_opac_lay[x],
+        //        g0_cloud,
+        //        meanmolmass_lay[i]);
         double zeta_min = zeta_minus(w0, g0, E);
         double zeta_pl  = zeta_plus(w0, g0, E);
 
@@ -336,11 +347,8 @@ __global__ void trans_noniso(double* trans_wg_upper,
                 (scat_cross_lay[x + nbin * i] + scat_cross_int[x + nbin * (i + 1)]) / 2.0;
             ray_cross_low = (scat_cross_int[x + nbin * i] + scat_cross_lay[x + nbin * i]) / 2.0;
             if (clouds) {
-                cloud_cross_up =
-                    (cloud_scat_cross_lay[x + nbin * i] + cloud_scat_cross_int[x + nbin * (i + 1)])
-                    / 2.0;
-                cloud_cross_low =
-                    (cloud_scat_cross_int[x + nbin * i] + cloud_scat_cross_lay[x + nbin * i]) / 2.0;
+                cloud_cross_up  = (cloud_scat_cross_lay[x] + cloud_scat_cross_int[x]) / 2.0;
+                cloud_cross_low = (cloud_scat_cross_int[x] + cloud_scat_cross_lay[x]) / 2.0;
             }
             else {
                 cloud_cross_up  = 0.0;
@@ -356,12 +364,12 @@ __global__ void trans_noniso(double* trans_wg_upper,
 
 
         if (clouds) {
-            g0_up  = (g_0_tot_lay[x + nbin * i] + g_0_tot_int[x + nbin * (i + 1)]) / 2.0;
-            g0_low = (g_0_tot_int[x + nbin * i] + g_0_tot_lay[x + nbin * i]) / 2.0;
+            g0_cloud_up  = (g_0_tot_lay[x] + g_0_tot_int[x]) / 2.0;
+            g0_cloud_low = (g_0_tot_int[x] + g_0_tot_lay[x]) / 2.0;
         }
 
-        g0_up  = g0_calc(g_0_gas, ray_cross_up, fcloud, cloud_cross_up, g0_cloud_up);
-        g0_low = g0_calc(g_0_gas, ray_cross_low, fcloud, cloud_cross_low, g0_cloud_low);
+        g0_up  = g0_calc(ray_cross_up, fcloud, cloud_cross_up, g0_cloud_up);
+        g0_low = g0_calc(ray_cross_low, fcloud, cloud_cross_low, g0_cloud_low);
 
         g0_wg_upper[y + ny * x + ny * nbin * i] = g0_up;
         g0_wg_lower[y + ny * x + ny * nbin * i] = g0_low;
@@ -372,8 +380,8 @@ __global__ void trans_noniso(double* trans_wg_upper,
         utype opac_low =
             (opac_wg_int[y + ny * x + ny * nbin * i] + opac_wg_lay[y + ny * x + ny * nbin * i])
             / 2.0;
-        utype cloud_opac_up  = (cloud_opac_lay[i] + cloud_opac_int[i + 1]) / 2.0;
-        utype cloud_opac_low = (cloud_opac_int[i] + cloud_opac_lay[i]) / 2.0;
+        utype cloud_opac_up  = (cloud_opac_lay[x] + cloud_opac_int[x]) / 2.0;
+        utype cloud_opac_low = (cloud_opac_int[x] + cloud_opac_lay[x]) / 2.0;
 
         utype meanmolmass_up  = (meanmolmass_lay[i] + meanmolmass_int[i + 1]) / 2.0;
         utype meanmolmass_low = (meanmolmass_int[i] + meanmolmass_lay[i]) / 2.0;

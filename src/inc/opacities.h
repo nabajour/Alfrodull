@@ -7,6 +7,8 @@
 #include "cuda_device_memory.h"
 #include "storage.h"
 
+#include "opacities_helpers.h"
+
 // class to handle opacities and meanmolmass from k_table
 // loads data table
 // initialise variables for ref table management
@@ -20,7 +22,7 @@ public:
 
     bool load_opacity_table(const string& filename);
 
-      std::unique_ptr<double[]> data_opac_wave = nullptr;
+    std::unique_ptr<double[]> data_opac_wave = nullptr;
     //private:
     string opacity_filename;
 
@@ -49,7 +51,6 @@ public:
     cuda_device_memory<double> dev_opac_interwave;
 
     cuda_device_memory<double> dev_opac_deltawave;
-
 
 
     // needed for interpolate_opacities

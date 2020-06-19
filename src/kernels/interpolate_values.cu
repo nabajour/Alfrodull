@@ -20,7 +20,6 @@ __global__ void interpolate_temperature(double* tlay, double* tint, int numinter
     }
 }
 
-
 // interpolates the Planck function for the layer temperatures from the pre-tabulated values
 __global__ void planck_interpol_layer(double* temp,           // in
                                       double* planckband_lay, // out
@@ -74,7 +73,7 @@ __global__ void planck_interpol_layer(double* temp,           // in
                 planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + tdown * nwave];
             }
 #ifdef ZERO_PLANCK_FUNCTION
-	    planckband_lay[i + x * (numlayers + 2)] = 0.0;
+            planckband_lay[i + x * (numlayers + 2)] = 0.0;
 #endif //  ZERO_PLANCK_FUNCTION
         }
     }
@@ -110,7 +109,7 @@ __global__ void planck_interpol_interface(double* temp,           // in
             planckband_int[i + x * numinterfaces] = planck_grid[x + tdown * nwave];
         }
 #ifdef ZERO_PLANCK_FUNCTION
-	planckband_int[i + x * numinterfaces] = 0.0;
+        planckband_int[i + x * numinterfaces] = 0.0;
 #endif //  ZERO_PLANCK_FUNCTION
     }
 }
@@ -140,10 +139,10 @@ __global__ void interpolate_opacities(
 
     if (x < nbin && i < nlay_or_nint) {
 
-      // TODO: check what this is supposed to do, does this actually depend on the wavelength resolution ?
-      // looks like it's used to clip the bottom of interpolated opacity to opac_limit when bellow a certain
-      // wavelength threshold ? (in the example, at 133um ? not at 1um...)
-      // see comment above in parameters. "opacity limit for max cutoff for low wavelength bin idx"
+        // TODO: check what this is supposed to do, does this actually depend on the wavelength resolution ?
+        // looks like it's used to clip the bottom of interpolated opacity to opac_limit when bellow a certain
+        // wavelength threshold ? (in the example, at 133um ? not at 1um...)
+        // see comment above in parameters. "opacity limit for max cutoff for low wavelength bin idx"
         int x_1micron = lrint(nbin * 2.0 / 3.0);
 
         double deltaopactemp = (opactemp[ntemp - 1] - opactemp[0]) / (ntemp - 1.0);

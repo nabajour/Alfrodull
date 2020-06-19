@@ -1,5 +1,7 @@
 #pragma once
 
+
+#include "cloud_opacities.h"
 #include "cuda_device_memory.h"
 #include "opacities.h"
 #include "planck_table.h"
@@ -128,7 +130,8 @@ public:
     bool get_column_integrated_g0_w0(double* g0_, double* w0_);
 
     //private:
-    opacity_table opacities;
+    opacity_table       opacities;
+    cloud_opacity_table cloud_opacities;
 
     planck_table plancktable;
 

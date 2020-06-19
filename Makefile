@@ -70,7 +70,7 @@ vpath %.cpp $(SHARED_MODULES_DIR)
 
 
 # objects
-obj_cuda := alfrodull_engine.o alfrodullib.o planck_table.o opacities.o atomic_add.o calculate_physics.o integrate_flux.o interpolate_values.o math_helpers.o two_streams_radiative_transfer.o 
+obj_cuda := alfrodull_engine.o alfrodullib.o planck_table.o opacities.o cloud_opacities.o atomic_add.o calculate_physics.o integrate_flux.o interpolate_values.o math_helpers.o two_streams_radiative_transfer.o 
 obj_cpp := gauss_legendre_weights.o 
 obj :=  $(obj_cuda) $(obj_cpp)
 

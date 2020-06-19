@@ -2,6 +2,7 @@
 #include "gauss_legendre_weights.h"
 
 #include "calculate_physics.h"
+#include "inc/cloud_opacities.h"
 #include "integrate_flux.h"
 #include "interpolate_values.h"
 

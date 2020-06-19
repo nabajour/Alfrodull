@@ -250,6 +250,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     alf.set_experimental_opacity_offset(experimental_opacities_offset);
 
     alf.load_opacities(opacities_file);
+
     cudaDeviceSynchronize();
     log::printf("Loaded opacities, using %d bins with %d weights per bin\n",
                 alf.opacities.nbin,
@@ -363,12 +364,6 @@ bool two_streams_radiative_transfer::initialise_memory(
     g0_tot.allocate(esp.point_num * nlayer);
     w0_tot.allocate(esp.point_num * nlayer);
 
-    g_0_tot_lay.allocate(nlayer_nbin);
-    g_0_tot_int.allocate(ninterface_nbin);
-    cloud_opac_lay.allocate(nlayer);
-    cloud_opac_int.allocate(ninterface);
-    cloud_scat_cross_lay.allocate(nlayer_nbin);
-    cloud_scat_cross_int.allocate(ninterface_nbin);
 
     Qheat.allocate(esp.point_num * nlayer);
 
@@ -377,26 +372,47 @@ bool two_streams_radiative_transfer::initialise_memory(
     g0_tot.zero();
     w0_tot.zero();
 
-    // TODO: currently, all clouds set to zero. Not used.
-    g_0_tot_lay.zero();
-    g_0_tot_int.zero();
-    cloud_opac_lay.zero();
-    cloud_opac_int.zero();
-    cloud_scat_cross_lay.zero();
-    cloud_scat_cross_int.zero();
 
-    {
+    if (clouds) {
         // load cloud file
+        alf.cloud_opacities.load(cloud_filename);
+
+        alf.set_clouds_data(clouds,
+                            *alf.cloud_opacities.dev_abs_cross_sections,
+                            *alf.cloud_opacities.dev_abs_cross_sections,
+                            *alf.cloud_opacities.dev_scat_cross_sections,
+                            *alf.cloud_opacities.dev_scat_cross_sections,
+                            *alf.cloud_opacities.dev_asymmetry,
+                            *alf.cloud_opacities.dev_asymmetry,
+                            fcloud);
+    }
+    else {
+        // all clouds set to zero. Not used.
+        g_0_tot_lay.allocate(nbin);
+        g_0_tot_int.allocate(nbin);
+        cloud_opac_lay.allocate(nbin);
+        cloud_opac_int.allocate(nbin);
+        cloud_scat_cross_lay.allocate(nbin);
+        cloud_scat_cross_int.allocate(nbin);
+
+
+        g_0_tot_lay.zero();
+        g_0_tot_int.zero();
+        cloud_opac_lay.zero();
+        cloud_opac_int.zero();
+        cloud_scat_cross_lay.zero();
+        cloud_scat_cross_int.zero();
+
+        alf.set_clouds_data(clouds,
+                            *cloud_opac_lay,
+                            *cloud_opac_int,
+                            *cloud_scat_cross_lay,
+                            *cloud_scat_cross_int,
+                            *g_0_tot_lay,
+                            *g_0_tot_int,
+                            fcloud);
     }
 
-    alf.set_clouds_data(clouds,
-                        *cloud_opac_lay,
-                        *cloud_opac_int,
-                        *cloud_scat_cross_lay,
-                        *cloud_scat_cross_int,
-                        *g_0_tot_lay,
-                        *g_0_tot_int,
-                        fcloud);
 
     cudaError_t err = cudaGetLastError();
 
