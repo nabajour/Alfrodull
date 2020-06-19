@@ -14,7 +14,7 @@ timestep = 300
 
 # output
 # output every n steps
-n_out = 1
+n_out = 144
 
 # write to log file at a different cadence from n_out
 custom_log_n_out = false
@@ -94,7 +94,7 @@ NonHydro = true
 DeepModel = true
 
 # Initial conditions
-rest = false
+rest = true
 
 # initial conditions file, used if rest is set to false
 # (path relative to current working directory)
@@ -343,7 +343,7 @@ Alf_opacities_file = ./Alfrodull/input/opac_sample_r5.h5
 #Alf_opacities_file = ./Alfrodull/input/opac_sample_r5.h5
 
 # clouds
-Alf_clouds = false
+Alf_clouds = true
 Alf_fcloud = 1.0
 Alf_cloudfile = ./Alfrodull/input/cloud_sample_r5.h5
 
