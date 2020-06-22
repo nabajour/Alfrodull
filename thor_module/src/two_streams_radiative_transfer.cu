@@ -104,42 +104,42 @@ two_streams_radiative_transfer::~two_streams_radiative_transfer() {
 }
 
 void two_streams_radiative_transfer::print_config() {
-    log::printf("Tstar: %g\n", T_star);
-    log::printf("T_intern: %g", T_internal);
-    log::printf("Alf_iso: %s\n", iso ? "true" : "false");
-    log::printf("Alf_real_star: %s\n", real_star ? "true" : "false");
-    log::printf("Alf_fake_opac: %f\n", fake_opac);
+    log::printf("    Tstar: %g\n", T_star);
+    log::printf("    T_intern: %g", T_internal);
+    log::printf("    Alf_iso: %s\n", iso ? "true" : "false");
+    log::printf("    Alf_real_star: %s\n", real_star ? "true" : "false");
+    log::printf("    Alf_fake_opac: %f\n", fake_opac);
 
-    log::printf("Alf_stellar_spectrum: %s\n", stellar_spectrum_file.c_str());
+    log::printf("    Alf_stellar_spectrum: %s\n", stellar_spectrum_file.c_str());
 
-    log::printf("Alf_thomas: %s\n", thomas ? "true" : "false");
-    log::printf("Alf_scat_single_walk: %s\n", scat_single_walk ? "true" : "false");
-    log::printf("Alf_exp_opac_offset: %g\n", experimental_opacities_offset);
+    log::printf("    Alf_thomas: %s\n", thomas ? "true" : "false");
+    log::printf("    Alf_scat_single_walk: %s\n", scat_single_walk ? "true" : "false");
+    log::printf("    Alf_exp_opac_offset: %g\n", experimental_opacities_offset);
 
-    log::printf("Alf_g_0: %f\n", g_0);
-    //    log::printf("Alf_diffusivity: %f\n", diffusivity);
-    log::printf("Alf_epsilon_2: %f\n", epsilon_2);
+    log::printf("    Alf_g_0: %f\n", g_0);
+    //    log::printf("    Alf_diffusivity: %f\n", diffusivity);
+    log::printf("    Alf_epsilon_2: %f\n", epsilon_2);
 
-    log::printf("Alf_G_pm_max_limiter: %s\n", G_pm_limiter ? "true" : "false");
-    log::printf("Alf_G_pm_denom_limit: %f\n", G_pm_denom_limit);
-    log::printf("Alf_G_pm_mu_star_increment: %f\n", mu_star_wiggle_increment);
+    log::printf("    Alf_G_pm_max_limiter: %s\n", G_pm_limiter ? "true" : "false");
+    log::printf("    Alf_G_pm_denom_limit: %f\n", G_pm_denom_limit);
+    log::printf("    Alf_G_pm_mu_star_increment: %f\n", mu_star_wiggle_increment);
 
-    log::printf("Alf_scat: %s\n", scat ? "true" : "false");
-    log::printf("Alf_scat_corr: %s\n", scat_corr ? "true" : "false");
-    log::printf("R_star: %f [R_SUN]\n", R_star_config);
-    log::printf("planet star dist: %f [au]\n", planet_star_dist_config);
+    log::printf("    Alf_scat: %s\n", scat ? "true" : "false");
+    log::printf("    Alf_scat_corr: %s\n", scat_corr ? "true" : "false");
+    log::printf("    R_star: %f [R_SUN]\n", R_star_config);
+    log::printf("    planet star dist: %f [au]\n", planet_star_dist_config);
 
-    log::printf("Alf_dir_beam: %s\n", dir_beam ? "true" : "false");
-    log::printf("Alf_geom_zenith_corr: %s\n", geom_zenith_corr ? "true" : "false");
+    log::printf("    Alf_dir_beam: %s\n", dir_beam ? "true" : "false");
+    log::printf("    Alf_geom_zenith_corr: %s\n", geom_zenith_corr ? "true" : "false");
 
-    log::printf("Alf_w_0_limit: %f\n", w_0_limit);
-    log::printf("Alf_i2s_transition: %f\n", i2s_transition);
-    log::printf("Alf_opacities_file: %s\n", opacities_file.c_str());
-    log::printf("Alf_compute_every_nstep: %d\n", compute_every_n_iteration);
+    log::printf("    Alf_w_0_limit: %f\n", w_0_limit);
+    log::printf("    Alf_i2s_transition: %f\n", i2s_transition);
+    log::printf("    Alf_opacities_file: %s\n", opacities_file.c_str());
+    log::printf("    Alf_compute_every_nstep: %d\n", compute_every_n_iteration);
 
-    log::printf("Alf_clouds: %s\n", clouds ? "true" : "false");
-    log::printf("Alf_fcloud: %g\n", fcloud);
-    log::printf("Alf_cloudfile: %s\n", cloud_filename.c_str());
+    log::printf("    Alf_clouds: %s\n", clouds ? "true" : "false");
+    log::printf("    Alf_fcloud: %g\n", fcloud);
+    log::printf("    Alf_cloudfile: %s\n", cloud_filename.c_str());
     // spinup-spindown parameters
     log::printf("    Spin up start step          = %d.\n", spinup_start_step);
     log::printf("    Spin up stop step           = %d.\n", spinup_stop_step);
