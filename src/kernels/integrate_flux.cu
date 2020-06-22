@@ -452,10 +452,10 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
             // BOA boundary -- surface emission and reflection
             // TODO: move if switch outside of loop to make it unnecessary
             if (i == 0) {
-                double BOA_part =
-                    PI
-                    * planckband_lay[numinterfaces
-                                     + x * (numinterfaces - 1 + 2)]; // ghost layer plank emission
+                double BOA_part = 0.0;
+                // PI
+                // * planckband_lay[numinterfaces
+                //                  + x * (numinterfaces - 1 + 2)]; // ghost layer plank emission
                 double reflected_part =
                     (F_dir_wg[y + ny * x + ny * nbin * i] + F_down_wg[y + ny * x + ny * nbin * i]);
 
@@ -717,7 +717,8 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                     (F_dir_wg[y + ny * x + ny * nbin * i] + F_down_wg[y + ny * x + ny * nbin * i]);
 
                 // this is the surface/BOA emission. it correctly includes the emissivity e = (1 - albedo)
-                double BOA_part = PI * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+                // double BOA_part = PI * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+                double BOA_part = 0.0;
 
                 F_up_wg[y + ny * x + ny * nbin * i] =
                     reflected_part
@@ -937,8 +938,9 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                 E_N = E_parameter(w0_N, g0_N, i2s_transition);
             }
 
-            F_BOA_up = PI * (1.0 - w0_N) / (E_N - w0_N)
-                       * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+            // F_BOA_up = PI * (1.0 - w0_N) / (E_N - w0_N)
+            //            * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+            F_BOA_up = 0.0;
         }
 
         {
@@ -1384,7 +1386,8 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
             // BOA boundary -- surface emission and reflection
             if (i == 0) {
                 // this is the surface/BOA emission. it correctly includes the emissivity e = (1 - albedo)
-                double F_BOA = PI * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+                // double F_BOA = PI * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+                double F_BOA = 0.0;
 
 
                 // Factors for upward equation, top of layer i - bottom of layer i - 1
