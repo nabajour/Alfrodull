@@ -154,7 +154,6 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* P_term,         // in
                                  double* G_plus,         // in
                                  double* G_minus,        // in
-                                 double* g_0_tot,        // in (clouds)
                                  double* A_buff,         // thomas worker
                                  double* B_buff,         // thomas worker
                                  double* C_buff,         // thomas worker
@@ -162,6 +161,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* C_prime_buff,   // thomas worker
                                  double* D_prime_buff,   // thomas worker
                                  double* X_buff,         // thomas worker
+                                 double* g_0_tot,        // in (clouds)
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,

@@ -202,8 +202,8 @@ private:
     cuda_device_memory<double> star_flux;
     cuda_device_memory<double> g_0_tot_lay;
     cuda_device_memory<double> g_0_tot_int;
-    cuda_device_memory<double> cloud_opac_lay;
-    cuda_device_memory<double> cloud_opac_int;
+    cuda_device_memory<double> cloud_abs_cross_lay;
+    cuda_device_memory<double> cloud_abs_cross_int;
     cuda_device_memory<double> cloud_scat_cross_lay;
     cuda_device_memory<double> cloud_scat_cross_int;
 

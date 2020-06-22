@@ -598,7 +598,6 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                 G_pl_up    = G_plus_upper[y + ny * x + ny * nbin * i];
                 G_min_up   = G_minus_upper[y + ny * x + ny * nbin * i];
                 g0_up      = g_0_tot_upper[y + ny * x + ny * nbin * i];
-                ;
 
                 // lower part of layer quantities
                 w0_low      = w_0_lower[y + ny * x + ny * nbin * i];
@@ -859,7 +858,6 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* P_term,         // in
                                  double* G_plus,         // in
                                  double* G_minus,        // in
-                                 double* g_0_tot,        // in (clouds)
                                  double* A_buff,         // thomas worker
                                  double* B_buff,         // thomas worker
                                  double* C_buff,         // thomas worker
@@ -867,6 +865,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* C_prime_buff,   // thomas worker
                                  double* D_prime_buff,   // thomas worker
                                  double* X_buff,         // thomas worker
+                                 double* g_0_tot,        // in (clouds)
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,

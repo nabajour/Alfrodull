@@ -392,22 +392,22 @@ bool two_streams_radiative_transfer::initialise_memory(
         // all clouds set to zero. Not used.
         g_0_tot_lay.allocate(nbin);
         g_0_tot_int.allocate(nbin);
-        cloud_opac_lay.allocate(nbin);
-        cloud_opac_int.allocate(nbin);
+        cloud_abs_cross_lay.allocate(nbin);
+        cloud_abs_cross_int.allocate(nbin);
         cloud_scat_cross_lay.allocate(nbin);
         cloud_scat_cross_int.allocate(nbin);
 
 
         g_0_tot_lay.zero();
         g_0_tot_int.zero();
-        cloud_opac_lay.zero();
-        cloud_opac_int.zero();
+        cloud_abs_cross_lay.zero();
+        cloud_abs_cross_int.zero();
         cloud_scat_cross_lay.zero();
         cloud_scat_cross_int.zero();
 
         alf.set_clouds_data(clouds,
-                            *cloud_opac_lay,
-                            *cloud_opac_int,
+                            *cloud_abs_cross_lay,
+                            *cloud_abs_cross_int,
                             *cloud_scat_cross_lay,
                             *cloud_scat_cross_int,
                             *g_0_tot_lay,
@@ -728,8 +728,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
                 // g_0_tot_lay.zero();
                 // g_0_tot_int.zero();
-                // cloud_opac_lay.zero();
-                // cloud_opac_int.zero();
+                // cloud_abs_cross_lay.zero();
+                // cloud_abs_cross_int.zero();
                 // cloud_scat_cross_lay.zero();
                 // cloud_scat_cross_int.zero();
                 int num_layers = esp.nv;

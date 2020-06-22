@@ -76,16 +76,16 @@ public:
     cuda_device_memory<bool> hit_G_pm_denom_limit;
     // call if using clouds, to set data array pointers
     void set_clouds_data(const bool& clouds,
-                         double*     cloud_opac_lay,
-                         double*     cloud_opac_int,
+                         double*     cloud_abs_cross_lay,
+                         double*     cloud_abs_cross_int,
                          double*     cloud_scat_cross_lay,
                          double*     cloud_scat_cross_int,
                          double*     g_0_cloud_lay,
                          double*     g_0_cloud_int,
                          double      fcloud);
 
-    double* cloud_opac_lay       = nullptr;
-    double* cloud_opac_int       = nullptr;
+    double* cloud_abs_cross_lay  = nullptr;
+    double* cloud_abs_cross_int  = nullptr;
     double* cloud_scat_cross_lay = nullptr;
     double* cloud_scat_cross_int = nullptr;
     double* g_0_cloud_lay        = nullptr;
@@ -272,7 +272,7 @@ public:
     double calculate_transmission_iso(double* trans_wg,             // out
                                       double* delta_colmass,        // in
                                       double* opac_wg_lay,          // in
-                                      double* cloud_opac_lay,       // in
+                                      double* cloud_abs_cross_lay,  // in
                                       double* meanmolmass_lay,      // in
                                       double* cloud_scat_cross_lay, // in
                                       double* g_0_tot_lay,          // in
@@ -289,8 +289,8 @@ public:
                                          double* delta_col_lower,
                                          double* opac_wg_lay,
                                          double* opac_wg_int,
-                                         double* cloud_opac_lay,
-                                         double* cloud_opac_int,
+                                         double* cloud_abs_cross_lay,
+                                         double* cloud_abs_cross_int,
                                          double* meanmolmass_lay,
                                          double* meanmolmass_int,
                                          double* cloud_scat_cross_lay,

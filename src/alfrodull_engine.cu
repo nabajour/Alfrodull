@@ -157,6 +157,10 @@ void alfrodull_engine::allocate_internal_variables() {
         G_plus_lower.allocate(nlayer_wg_nbin);
         G_minus_upper.allocate(nlayer_wg_nbin);
         G_minus_lower.allocate(nlayer_wg_nbin);
+
+        // for computations
+        g0_wg_upper.allocate(nlayer_wg_nbin);
+        g0_wg_lower.allocate(nlayer_wg_nbin);
         w0_wg_upper.allocate(nlayer_wg_nbin);
         w0_wg_lower.allocate(nlayer_wg_nbin);
 
@@ -166,10 +170,6 @@ void alfrodull_engine::allocate_internal_variables() {
 
         g0_band.allocate(nlayer_nbin);
         w0_band.allocate(nlayer_nbin);
-
-        // for computations
-        g0_wg_upper.allocate(nlayer_wg_nbin);
-        g0_wg_lower.allocate(nlayer_wg_nbin);
 
         delta_col_upper.allocate(nlayer);
         delta_col_lower.allocate(nlayer);
@@ -503,19 +503,25 @@ void alfrodull_engine::call_z_callback() {
 }
 
 void alfrodull_engine::set_clouds_data(const bool& clouds_,
-                                       double*     cloud_opac_lay_,
-                                       double*     cloud_opac_int_,
+                                       double*     cloud_abs_cross_lay_,
+                                       double*     cloud_abs_cross_int_,
                                        double*     cloud_scat_cross_lay_,
                                        double*     cloud_scat_cross_int_,
-                                       double*     g_0_tot_lay_,
-                                       double*     g_0_tot_int_,
+                                       double*     g_0_cloud_lay_,
+                                       double*     g_0_cloud_int_,
                                        double      fcloud_) {
-    cloud_opac_lay       = cloud_opac_lay_;
-    cloud_opac_int       = cloud_opac_int_;
+    // For now, cloud data are values per wavelength bins, with the input computed for the
+    // correct wavelength bins, and used for the full column
+    // so this is directly forwarded as "layer and interface" values,
+    // for usage per volume, we need to allocate these arrays per volume
+    // and an interpolation/lookup function from the input table to the volume
+    // element parameters (P,T,...)  needs to be implemented, similar to opacity lookup.
+    cloud_abs_cross_lay  = cloud_abs_cross_lay_;
+    cloud_abs_cross_int  = cloud_abs_cross_int_;
     cloud_scat_cross_lay = cloud_scat_cross_lay_;
     cloud_scat_cross_int = cloud_scat_cross_int_;
-    g_0_cloud_lay        = g_0_tot_lay_;
-    g_0_cloud_int        = g_0_tot_int_;
+    g_0_cloud_lay        = g_0_cloud_lay_;
+    g_0_cloud_int        = g_0_cloud_int_;
 
     clouds = clouds_;
     fcloud = fcloud_;
@@ -538,111 +544,24 @@ void alfrodull_engine::compute_radiative_transfer(
     double*     dev_p_int, // in: ioi, mmmi, kii
     const bool& interpolate_temp_and_pres,
     const bool& interp_and_calc_flux_step,
-    // calculate_transmission_iso
-    //double* trans_wg,        // out
-    //double* opac_wg_lay,     // in
-    //double* cloud_opac_lay,  // in
-    //double* meanmolmass_lay, // in
-    //double* cloud_scat_cross_lay, // in
-    //double* g_0_tot_lay,       // in
-    //double  g_0,
-    //double  epsi,
-    //double  mu_star,
-    //int     scat,
-    //int     ny,
-    //int     clouds,
-    //int     scat_corr
-
-
-    // calculate_transmission_non_iso
-    // double* trans_wg,        // out
-    // double* trans_wg_upper,
-    // double* trans_wg_lower,
-    // double* cloud_opac_lay,
-    // double* cloud_opac_int,
-    // double* cloud_scat_cross_lay,
-    // double* cloud_scat_cross_int,
-    // double* g_0_tot_lay,
-    // double* g_0_tot_int,
-    // double  g_0,
-    // double  epsi,
-    // double  mu_star,
-    // int     scat,
-    // int     clouds,
-    // int     scat_corr,
-    // direct_beam_flux
-    //double* F_dir_wg,
-    //double* Fc_dir_wg,
-    double* z_lay,
-    //double  mu_star,
-    // double R_planet,
-    // double R_star,
-    // double a,
-    // int    dir_beam,
-    // int    geom_zenith_corr,
-    //int     ny
-
-    // spectral flux loop
-    bool single_walk,
-    // int scat_val, -> same as scat
-
-
-    // populate_spectral_flux_iso
-    //double* F_down_wg,    // out
-    //double* F_up_wg,      // out
-    //double* F_dir_wg,     // in
-    //double* g_0_tot_lay,   // in
-    //double  g_0,
-    // int     singlewalk, -> single_walk
-    //                                double  Rstar, -> R_star
-    //double  a,
-    // int     numinterfaces, -> ninterface
-    // double f_factor,
-    //double  mu_star,
-    //int     ny,
-    //double  epsi,
-    // double w_0_limit,
-    // populate_spectral_flux_noniso
-    double* F_down_wg,
-    double* F_up_wg,
-    double* Fc_down_wg,
-    double* Fc_up_wg,
-    double* F_dir_wg,
-    double* Fc_dir_wg,
-    //double* g_0_tot_lay,
-    //double* g_0_tot_int,
-    //double  g_0,
-    //int     singlewalk,
-    //double  Rstar,
-    //double  a,
-    //int     numinterfaces,
-    //double  f_factor,
-    //double  mu_star,
-    //int     ny,
-    //double  epsi,
-    //double  w_0_limit,
-    double delta_tau_limit,
-    //int     dir_beam,
-    //int     clouds,
-    // double* trans_wg_upper,
-    // double* trans_wg_lower,
-
-    // integrate_flux
-    double* F_down_tot,
-    double* F_up_tot,
-    double* F_dir_tot,
-    double* F_net,
-    //double* F_down_wg,
-    //double* F_up_wg,
-    //double* F_dir_wg,
-    double* F_down_band,
-    double* F_up_band,
-    double* F_dir_band,
-    double* F_up_TOA_spectrum,
-    // double* gauss_weight
-    //int num_interfaces, -> ninterface
-    //int ny
-    double mu_star) {
+    double*     z_lay,
+    bool        single_walk,
+    double*     F_down_wg,
+    double*     F_up_wg,
+    double*     Fc_down_wg,
+    double*     Fc_up_wg,
+    double*     F_dir_wg,
+    double*     Fc_dir_wg,
+    double      delta_tau_limit,
+    double*     F_down_tot,
+    double*     F_up_tot,
+    double*     F_dir_tot,
+    double*     F_net,
+    double*     F_down_band,
+    double*     F_up_band,
+    double*     F_dir_band,
+    double*     F_up_TOA_spectrum,
+    double      mu_star) {
 
     USE_BENCHMARK();
 
@@ -668,6 +587,7 @@ void alfrodull_engine::compute_radiative_transfer(
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
 
+
     BENCH_POINT_I_S(debug_nstep,
                     debug_col_idx,
                     "Alf_prep_flx",
@@ -679,7 +599,9 @@ void alfrodull_engine::compute_radiative_transfer(
                      "cloud_scat_cross_lay",
                      "planckband_lay"));
 
-
+    // also lookup and interpolate cloud values here if cloud values
+    // per volume element is needed
+    // fill in g_0_cloud_lay, g_0_cloud_int, cloud_scat_cross_lay, cloud_scat_cross_int
     if (interp_and_calc_flux_step) {
         if (iso) {
             BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
@@ -687,7 +609,7 @@ void alfrodull_engine::compute_radiative_transfer(
             mu_star = calculate_transmission_iso(*trans_wg,            // out
                                                  delta_colmass,        // in
                                                  *opac_wg_lay,         // in
-                                                 cloud_opac_lay,       // in
+                                                 cloud_abs_cross_lay,  // in
                                                  *meanmolmass_lay,     // in
                                                  cloud_scat_cross_lay, // in
                                                  g_0_cloud_lay,        // in
@@ -728,8 +650,8 @@ void alfrodull_engine::compute_radiative_transfer(
                                                     *delta_col_lower,
                                                     *opac_wg_lay,
                                                     *opac_wg_int,
-                                                    cloud_opac_lay,
-                                                    cloud_opac_int,
+                                                    cloud_abs_cross_lay,
+                                                    cloud_abs_cross_int,
                                                     *meanmolmass_lay,
                                                     *meanmolmass_int,
                                                     cloud_scat_cross_lay,
@@ -1150,10 +1072,10 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
 double alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
                                                     double* delta_colmass,        // in
                                                     double* opac_wg_lay,          // in
-                                                    double* cloud_opac_lay,       // in
+                                                    double* cloud_abs_cross_lay_,  // in
                                                     double* meanmolmass_lay,      // in
                                                     double* cloud_scat_cross_lay, // in
-                                                    double* g_0_tot_lay,          // in
+                                                    double* g_0_cloud_lay_,        // in
                                                     double  g_0,
                                                     double  epsi,
                                                     double  epsilon2_,
@@ -1187,13 +1109,13 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
                                    *G_minus,
                                    delta_colmass,
                                    opac_wg_lay,
-                                   cloud_opac_lay,
+                                   cloud_abs_cross_lay_,
                                    meanmolmass_lay,
                                    *scatter_cross_section_lay,
                                    cloud_scat_cross_lay,
                                    *w0_wg,
                                    *g0_wg,
-                                   g_0_tot_lay,
+                                   g_0_cloud_lay_,
                                    g_0,
                                    epsi,
                                    epsilon2_,
@@ -1237,14 +1159,14 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                                        double* delta_col_lower,
                                                        double* opac_wg_lay,
                                                        double* opac_wg_int,
-                                                       double* cloud_opac_lay,
-                                                       double* cloud_opac_int,
+                                                       double* cloud_abs_cross_lay_,
+                                                       double* cloud_abs_cross_int_,
                                                        double* meanmolmass_lay,
                                                        double* meanmolmass_int,
                                                        double* cloud_scat_cross_lay,
                                                        double* cloud_scat_cross_int,
-                                                       double* g_0_tot_lay,
-                                                       double* g_0_tot_int,
+                                                       double* g_0_cloud_lay_,
+                                                       double* g_0_cloud_int_,
                                                        double  g_0,
                                                        double  epsi,
                                                        double  epsilon2_,
@@ -1287,8 +1209,8 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       delta_col_lower,
                                       opac_wg_lay,
                                       opac_wg_int,
-                                      cloud_opac_lay,
-                                      cloud_opac_int,
+                                      cloud_abs_cross_lay_,
+                                      cloud_abs_cross_int_,
                                       meanmolmass_lay,
                                       meanmolmass_int,
                                       *scatter_cross_section_lay,
@@ -1299,8 +1221,8 @@ double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       *w0_wg_lower,
                                       *g0_wg_upper,
                                       *g0_wg_lower,
-                                      g_0_tot_lay,
-                                      g_0_tot_int,
+                                      g_0_cloud_lay_,
+                                      g_0_cloud_int_,
                                       g_0,
                                       epsi,
                                       epsilon2_,
