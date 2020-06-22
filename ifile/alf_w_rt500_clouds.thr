@@ -14,7 +14,7 @@ timestep = 300
 
 # output
 # output every n steps
-n_out = 144
+n_out = 1
 
 # write to log file at a different cadence from n_out
 custom_log_n_out = false
@@ -346,6 +346,9 @@ Alf_opacities_file = ./Alfrodull/input/opac_sample_r5.h5
 Alf_clouds = true
 Alf_fcloud = 1.0
 Alf_cloudfile = ./Alfrodull/input/cloud_sample_r5.h5
+
+# store w0 and g0 per wavelength (optional, to avoid storing a giant amount of data
+Alf_store_w0_g0 = true
 
 # G_+/- limits to protect against exploding value
 # Alf_G_pm_max_limiter =

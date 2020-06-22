@@ -107,6 +107,8 @@ public:
     bool   scat;
     bool   scat_corr;
 
+    bool store_w0_g0 = false;
+
     // config
     double R_star_config;           // [R_sun]
     double planet_star_dist_config; // [AU]

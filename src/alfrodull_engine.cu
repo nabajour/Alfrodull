@@ -1685,25 +1685,23 @@ bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_) {
         dim3 gridsize(nlayer / num_levels_per_block + 1, nbin / num_bins_per_block + 1);
         dim3 blocksize(num_levels_per_block, num_bins_per_block);
 
-        integrate_val_band<<<gridsize, blocksize>>>(
-            *w0_wg, *w0_band, *gauss_weights, nbin, nlayer, ny);
-        integrate_val_band<<<gridsize, blocksize>>>(
-            *g0_wg, *g0_band, *gauss_weights, nbin, nlayer, ny);
+        integrate_val_band<<<gridsize, blocksize>>>(*w0_wg, w0_, *gauss_weights, nbin, nlayer, ny);
+        integrate_val_band<<<gridsize, blocksize>>>(*g0_wg, g0_, *gauss_weights, nbin, nlayer, ny);
 
         cudaDeviceSynchronize();
     }
 
-    {
-        int  num_levels_per_block = 256;
-        dim3 gridsize(ninterface / num_levels_per_block + 1);
-        dim3 blocksize(num_levels_per_block);
+    // {
+    //     int  num_levels_per_block = 256;
+    //     dim3 gridsize(ninterface / num_levels_per_block + 1);
+    //     dim3 blocksize(num_levels_per_block);
 
-        double* deltalambda = *opacities.dev_opac_deltawave;
+    //     double* deltalambda = *opacities.dev_opac_deltawave;
 
-        integrate_val_tot<<<gridsize, blocksize>>>(g0_, *g0_band, deltalambda, nbin, nlayer);
-        integrate_val_tot<<<gridsize, blocksize>>>(w0_, *w0_band, deltalambda, nbin, nlayer);
+    //     integrate_val_tot<<<gridsize, blocksize>>>(g0_, *g0_band, deltalambda, nbin, nlayer);
+    //     integrate_val_tot<<<gridsize, blocksize>>>(w0_, *w0_band, deltalambda, nbin, nlayer);
 
-        cudaDeviceSynchronize();
-    }
+    //     cudaDeviceSynchronize();
+    // }
     return true;
 }

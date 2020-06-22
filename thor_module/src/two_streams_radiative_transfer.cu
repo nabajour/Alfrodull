@@ -140,6 +140,7 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Alf_clouds: %s\n", clouds ? "true" : "false");
     log::printf("    Alf_fcloud: %g\n", fcloud);
     log::printf("    Alf_cloudfile: %s\n", cloud_filename.c_str());
+    log::printf("    Alf_store_w0_g0: %s\n", store_w0_g0 ? "true" : "false");
     // spinup-spindown parameters
     log::printf("    Spin up start step          = %d.\n", spinup_start_step);
     log::printf("    Spin up stop step           = %d.\n", spinup_stop_step);
@@ -192,6 +193,8 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_clouds", clouds, clouds);
     config_reader.append_config_var("Alf_fcloud", fcloud, fcloud);
     config_reader.append_config_var("Alf_cloudfile", cloud_filename, cloud_filename);
+
+    config_reader.append_config_var("Alf_store_w0_g0", store_w0_g0, store_w0_g0);
 
     return true;
 }
@@ -360,18 +363,17 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     F_up_TOA_spectrum.allocate(esp.point_num * nbin);
 
-    // output for storage
-    g0_tot.allocate(esp.point_num * nlayer);
-    w0_tot.allocate(esp.point_num * nlayer);
-
 
     Qheat.allocate(esp.point_num * nlayer);
 
-
-    // output for storage
-    g0_tot.zero();
-    w0_tot.zero();
-
+    if (store_w0_g0) {
+        // output for storage
+        g0_tot.allocate(esp.point_num * nlayer_nbin);
+        w0_tot.allocate(esp.point_num * nlayer_nbin);
+        // output for storage
+        g0_tot.zero();
+        w0_tot.zero();
+    }
 
     if (clouds) {
         // load cloud file
@@ -724,12 +726,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 temperature_int.zero();
                 temperature_lay.zero();
 
-                g_0_tot_lay.zero();
-                g_0_tot_int.zero();
-                cloud_opac_lay.zero();
-                cloud_opac_int.zero();
-                cloud_scat_cross_lay.zero();
-                cloud_scat_cross_int.zero();
+                // g_0_tot_lay.zero();
+                // g_0_tot_int.zero();
+                // cloud_opac_lay.zero();
+                // cloud_opac_int.zero();
+                // cloud_scat_cross_lay.zero();
+                // cloud_scat_cross_int.zero();
                 int num_layers = esp.nv;
 
 
@@ -947,11 +949,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
                 // get the g0 and w0 integrated
-                // TODO could be optimised by storing band values and integrate only on output
-                // but takes up more space
-                double* g0_tot_col = &((*g0_tot)[column_idx * nlayer]);
-                double* w0_tot_col = &((*w0_tot)[column_idx * nlayer]);
-                alf.get_column_integrated_g0_w0(g0_tot_col, w0_tot_col);
+                if (store_w0_g0) {
+                    // TODO could be optimised by storing band values and integrate only on output
+                    // but takes up more space
+                    double* g0_tot_col = &((*g0_tot)[column_idx * nlayer * nbin]);
+                    double* w0_tot_col = &((*w0_tot)[column_idx * nlayer * nbin]);
+                    alf.get_column_integrated_g0_w0(g0_tot_col, w0_tot_col);
+                }
                 // compute Delta flux
 
                 // set Qheat
@@ -1031,6 +1035,14 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
                    "-",
                    "Geometric zenith angle correction");
 
+    s.append_value(alf.opacities.nbin, "/alf_num_bands", "-", "Number of wavelength_bands for Alf");
+    s.append_value(
+        store_w0_g0 ? 1.0 : 0.0, "/alf_w0_g0_per_band", "-", "Stored w0 and g0 per band for Alf");
+
+
+    s.append_value(clouds ? 1.0 : 0.0, "/alf_cloud", "-", "Simulate clouds");
+    s.append_value(fcloud, "/alf_fcloud", "-", "f_cloud");
+
     return true;
 }
 //***************************************************************************************************
@@ -1054,12 +1066,17 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
     s.append_table(
         F_dir_tot_h.get(), F_dir_tot.get_size(), "/F_dir_tot", "W m^-2", "Total beam flux");
 
-    std::shared_ptr<double[]> w0_tot_h = w0_tot.get_host_data();
-    s.append_table(
-        w0_tot_h.get(), w0_tot.get_size(), "/w0_tot", " ", "Total single scattering albedo");
+    if (store_w0_g0) {
+        std::shared_ptr<double[]> w0_tot_h = w0_tot.get_host_data();
+        s.append_table(w0_tot_h.get(),
+                       w0_tot.get_size(),
+                       "/w0_band",
+                       " ",
+                       "Single scattering albedo per band");
 
-    std::shared_ptr<double[]> g0_tot_h = g0_tot.get_host_data();
-    s.append_table(g0_tot_h.get(), g0_tot.get_size(), "/g0_tot", " ", "Total asymmetry");
+        std::shared_ptr<double[]> g0_tot_h = g0_tot.get_host_data();
+        s.append_table(g0_tot_h.get(), g0_tot.get_size(), "/g0_band", " ", "asymmetry per band");
+    }
 
 
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();
