@@ -3,6 +3,9 @@
 
 #include "cuda_device_memory.h"
 
+
+//#define THOMAS_CHECK
+
 // calculates analytically the integral of the planck function
 __device__ double analyt_planck(int n, double y1, double y2) {
 
@@ -80,6 +83,69 @@ __host__ __device__ void thomas_solve(double4* A,
     for (int i = N - 2; i >= 0; i--) {
         X[i] = D_prime[i] - C_prime[i] * X[i + 1];
     }
+#ifdef THOMAS_CHECK
+    double epsilon = 1e-10;
+    //bool   matches = true;
+
+    double2 dp;
+    {
+        // i = 0
+        dp            = B[0] * X[0] + C[0] * X[1];
+        bool matches_ = (D[0].x == 0.0)
+                            ? (fabs(dp.x - D[0].x) < epsilon)
+                            : (fabs((dp.x - D[0].x) / D[0].x) < epsilon) && (D[0].y == 0.0)
+                                  ? (fabs((dp.y - D[0].y)) < epsilon)
+                                  : (fabs((dp.y - D[0].y) / D[0].y) < epsilon);
+        if (!matches_)
+            printf("%d: Thomas failed dp:(%.12g,%.12g) != D(%.12g, %.12g )\n",
+                   0,
+                   dp.x,
+                   dp.y,
+                   D[0].x,
+                   D[0].y);
+    }
+
+    {
+        // general term
+        for (int i = 1; i < N - 1; i++) {
+            dp            = A[i] * X[i - 1] + B[i] * X[i] + C[i] * X[i + 1];
+            bool matches_ = (D[i].x == 0.0)
+                                ? (fabs((dp.x - D[i].x)) < epsilon)
+                                : (fabs((dp.x - D[i].x) / D[i].x) < epsilon) && (D[i].y == 0.0)
+                                      ? (fabs((dp.y - D[i].y)) < epsilon)
+                                      : (fabs((dp.y - D[i].y) / D[i].y) < epsilon);
+            if (!matches_)
+                printf("%d: Thomas failed:(%.12g,%.12g) != D(%.12g,%.12g)\n",
+                       i,
+                       dp.x,
+                       dp.y,
+                       D[i].x,
+                       D[i].y);
+        }
+    }
+
+    {
+        // i = N - 1
+        dp = A[N - 1] * X[N - 2] + B[N - 1] * X[N - 1];
+        bool matches_ =
+            (D[N - 1].x == 0.0)
+                ? (fabs((dp.x - D[N - 1].x)) < epsilon)
+                : (fabs((dp.x - D[N - 1].x) / D[N - 1].x) < epsilon) && (D[N - 1].y == 0.0)
+                      ? (fabs((dp.y - D[N - 1].y)) < epsilon)
+                      : (fabs((dp.y - D[N - 1].y) / D[N - 1].y) < epsilon);
+        if (!matches_)
+            printf("%d: Thomas failed:(%.12g,%.12g) != D(%.12g,%.12g)\n",
+                   N - 1,
+                   dp.x,
+                   dp.y,
+                   D[N - 1].x,
+                   D[N - 1].y);
+    }
+
+    // if (!matches)
+    //     printf("Thomas failed\n");
+
+#endif // THOMAS_CHECK
 }
 
 
