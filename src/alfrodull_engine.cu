@@ -1072,10 +1072,10 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
 double alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
                                                     double* delta_colmass,        // in
                                                     double* opac_wg_lay,          // in
-                                                    double* cloud_abs_cross_lay_,  // in
+                                                    double* cloud_abs_cross_lay_, // in
                                                     double* meanmolmass_lay,      // in
                                                     double* cloud_scat_cross_lay, // in
-                                                    double* g_0_cloud_lay_,        // in
+                                                    double* g_0_cloud_lay_,       // in
                                                     double  g_0,
                                                     double  epsi,
                                                     double  epsilon2_,
@@ -1142,10 +1142,13 @@ double alfrodull_engine::calculate_transmission_iso(double* trans_wg,           
             double zenith_angle = acos(mu_star_);
             mu_star_wiggle_factor += 1.0;
 
-            printf("Hit G_pm denom limit, wiggle mu_star by %g degree\n",
-                   mu_star_wiggle_factor * mu_star_wiggle_increment);
             mu_star_local =
                 cos(zenith_angle + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
+            printf("Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g)\n",
+                   mu_star_,
+                   zenith_angle / M_PI * 180.0,
+                   mu_star_wiggle_factor * mu_star_wiggle_increment,
+                   mu_star_local);
         }
 
     } while (hit_G_pm_denom_limit_h);
