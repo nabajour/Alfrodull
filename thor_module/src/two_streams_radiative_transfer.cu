@@ -971,7 +971,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 cuda_check_status_or_exit(__FILE__, __LINE__);
 
 #ifdef DEBUG_PRINTOUT_ARRAYS
-                debug_print_columns(esp, loc_col_mu_star[column_idx], nstep, column_idx);
+                debug_print_columns(esp, -col_cos_zenith_angle_h[column_idx], nstep, column_idx);
 #endif // DEBUG_PRINTOUT_ARRAYS
             }
             start_up = false;

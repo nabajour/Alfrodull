@@ -257,7 +257,6 @@ __global__ void trans_iso(double* trans_wg,             // out
         epsi     = 0.5;
         epsilon2 = 2.0 / 3.0;
         //mu_star  = -0.89;
-        E = 1.0;
         if (fabs(G_pm_denom(w0, g0, epsi, mu_star, E)) < G_pm_denom_limit_for_mu_star_wiggler)
             *hit_G_pm_limit = true;
 
