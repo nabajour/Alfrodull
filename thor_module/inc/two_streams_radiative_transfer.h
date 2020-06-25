@@ -104,6 +104,7 @@ public:
     double epsilon_2   = 2.0 / 3.0;
     double diffusivity = 2.0;
     double mu_star; // not a config
+    double mu_star_limit_degrees = 2.0;
     bool   scat;
     bool   scat_corr;
 

@@ -38,6 +38,7 @@ public:
                         const double& f_factor,
                         const double& w_0_limit,
                         const double& i2s_transition,
+                        const double& mu_star_limit,
                         const bool&   debug);
 
     void set_experimental_opacity_offset(double opac) {

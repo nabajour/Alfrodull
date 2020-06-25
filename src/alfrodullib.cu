@@ -52,6 +52,7 @@ void init_parameters(const int&    nlayer_,
                      const double& f_factor,
                      const double& w_0_limit,
                      const double& i2s_transition,
+                     const double& mu_star_limit,
                      const bool&   debug) {
     if (Alf_ptr == nullptr) {
         printf("ERROR: Alfrodull Engine not initialised");
@@ -76,6 +77,7 @@ void init_parameters(const int&    nlayer_,
                             f_factor,
                             w_0_limit,
                             i2s_transition,
+                            mu_star_limit,
                             debug);
 }
 
