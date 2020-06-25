@@ -123,7 +123,7 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Alf_G_pm_max_limiter: %s\n", G_pm_limiter ? "true" : "false");
     log::printf("    Alf_G_pm_denom_limit: %f\n", G_pm_denom_limit);
     log::printf("    Alf_G_pm_mu_star_increment: %f\n", mu_star_wiggle_increment);
-    log::printf("    Alf_zenith_angle_limit: %f\n", mu_star_limit_degrees);
+    log::printf("    Alf_direct_beam_angle_limit: %f\n", mu_star_limit_degrees);
 
     log::printf("    Alf_scat: %s\n", scat ? "true" : "false");
     log::printf("    Alf_scat_corr: %s\n", scat_corr ? "true" : "false");
@@ -174,7 +174,7 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var(
         "Alf_G_pm_mu_star_increment", mu_star_wiggle_increment, mu_star_wiggle_increment);
     config_reader.append_config_var(
-        "Alf_zenith_angle_limit", mu_star_limit_degrees, mu_star_limit_degrees);
+        "Alf_direct_beam_angle_limit", mu_star_limit_degrees, mu_star_limit_degrees);
     config_reader.append_config_var("Alf_scat", scat, scat);
     config_reader.append_config_var("Alf_scat_corr", scat_corr, scat_corr);
 
@@ -230,7 +230,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     alf.G_pm_denom_limit         = G_pm_denom_limit;
     alf.mu_star_wiggle_increment = mu_star_wiggle_increment;
 
-    double mu_star_limit = mu_star_limit_degrees / 180.0 * M_PI;
+    double mu_star_limit = cos((90.0 + mu_star_limit_degrees) / 180.0 * M_PI);
 
     alf.set_parameters(nlayer,              // const int&    nlayer_,
                        iso,                 // const bool&   iso_,
