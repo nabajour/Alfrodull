@@ -72,7 +72,7 @@ using std::string;
 
 
 // show progress bar
-#define COLUMN_LOOP_PROGRESS_BAR
+//#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
 //#define DEBUG_PRINTOUT_ARRAYS
@@ -557,7 +557,7 @@ __global__ void initialise_delta_colmass_iso(double* delta_col_mass_cols,
     if (layer_idx < num_layers && col_idx < num_columns) {
         // get offset into start of column data
         double* delta_col_mass = &(delta_col_mass_cols[col_block_idx * col_size]);
-        double* pressure_int   = &(pressure_int_cols[col_idx * col_size]);
+        double* pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
         delta_col_mass[layer_idx] =
             (pressure_int[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
     }
@@ -677,7 +677,7 @@ __global__ void compute_column_Qheat(double* F_net_cols, // net flux, layer
     int col_block_idx = blockIdx.z;
     if (col_idx < num_cols) {
         double* F_net = &(F_net_cols[col_block_idx * (num_layers + 1)]);
-        double* Qheat = &(Qheat_cols[col_block_idx * num_layers]);
+        double* Qheat = &(Qheat_cols[col_idx * num_layers]);
 
         if (layer_idx == 0) {
             // delta_flux/delta_z
@@ -758,9 +758,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             cudaDeviceSynchronize();
             cuda_check_status_or_exit(__FILE__, __LINE__);
             int nbin = alf.opacities.nbin;
+            int ny   = alf.opacities.ny;
             // loop on columns
             for (int column_idx = 0; column_idx < esp.point_num;
                  column_idx += num_parallel_columns) {
+                //printf("column_idx_tsrt: %d\n", column_idx);
+
                 alf.debug_col_idx = column_idx;
 #ifdef COLUMN_LOOP_PROGRESS_BAR
                 print_progress((column_idx + 1.0) / double(esp.point_num));
@@ -976,6 +979,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 bool singlewalk_loc = scat_single_walk;
                 int  ninterface     = nlayer + 1;
                 for (int c = 0; c < num_cols; c++) {
+                    // printf("column_c: %d\n", c);
                     double mu_star           = -col_cos_zenith_angle_h[column_idx + c];
                     int    column_offset_int = (column_idx + c) * ninterface;
 
@@ -1000,12 +1004,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         true,                                    // interp_and_calc_flux_step
                         z_lay,                                   // z_lay
                         singlewalk_loc,                          // singlewalk
-                        *F_down_wg,
-                        *F_up_wg,
-                        *Fc_down_wg,
-                        *Fc_up_wg,
-                        *F_dir_wg,
-                        *Fc_dir_wg,
+                        &((*F_down_wg)[c * ninterface * nbin * ny]),
+                        &((*F_up_wg)[c * ninterface * nbin * ny]),
+                        &((*Fc_down_wg)[c * ninterface * nbin * ny]),
+                        &((*Fc_up_wg)[c * ninterface * nbin * ny]),
+                        &((*F_dir_wg)[c * ninterface * nbin * ny]),
+                        &((*Fc_dir_wg)[c * ninterface * nbin * ny]),
                         delta_tau_limit,
                         F_col_down_tot,
                         F_col_up_tot,
@@ -1015,7 +1019,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         &((*F_up_band)[c * ninterface * nbin]),
                         F_dir_band_col,
                         F_up_TOA_spectrum_col,
-                        mu_star);
+                        mu_star,
+                        c);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                     // get the g0 and w0 integrated
@@ -1033,7 +1038,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     {
                         dim3    grid(int((esp.nv / num_blocks) + 1), 1, num_cols);
                         dim3    block(num_blocks, 1, 1);
-                        double* qheat = &((*Qheat)[column_offset]);
+                        double* qheat = &((*Qheat)[(column_idx + c) * nlayer]);
                         compute_column_Qheat<<<grid, block>>>(F_col_net, // net flux, layer
                                                               z_int,
                                                               qheat,

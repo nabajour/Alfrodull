@@ -104,80 +104,80 @@ void alfrodull_engine::allocate_internal_variables() {
     int ninterface_nbin    = ninterface * opacities.nbin;
     int nlayer_wg_nbin     = nlayer * opacities.ny * opacities.nbin;
     int ninterface_wg_nbin = ninterface * opacities.ny * opacities.nbin;
-
+    int num_cols           = max_num_parallel_columns;
     if (iso) {
         delta_tau_wg.allocate(nlayer_wg_nbin);
     }
     else {
-        delta_tau_wg_upper.allocate(nlayer_wg_nbin);
-        delta_tau_wg_lower.allocate(nlayer_wg_nbin);
+        delta_tau_wg_upper.allocate(num_cols * nlayer_wg_nbin);
+        delta_tau_wg_lower.allocate(num_cols * nlayer_wg_nbin);
     }
 
     if (thomas) {
         if (iso) {
-            A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-            B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-            C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-            D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-            C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-            D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-            X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
+            A_buff.allocate(num_cols * ninterface_wg_nbin * 4);       // thomas worker
+            B_buff.allocate(num_cols * ninterface_wg_nbin * 4);       // thomas worker
+            C_buff.allocate(num_cols * ninterface_wg_nbin * 4);       // thomas worker
+            D_buff.allocate(num_cols * ninterface_wg_nbin * 4);       // thomas worker
+            C_prime_buff.allocate(num_cols * ninterface_wg_nbin * 4); // thomas worker
+            D_prime_buff.allocate(num_cols * ninterface_wg_nbin * 4); // thomas worker
+            X_buff.allocate(num_cols * ninterface_wg_nbin * 4);       // thomas worker
         }
         else {
             int num_th_layers             = nlayer * 2;
             int num_th_interfaces         = num_th_layers + 1;
             int num_th_interfaces_wg_nbin = num_th_interfaces * opacities.ny * opacities.nbin;
-            A_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-            B_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-            C_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-            D_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
-            C_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
-            D_prime_buff.allocate(num_th_interfaces_wg_nbin * 4); // thomas worker
-            X_buff.allocate(num_th_interfaces_wg_nbin * 4);       // thomas worker
+            A_buff.allocate(num_cols * num_th_interfaces_wg_nbin * 4);       // thomas worker
+            B_buff.allocate(num_cols * num_th_interfaces_wg_nbin * 4);       // thomas worker
+            C_buff.allocate(num_cols * num_th_interfaces_wg_nbin * 4);       // thomas worker
+            D_buff.allocate(num_cols * num_th_interfaces_wg_nbin * 4);       // thomas worker
+            C_prime_buff.allocate(num_cols * num_th_interfaces_wg_nbin * 4); // thomas worker
+            D_prime_buff.allocate(num_cols * num_th_interfaces_wg_nbin * 4); // thomas worker
+            X_buff.allocate(num_cols * num_th_interfaces_wg_nbin * 4);       // thomas worker
         }
     }
     // flux computation internal quantities
     if (iso) {
-        M_term.allocate(nlayer_wg_nbin);
-        N_term.allocate(nlayer_wg_nbin);
-        P_term.allocate(nlayer_wg_nbin);
-        G_plus.allocate(nlayer_wg_nbin);
-        G_minus.allocate(nlayer_wg_nbin);
-        w0_wg.allocate(nlayer_wg_nbin);
-        g0_wg.allocate(nlayer_wg_nbin);
+        M_term.allocate(num_cols * nlayer_wg_nbin);
+        N_term.allocate(num_cols * nlayer_wg_nbin);
+        P_term.allocate(num_cols * nlayer_wg_nbin);
+        G_plus.allocate(num_cols * nlayer_wg_nbin);
+        G_minus.allocate(num_cols * nlayer_wg_nbin);
+        w0_wg.allocate(num_cols * nlayer_wg_nbin);
+        g0_wg.allocate(num_cols * nlayer_wg_nbin);
 
-        g0_band.allocate(nlayer_nbin);
-        w0_band.allocate(nlayer_nbin);
+        g0_band.allocate(num_cols * nlayer_nbin);
+        w0_band.allocate(num_cols * nlayer_nbin);
 
-        delta_col_mass.allocate(nlayer);
+        delta_col_mass.allocate(num_cols * nlayer);
     }
     else {
-        M_upper.allocate(nlayer_wg_nbin);
-        M_lower.allocate(nlayer_wg_nbin);
-        N_upper.allocate(nlayer_wg_nbin);
-        N_lower.allocate(nlayer_wg_nbin);
-        P_upper.allocate(nlayer_wg_nbin);
-        P_lower.allocate(nlayer_wg_nbin);
-        G_plus_upper.allocate(nlayer_wg_nbin);
-        G_plus_lower.allocate(nlayer_wg_nbin);
-        G_minus_upper.allocate(nlayer_wg_nbin);
-        G_minus_lower.allocate(nlayer_wg_nbin);
+        M_upper.allocate(num_cols * nlayer_wg_nbin);
+        M_lower.allocate(num_cols * nlayer_wg_nbin);
+        N_upper.allocate(num_cols * nlayer_wg_nbin);
+        N_lower.allocate(num_cols * nlayer_wg_nbin);
+        P_upper.allocate(num_cols * nlayer_wg_nbin);
+        P_lower.allocate(num_cols * nlayer_wg_nbin);
+        G_plus_upper.allocate(num_cols * nlayer_wg_nbin);
+        G_plus_lower.allocate(num_cols * nlayer_wg_nbin);
+        G_minus_upper.allocate(num_cols * nlayer_wg_nbin);
+        G_minus_lower.allocate(num_cols * nlayer_wg_nbin);
 
         // for computations
-        g0_wg_upper.allocate(nlayer_wg_nbin);
-        g0_wg_lower.allocate(nlayer_wg_nbin);
-        w0_wg_upper.allocate(nlayer_wg_nbin);
-        w0_wg_lower.allocate(nlayer_wg_nbin);
+        g0_wg_upper.allocate(num_cols * nlayer_wg_nbin);
+        g0_wg_lower.allocate(num_cols * nlayer_wg_nbin);
+        w0_wg_upper.allocate(num_cols * nlayer_wg_nbin);
+        w0_wg_lower.allocate(num_cols * nlayer_wg_nbin);
 
         // used to store layer value for output
-        w0_wg.allocate(nlayer_wg_nbin);
-        g0_wg.allocate(nlayer_wg_nbin);
+        w0_wg.allocate(num_cols * nlayer_wg_nbin);
+        g0_wg.allocate(num_cols * nlayer_wg_nbin);
 
-        g0_band.allocate(nlayer_nbin);
-        w0_band.allocate(nlayer_nbin);
+        g0_band.allocate(num_cols * nlayer_nbin);
+        w0_band.allocate(num_cols * nlayer_nbin);
 
-        delta_col_upper.allocate(nlayer);
-        delta_col_lower.allocate(nlayer);
+        delta_col_upper.allocate(num_cols * nlayer);
+        delta_col_lower.allocate(num_cols * nlayer);
     }
 
     //  dev_T_int.allocate(ninterface);
@@ -186,28 +186,28 @@ void alfrodull_engine::allocate_internal_variables() {
     // TODO: computed by grid in helios, should be computed by alfrodull or comes from THOR?
 
 
-    meanmolmass_lay.allocate(nlayer);
+    meanmolmass_lay.allocate(num_cols * nlayer);
     // scatter cross section layer and interface
     // those are shared for print out
-    scatter_cross_section_lay.allocate(nlayer_nbin);
-    planckband_lay.allocate(nlayer_plus2_nbin);
-    opac_wg_lay.allocate(nlayer_wg_nbin);
+    scatter_cross_section_lay.allocate(num_cols * nlayer_nbin);
+    planckband_lay.allocate(num_cols * nlayer_plus2_nbin);
+    opac_wg_lay.allocate(num_cols * nlayer_wg_nbin);
 
     if (!iso) {
-        meanmolmass_int.allocate(ninterface);
+        meanmolmass_int.allocate(num_cols * ninterface);
 
-        scatter_cross_section_inter.allocate(ninterface_nbin);
-        planckband_int.allocate(ninterface_nbin);
-        opac_wg_int.allocate(ninterface_wg_nbin);
+        scatter_cross_section_inter.allocate(num_cols * ninterface_nbin);
+        planckband_int.allocate(num_cols * ninterface_nbin);
+        opac_wg_int.allocate(num_cols * ninterface_wg_nbin);
     }
 
 
     if (iso) {
-        trans_wg.allocate(nlayer_wg_nbin);
+        trans_wg.allocate(num_cols * nlayer_wg_nbin);
     }
     else {
-        trans_wg_upper.allocate(nlayer_wg_nbin);
-        trans_wg_lower.allocate(nlayer_wg_nbin);
+        trans_wg_upper.allocate(num_cols * nlayer_wg_nbin);
+        trans_wg_lower.allocate(num_cols * nlayer_wg_nbin);
     }
 
     hit_G_pm_denom_limit.allocate(1);
@@ -566,11 +566,14 @@ void alfrodull_engine::compute_radiative_transfer(
     double*     F_up_band,
     double*     F_dir_band,
     double*     F_up_TOA_spectrum,
-    double      mu_star) {
+    double      mu_star,
+    int         num_cols) // number of columns this function works on
+{
 
     USE_BENCHMARK();
 
-    double* delta_colmass = *delta_col_mass;
+    // TODO: for development, hijack num_cols to use as indexc in delta_colmass, as long as it's used externaly
+    double* delta_colmass = &((*delta_col_mass)[num_cols * nlayer]);
 
 
     double* deltalambda = *opacities.dev_opac_deltawave;
@@ -649,26 +652,28 @@ void alfrodull_engine::compute_radiative_transfer(
 
 
                              ));
-            mu_star = calculate_transmission_noniso(*trans_wg_upper,
-                                                    *trans_wg_lower,
-                                                    *delta_col_upper,
-                                                    *delta_col_lower,
-                                                    *opac_wg_lay,
-                                                    *opac_wg_int,
-                                                    cloud_abs_cross_lay,
-                                                    cloud_abs_cross_int,
-                                                    *meanmolmass_lay,
-                                                    *meanmolmass_int,
-                                                    cloud_scat_cross_lay,
-                                                    cloud_scat_cross_int,
-                                                    g_0_cloud_lay,
-                                                    g_0_cloud_int,
-                                                    g_0,
-                                                    epsi,
-                                                    epsilon2,
-                                                    mu_star,
-                                                    scat,
-                                                    clouds);
+            mu_star = calculate_transmission_noniso(
+                *trans_wg_upper,
+                *trans_wg_lower,
+                &((*delta_col_upper)[nlayer
+                                     * num_cols]), // TODO: temporary while using external loop
+                &((*delta_col_lower)[nlayer * num_cols]), // TODO: temporary
+                *opac_wg_lay,
+                *opac_wg_int,
+                cloud_abs_cross_lay,
+                cloud_abs_cross_int,
+                *meanmolmass_lay,
+                *meanmolmass_int,
+                cloud_scat_cross_lay,
+                cloud_scat_cross_int,
+                g_0_cloud_lay,
+                g_0_cloud_int,
+                g_0,
+                epsi,
+                epsilon2,
+                mu_star,
+                scat,
+                clouds);
             BENCH_POINT_I_S(debug_nstep,
                             debug_col_idx,
                             "Alf_comp_trans",

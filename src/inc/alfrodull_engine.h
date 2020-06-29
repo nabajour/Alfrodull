@@ -243,7 +243,8 @@ public:
                                     double*     F_up_band,
                                     double*     F_dir_band,
                                     double*     F_up_TOA_spectrum,
-                                    double      mu_star);
+                                    double      mu_star,
+                                    int         num_cols);
 
     bool prepare_compute_flux(double*       dev_starflux,
                               double*       dev_T_lay,

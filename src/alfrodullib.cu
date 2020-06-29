@@ -189,7 +189,8 @@ void wrap_compute_radiative_transfer(
     long   F_dir_band,
     long   F_up_TOA_spectrum,
     double mu_star) {
-    if (Alf_ptr != nullptr)
+    if (Alf_ptr != nullptr) {
+        int num_col = 1;
         Alf_ptr->compute_radiative_transfer(
             (double*)dev_starflux, // in: pil
             (double*)
@@ -221,7 +222,9 @@ void wrap_compute_radiative_transfer(
             (double*)F_up_band,
             (double*)F_dir_band,
             (double*)F_up_TOA_spectrum,
-            mu_star);
+            mu_star,
+            num_col);
+    }
     else
         printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");
 }
