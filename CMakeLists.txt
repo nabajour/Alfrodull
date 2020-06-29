@@ -77,6 +77,7 @@ set(SRC_ALFRODULLIB
 	src/planck_table.cu
 	src/gauss_legendre_weights.cpp
 	src/opacities/opacities.cu
+	src/opacities/cloud_opacities.cu
 	src/kernels/calculate_physics.cu
 	src/kernels/math_helpers.cu
 	src/kernels/interpolate_values.cu
@@ -96,8 +97,8 @@ set(SRC_THOR_UTILS
 
 ######################################################################
 # build and link binaries
-add_library(alfrodull STATIC ${SRC_ALFRODULLIB})
-set_target_properties(alfrodull PROPERTIES 
+add_library(alfrodullib STATIC ${SRC_ALFRODULLIB})
+set_target_properties(alfrodullib PROPERTIES 
     POSITION_INDEPENDENT_CODE ON
     CUDA_VISIBILITY_PRESET "hidden"
     CUDA_SEPARABLE_COMPILATION ON
@@ -114,6 +115,9 @@ if (DEFINED THOR_MODULE)
     thor_module/src/phy_modules.cu
     thor_module/src/two_streams_radiative_transfer.cu)
   
+  set(SRC_THOR_CLASS
+    thor_module/src/two_streams_radiative_transfer.cu)
+
   
   set(LIBRARY_OUTPUT_PATH)
 
@@ -124,10 +128,21 @@ if (DEFINED THOR_MODULE)
     CUDA_VISIBILITY_PRESET "hidden"
     CUDA_SEPARABLE_COMPILATION ON
     )
-  target_link_libraries(phy_modules PRIVATE alfrodull)
+  target_link_libraries(phy_modules PRIVATE alfrodullib)
+
+  ######################################################################
+  # build and link binaries
+  add_library(alfrodull STATIC ${SRC_THOR_CLASS})
+  set_target_properties(alfrodull PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_VISIBILITY_PRESET "hidden"
+    CUDA_SEPARABLE_COMPILATION ON
+	)
+      target_link_libraries(alfrodull PRIVATE alfrodullib)
+#      export(TARGETS alfrodull FILE libalfrodull.a)
 else()
   # specify CGS units
-  target_compile_definitions(alfrodull PRIVATE "CGS_UNITS")
+  target_compile_definitions(alfrodullib PRIVATE "CGS_UNITS")
   # build as independent python library
   include_directories(${THOR_BASE_FOLDER}/src/headers/ )
   include_directories(pylfrodull/src/inc)
@@ -159,7 +174,7 @@ else()
     SUFFIX "${PYTHON_MODULE_EXTENSION}"
     )
   
-  target_link_libraries(pylfrodull PRIVATE alfrodull)
+  target_link_libraries(pylfrodull PRIVATE alfrodullib)
   target_link_libraries(pylfrodull PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
   target_link_libraries(pylfrodull PRIVATE thor_utils)
   target_link_libraries(pylfrodull PRIVATE pybind11::module )
