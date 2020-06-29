@@ -978,7 +978,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
                 bool singlewalk_loc = scat_single_walk;
                 int  ninterface     = nlayer + 1;
-                for (int c = 0; c < num_cols; c++) {
+                for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
                     // printf("column_c: %d\n", c);
                     double mu_star           = -col_cos_zenith_angle_h[column_idx + c];
                     int    column_offset_int = (column_idx + c) * ninterface;
@@ -1060,8 +1060,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         }
 
         printf("\r\n");
-
-        int num_samples = (esp.point_num * nlayer * num_cols);
+        cudaDeviceSynchronize();
+        cuda_check_status_or_exit(__FILE__, __LINE__);
+        int num_samples = (esp.point_num * nlayer);
         increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
             esp.profx_Qheat_d, *Qheat, qheat_scaling, num_samples);
         cudaDeviceSynchronize();
