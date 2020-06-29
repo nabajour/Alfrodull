@@ -75,9 +75,9 @@ using std::string;
 #define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
-//#define DEBUG_PRINTOUT_ARRAYS
+#define DEBUG_PRINTOUT_ARRAYS
 // dump TP profile to run in HELIOS for profile comparison
-//#define DUMP_HELIOS_TP
+#define DUMP_HELIOS_TP
 // stride for column TP profile dump
 #ifdef DUMP_HELIOS_TP
 const int HELIOS_TP_STRIDE = 1;
@@ -702,12 +702,14 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             printf("\r\n");
             printf("\r\n");
             printf("\r\n");
-
+            cudaDeviceSynchronize();
+            cuda_check_status_or_exit(__FILE__, __LINE__);
             int nbin = alf.opacities.nbin;
             // loop on columns
             for (int column_idx = 0; column_idx < esp.point_num; column_idx++) {
                 alf.debug_col_idx = column_idx;
-
+                cudaDeviceSynchronize();
+                cuda_check_status_or_exit(__FILE__, __LINE__);
 #ifdef COLUMN_LOOP_PROGRESS_BAR
                 print_progress((column_idx + 1.0) / double(esp.point_num));
 #endif // COLUMN_LOOP_PROGRESS_BAR
@@ -752,11 +754,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 double* column_layer_pressure         = &(esp.pressure_d[column_offset]);
                 double* column_density                = &(esp.Rho_d[column_offset]);
                 // initialise interpolated T and P
-
+                cudaDeviceSynchronize();
+                cuda_check_status_or_exit(__FILE__, __LINE__);
                 // use mu_star per column
                 double mu_star = -col_cos_zenith_angle_h[column_idx];
 #ifdef DUMP_HELIOS_TP
-
+                cudaDeviceSynchronize();
+                cuda_check_status_or_exit(__FILE__, __LINE__);
 
                 // dump a TP profile for HELIOS input
                 if (column_idx % HELIOS_TP_STRIDE == 0) {
@@ -802,7 +806,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     fclose(tp_output_file);
                 }
 #endif // DUMP_HELIOS_TP
-
+                cudaDeviceSynchronize();
+                cuda_check_status_or_exit(__FILE__, __LINE__);
                 interpolate_temperature_and_pressure<<<((num_layers + 1) / num_blocks) + 1,
                                                        num_blocks>>>(*temperature_lay,
                                                                      column_layer_temperature_thor,
@@ -978,6 +983,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 #ifdef DEBUG_PRINTOUT_ARRAYS
                 debug_print_columns(esp, -col_cos_zenith_angle_h[column_idx], nstep, column_idx);
 #endif // DEBUG_PRINTOUT_ARRAYS
+                cudaDeviceSynchronize();
+                cuda_check_status_or_exit(__FILE__, __LINE__);
             }
             start_up = false;
         }
@@ -1171,6 +1178,8 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(
         fprintf(output_file, "\n");
     }
     fclose(output_file);
+
+    cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
 }
 
 // ***************************************************************************************************************
@@ -1321,10 +1330,8 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
         fclose(opac_output_file);
     }
 
-    {
-
+    if (iso) {
         // Print out optical depth data
-
         int                       num_val = alf.delta_tau_wg.get_size() / (nbin * ny);
         std::shared_ptr<double[]> delta_tau_h =
             integrate_band(*alf.delta_tau_wg, *alf.gauss_weights, num_val, nbin, ny);
@@ -1354,6 +1361,72 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
             fprintf(opt_depth_output_file, "\n");
         }
         fclose(opt_depth_output_file);
+    }
+    else {
+        {
+            // Print out optical depth data
+            int                       num_val = alf.delta_tau_wg_upper.get_size() / (nbin * ny);
+            std::shared_ptr<double[]> delta_tau_h =
+                integrate_band(*alf.delta_tau_wg_upper, *alf.gauss_weights, num_val, nbin, ny);
+
+
+            string output_file_name = DBG_OUTPUT_DIR + "opt_depth_upper_profile.dat";
+
+            FILE* opt_depth_output_file = fopen(output_file_name.c_str(), "w");
+            // std::shared_ptr<double[]> opac_wg_lay_h =
+            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
+
+            std::shared_ptr<double[]> delta_lambda_h =
+                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
+
+            fprintf(opt_depth_output_file, "bin\t");
+            fprintf(opt_depth_output_file, "deltalambda\t");
+            for (int i = 0; i < esp.nv; i++)
+                fprintf(opt_depth_output_file, "layer[%d]\t", i);
+            fprintf(opt_depth_output_file, "\n");
+
+            for (int b = 0; b < nbin; b++) {
+                fprintf(opt_depth_output_file, "%d\t", b);
+                fprintf(opt_depth_output_file, "%#.6g\t", delta_lambda_h[b]);
+                for (int i = 0; i < esp.nv; i++) {
+                    fprintf(opt_depth_output_file, "%#.6g\t", delta_tau_h[b + i * nbin]);
+                }
+                fprintf(opt_depth_output_file, "\n");
+            }
+            fclose(opt_depth_output_file);
+        }
+        {
+            // Print out optical depth data
+            int                       num_val = alf.delta_tau_wg_lower.get_size() / (nbin * ny);
+            std::shared_ptr<double[]> delta_tau_h =
+                integrate_band(*alf.delta_tau_wg_lower, *alf.gauss_weights, num_val, nbin, ny);
+
+
+            string output_file_name = DBG_OUTPUT_DIR + "opt_depth_lower_profile.dat";
+
+            FILE* opt_depth_output_file = fopen(output_file_name.c_str(), "w");
+            // std::shared_ptr<double[]> opac_wg_lay_h =
+            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
+
+            std::shared_ptr<double[]> delta_lambda_h =
+                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
+
+            fprintf(opt_depth_output_file, "bin\t");
+            fprintf(opt_depth_output_file, "deltalambda\t");
+            for (int i = 0; i < esp.nv; i++)
+                fprintf(opt_depth_output_file, "layer[%d]\t", i);
+            fprintf(opt_depth_output_file, "\n");
+
+            for (int b = 0; b < nbin; b++) {
+                fprintf(opt_depth_output_file, "%d\t", b);
+                fprintf(opt_depth_output_file, "%#.6g\t", delta_lambda_h[b]);
+                for (int i = 0; i < esp.nv; i++) {
+                    fprintf(opt_depth_output_file, "%#.6g\t", delta_tau_h[b + i * nbin]);
+                }
+                fprintf(opt_depth_output_file, "\n");
+            }
+            fclose(opt_depth_output_file);
+        }
     }
 
     if (iso) {
