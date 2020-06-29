@@ -65,6 +65,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const double& w_0_limit_,
                                       const double& i2s_transition_,
                                       const double& mu_star_limit_,
+                                      const int&    max_num_parallel_columns_,
                                       const bool&   debug_) {
     nlayer     = nlayer_;
     ninterface = nlayer + 1;
@@ -89,6 +90,8 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     i2s_transition = i2s_transition;
     debug          = debug_;
     mu_star_limit  = mu_star_limit_;
+
+    max_num_parallel_columns = max_num_parallel_columns_;
     // TODO: maybe should stay in opacities object
     //    nbin = opacities.nbin;
 

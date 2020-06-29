@@ -58,7 +58,7 @@ void init_parameters(const int&    nlayer_,
         printf("ERROR: Alfrodull Engine not initialised");
         return;
     }
-
+    const int num_cols = 1;
     Alf_ptr->set_parameters(nlayer_,
                             iso_,
                             Tstar_,
@@ -78,6 +78,7 @@ void init_parameters(const int&    nlayer_,
                             w_0_limit,
                             i2s_transition,
                             mu_star_limit,
+                            num_cols,
                             debug);
 }
 

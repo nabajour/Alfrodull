@@ -39,6 +39,7 @@ public:
                         const double& w_0_limit,
                         const double& i2s_transition,
                         const double& mu_star_limit,
+                        const int&    num_parallel_columns,
                         const bool&   debug);
 
     void set_experimental_opacity_offset(double opac) {
@@ -73,6 +74,8 @@ public:
 
     double G_pm_denom_limit         = 1e-5;
     double mu_star_wiggle_increment = 0.001;
+
+    int max_num_parallel_columns = 1;
 
     cuda_device_memory<bool> hit_G_pm_denom_limit;
     // call if using clouds, to set data array pointers
