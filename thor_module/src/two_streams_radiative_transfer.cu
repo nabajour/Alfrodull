@@ -1026,6 +1026,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         c);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
+                }
+                for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
+                    int current_num_cols = min(num_cols, esp.point_num - column_idx);
                     // get the g0 and w0 integrated
                     if (store_w0_g0) {
                         // TODO could be optimised by storing band values and integrate only on output
@@ -1035,13 +1038,17 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         alf.get_column_integrated_g0_w0(g0_tot_col, w0_tot_col);
                     }
                     // compute Delta flux
-
+                }
+                for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
+                    int current_num_cols  = min(num_cols, esp.point_num - column_idx);
+                    int column_offset_int = (column_idx + c) * ninterface;
                     // set Qheat
                     //printf("increment_column_Qheat\n");
                     {
                         dim3    grid(int((esp.nv / num_blocks) + 1), 1, num_cols);
                         dim3    block(num_blocks, 1, 1);
-                        double* qheat = &((*Qheat)[(column_idx + c) * nlayer]);
+                        double* qheat     = &((*Qheat)[(column_idx + c) * nlayer]);
+                        double* F_col_net = &((*F_net)[column_offset_int]);
                         compute_column_Qheat<<<grid, block>>>(F_col_net, // net flux, layer
                                                               z_int,
                                                               qheat,
