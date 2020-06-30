@@ -293,23 +293,26 @@ __global__ void meanmolmass_interpol(double* temp,          // in
                                      double* opacpress,     // in
                                      int     npress,
                                      int     ntemp,
+                                     int     temp_num_per_col,
+                                     int     press_num_per_col,
                                      int     ninterface) {
 
     int i = threadIdx.x + blockIdx.x * blockDim.x;
+    int c = blockIdx.z;
 
     if (i < ninterface) {
 
         double deltaopactemp = (opactemp[ntemp - 1] - opactemp[0]) / (ntemp - 1.0);
         double deltaopacpress =
             (log10(opacpress[npress - 1]) - log10(opacpress[0])) / (npress - 1.0);
-        double t = (temp[i] - opactemp[0]) / deltaopactemp;
+        double t = (temp[i + c * temp_num_per_col] - opactemp[0]) / deltaopactemp;
 
         t = min(ntemp - 1.001, max(0.001, t));
 
         int tdown = floor(t);
         int tup   = ceil(t);
 
-        double p = (log10(press[i]) - log10(opacpress[0])) / deltaopacpress;
+        double p = (log10(press[i + c * press_num_per_col]) - log10(opacpress[0])) / deltaopacpress;
 
         p = min(npress - 1.001, max(0.001, p));
 
@@ -317,21 +320,22 @@ __global__ void meanmolmass_interpol(double* temp,          // in
         int pup   = ceil(p);
 
         if (tdown != tup && pdown != pup) {
-            meanmolmass[i] = opac_meanmass[pdown + npress * tdown] * (pup - p) * (tup - t)
-                             + opac_meanmass[pup + npress * tdown] * (p - pdown) * (tup - t)
-                             + opac_meanmass[pdown + npress * tup] * (pup - p) * (t - tdown)
-                             + opac_meanmass[pup + npress * tup] * (p - pdown) * (t - tdown);
+            meanmolmass[i + c * ninterface] =
+                opac_meanmass[pdown + npress * tdown] * (pup - p) * (tup - t)
+                + opac_meanmass[pup + npress * tdown] * (p - pdown) * (tup - t)
+                + opac_meanmass[pdown + npress * tup] * (pup - p) * (t - tdown)
+                + opac_meanmass[pup + npress * tup] * (p - pdown) * (t - tdown);
         }
         if (tdown != tup && pdown == pup) {
-            meanmolmass[i] = opac_meanmass[pdown + npress * tdown] * (tup - t)
-                             + opac_meanmass[pdown + npress * tup] * (t - tdown);
+            meanmolmass[i + c * ninterface] = opac_meanmass[pdown + npress * tdown] * (tup - t)
+                                              + opac_meanmass[pdown + npress * tup] * (t - tdown);
         }
         if (tdown == tup && pdown != pup) {
-            meanmolmass[i] = opac_meanmass[pdown + npress * tdown] * (pup - p)
-                             + opac_meanmass[pup + npress * tdown] * (p - pdown);
+            meanmolmass[i + c * ninterface] = opac_meanmass[pdown + npress * tdown] * (pup - p)
+                                              + opac_meanmass[pup + npress * tdown] * (p - pdown);
         }
         if (tdown == tup && pdown == pup) {
-            meanmolmass[i] = opac_meanmass[pdown + npress * tdown];
+            meanmolmass[i + c * ninterface] = opac_meanmass[pdown + npress * tdown];
         }
     }
 }

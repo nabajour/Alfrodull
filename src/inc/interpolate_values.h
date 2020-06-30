@@ -51,6 +51,8 @@ __global__ void meanmolmass_interpol(double* temp,
                                      double* opacpress,
                                      int     npress,
                                      int     ntemp,
+                                     int     temp_num_per_col,
+                                     int     press_num_per_col,
                                      int     ninterface);
 
 

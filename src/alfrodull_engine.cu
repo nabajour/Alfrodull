@@ -1000,58 +1000,47 @@ bool alfrodull_engine::prepare_compute_flux(
 
             cudaDeviceSynchronize();
         }
-    }
+        // mmm
+        dim3 mmm_grid(int((nlayer + 15) / 16), 1, num_cols);
+        dim3 mmm_block(16, 1, 1);
 
-    for (int c = 0; c < num_cols; c++) {
-        double* dev_T_lay             = &(dev_T_lay_cols[c * (nlayer + 1)]);
-        double* dev_T_int             = &(dev_T_int_cols[c * ninterface]);
-        double* dev_p_lay             = &(dev_p_lay_cols[c * nlayer]);
-        double* dev_p_int             = &(dev_p_int_cols[c * ninterface]);
-        double* dev_opac_wg_lay       = &(dev_opac_wg_lay_cols[c * nlayer * ny * nbin]);
-        double* dev_meanmolmass_lay   = &(dev_meanmolmass_lay_cols[c * nlayer]);
-        double* planckband_lay_curcol = &((*planckband_lay)[c * (nlayer + 2) * nbin]);
+        meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay_cols,              // in
+                                                      *opacities.dev_temperatures, // in
+                                                      dev_meanmolmass_lay_cols,    // out
+                                                      *opacities.dev_meanmolmass,  // in
+                                                      dev_p_lay_cols,              // in
+                                                      *opacities.dev_pressures,    // in
+                                                      opacities.n_pressures,
+                                                      opacities.n_temperatures,
+                                                      nlayer + 1,
+                                                      nlayer,
+                                                      nlayer);
 
 
-        if (interp_and_calc_flux_step) {
-            // mmm
-            dim3 mmm_block(16, 1, 1);
-            dim3 mmm_grid(int((nlayer + 15) / 16), 1, 1);
+        cudaDeviceSynchronize();
 
-            meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,                   // in
-                                                          *opacities.dev_temperatures, // in
-                                                          dev_meanmolmass_lay,         // out
-                                                          *opacities.dev_meanmolmass,  // in
-                                                          dev_p_lay,                   // in
-                                                          *opacities.dev_pressures,    // in
-                                                          opacities.n_pressures,
-                                                          opacities.n_temperatures,
-                                                          nlayer);
+        if (!iso) {
+            // mmmi
+            dim3 mmmi_grid(int((ninterface + 15) / 16), 1, num_cols);
+            dim3 mmmi_block(16, 1, 1);
+
+            meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int_cols,              // in
+                                                            *opacities.dev_temperatures, // in
+                                                            dev_meanmolmass_int_cols,    // out
+                                                            *opacities.dev_meanmolmass,  // in
+                                                            dev_p_int_cols,              // in
+                                                            *opacities.dev_pressures,    // in
+                                                            opacities.n_pressures,
+                                                            opacities.n_temperatures,
+                                                            ninterface,
+                                                            ninterface,
+                                                            ninterface);
 
 
             cudaDeviceSynchronize();
-
-            if (!iso) {
-                double* dev_meanmolmass_int = &(dev_meanmolmass_int_cols[c * ninterface]);
-
-                // mmmi
-                dim3 mmmi_block(16, 1, 1);
-                dim3 mmmi_grid(int((ninterface + 15) / 16), 1, 1);
-
-                meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,                   // in
-                                                                *opacities.dev_temperatures, // in
-                                                                dev_meanmolmass_int,         // out
-                                                                *opacities.dev_meanmolmass,  // in
-                                                                dev_p_int,                   // in
-                                                                *opacities.dev_pressures,    // in
-                                                                opacities.n_pressures,
-                                                                opacities.n_temperatures,
-                                                                ninterface);
-
-
-                cudaDeviceSynchronize();
-            }
         }
     }
+
     // TODO: add state check and return value
 
     return true;
