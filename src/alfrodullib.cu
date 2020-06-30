@@ -180,15 +180,15 @@ void wrap_compute_radiative_transfer(
     long   Fc_dir_wg,
     double delta_tau_limit,
     // integrate_flux
-    long   F_down_tot,
-    long   F_up_tot,
-    long   F_dir_tot,
-    long   F_net,
-    long   F_down_band,
-    long   F_up_band,
-    long   F_dir_band,
-    long   F_up_TOA_spectrum,
-    double mu_star) {
+    long F_down_tot,
+    long F_up_tot,
+    long F_dir_tot,
+    long F_net,
+    long F_down_band,
+    long F_up_band,
+    long F_dir_band,
+    long F_up_TOA_spectrum,
+    long zenith_angle) {
     if (Alf_ptr != nullptr) {
         int num_col = 1;
         Alf_ptr->compute_radiative_transfer(
@@ -222,8 +222,10 @@ void wrap_compute_radiative_transfer(
             (double*)F_up_band,
             (double*)F_dir_band,
             (double*)F_up_TOA_spectrum,
-            mu_star,
-            num_col);
+            (double*)zenith_angle,
+            num_col,
+            1 // dummy
+        );
     }
     else
         printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");

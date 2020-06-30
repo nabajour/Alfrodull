@@ -210,6 +210,7 @@ void alfrodull_engine::allocate_internal_variables() {
         trans_wg_lower.allocate(num_cols * nlayer_wg_nbin);
     }
 
+    mu_star_cols.allocate(num_cols);
     hit_G_pm_denom_limit.allocate(1);
 
     // TODO: abstract this away into an interpolation class
@@ -566,14 +567,15 @@ void alfrodull_engine::compute_radiative_transfer(
     double*     F_up_band,
     double*     F_dir_band,
     double*     F_up_TOA_spectrum,
-    double      mu_star,
-    int         num_cols) // number of columns this function works on
+    double*     zenith_angle,
+    int         num_cols,
+    int         current_col_temp) // number of columns this function works on
 {
 
     USE_BENCHMARK();
 
-    // TODO: for development, hijack num_cols to use as indexc in delta_colmass, as long as it's used externaly
-    double* delta_colmass = &((*delta_col_mass)[num_cols * nlayer]);
+    // TODO: for development, propagate current column number
+    double* delta_colmass = &((*delta_col_mass)[current_col_temp * nlayer]);
 
 
     double* deltalambda = *opacities.dev_opac_deltawave;
@@ -614,19 +616,20 @@ void alfrodull_engine::compute_radiative_transfer(
         if (iso) {
             BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
 
-            mu_star = calculate_transmission_iso(*trans_wg,            // out
-                                                 delta_colmass,        // in
-                                                 *opac_wg_lay,         // in
-                                                 cloud_abs_cross_lay,  // in
-                                                 *meanmolmass_lay,     // in
-                                                 cloud_scat_cross_lay, // in
-                                                 g_0_cloud_lay,        // in
-                                                 g_0,
-                                                 epsi,
-                                                 epsilon2,
-                                                 mu_star,
-                                                 scat,
-                                                 clouds);
+            calculate_transmission_iso(*trans_wg,            // out
+                                       delta_colmass,        // in
+                                       *opac_wg_lay,         // in
+                                       cloud_abs_cross_lay,  // in
+                                       *meanmolmass_lay,     // in
+                                       cloud_scat_cross_lay, // in
+                                       g_0_cloud_lay,        // in
+                                       g_0,
+                                       epsi,
+                                       epsilon2,
+                                       zenith_angle,
+                                       scat,
+                                       clouds,
+                                       num_cols);
 
             BENCH_POINT_I_S(debug_nstep,
                             debug_col_idx,
@@ -652,12 +655,12 @@ void alfrodull_engine::compute_radiative_transfer(
 
 
                              ));
-            mu_star = calculate_transmission_noniso(
+            calculate_transmission_noniso(
                 *trans_wg_upper,
                 *trans_wg_lower,
-                &((*delta_col_upper)[nlayer
-                                     * num_cols]), // TODO: temporary while using external loop
-                &((*delta_col_lower)[nlayer * num_cols]), // TODO: temporary
+                &((*delta_col_upper)
+                      [nlayer * current_col_temp]), // TODO: temporary while using external loop
+                &((*delta_col_lower)[nlayer * current_col_temp]), // TODO: temporary
                 *opac_wg_lay,
                 *opac_wg_int,
                 cloud_abs_cross_lay,
@@ -671,9 +674,10 @@ void alfrodull_engine::compute_radiative_transfer(
                 g_0,
                 epsi,
                 epsilon2,
-                mu_star,
+                zenith_angle,
                 scat,
-                clouds);
+                clouds,
+                num_cols);
             BENCH_POINT_I_S(debug_nstep,
                             debug_col_idx,
                             "Alf_comp_trans",
@@ -702,7 +706,7 @@ void alfrodull_engine::compute_radiative_transfer(
         call_z_callback();
 
         direct_beam_flux(
-            F_dir_wg, Fc_dir_wg, z_lay, mu_star, R_planet, R_star, a, dir_beam, geom_zenith_corr);
+            F_dir_wg, Fc_dir_wg, z_lay, R_planet, R_star, a, dir_beam, geom_zenith_corr, num_cols);
 
         BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
 
@@ -719,11 +723,11 @@ void alfrodull_engine::compute_radiative_transfer(
                                               R_star,
                                               a,
                                               f_factor,
-                                              mu_star,
                                               epsi,
                                               w_0_limit,
                                               dir_beam,
-                                              clouds);
+                                              clouds,
+                                              num_cols);
         }
         else {
             populate_spectral_flux_noniso_thomas(F_down_wg,
@@ -738,14 +742,14 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  R_star,
                                                  a,
                                                  f_factor,
-                                                 mu_star,
                                                  epsi,
                                                  w_0_limit,
                                                  delta_tau_limit,
                                                  dir_beam,
                                                  clouds,
                                                  *trans_wg_upper,
-                                                 *trans_wg_lower);
+                                                 *trans_wg_lower,
+                                                 num_cols);
         }
         cuda_check_status_or_exit(__FILE__, __LINE__);
 
@@ -772,11 +776,11 @@ void alfrodull_engine::compute_radiative_transfer(
                                            R_star,
                                            a,
                                            f_factor,
-                                           mu_star,
                                            epsi,
                                            w_0_limit,
                                            dir_beam,
-                                           clouds);
+                                           clouds,
+                                           num_cols);
             }
             else {
                 populate_spectral_flux_noniso(F_down_wg,
@@ -791,14 +795,14 @@ void alfrodull_engine::compute_radiative_transfer(
                                               R_star,
                                               a,
                                               f_factor,
-                                              mu_star,
                                               epsi,
                                               w_0_limit,
                                               delta_tau_limit,
                                               dir_beam,
                                               clouds,
                                               *trans_wg_upper,
-                                              *trans_wg_lower);
+                                              *trans_wg_lower,
+                                              num_cols);
             }
 
             cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -1079,208 +1083,183 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
     }
 }
 
-double alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
-                                                    double* delta_colmass,        // in
-                                                    double* opac_wg_lay,          // in
-                                                    double* cloud_abs_cross_lay_, // in
-                                                    double* meanmolmass_lay,      // in
-                                                    double* cloud_scat_cross_lay, // in
-                                                    double* g_0_cloud_lay_,       // in
-                                                    double  g_0,
-                                                    double  epsi,
-                                                    double  epsilon2_,
-                                                    double  mu_star_,
-                                                    bool    scat,
-                                                    bool    clouds) {
-    double mu_star_wiggle_factor = 0.0;
-
-    double mu_star_local = mu_star_;
-
+void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
+                                                  double* delta_colmass,        // in
+                                                  double* opac_wg_lay,          // in
+                                                  double* cloud_abs_cross_lay_, // in
+                                                  double* meanmolmass_lay,      // in
+                                                  double* cloud_scat_cross_lay, // in
+                                                  double* g_0_cloud_lay_,       // in
+                                                  double  g_0,
+                                                  double  epsi,
+                                                  double  epsilon2_,
+                                                  double* zenith_angle_cols,
+                                                  bool    scat,
+                                                  bool    clouds,
+                                                  int     num_cols) {
     bool hit_G_pm_denom_limit_h = false;
-    do {
-        hit_G_pm_denom_limit_h = false;
-        // set wiggle checker to 0;
-        cudaMemcpy(
-            *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
+    // set global wiggle checker to 0;
+    cudaMemcpy(
+        *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
-        int nbin = opacities.nbin;
+    int nbin = opacities.nbin;
 
-        int ny = opacities.ny;
+    int ny = opacities.ny;
 
 
-        dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
-        dim3 block(16, 4, 4);
-        trans_iso<<<grid, block>>>(trans_wg,
-                                   *delta_tau_wg,
-                                   *M_term,
-                                   *N_term,
-                                   *P_term,
-                                   *G_plus,
-                                   *G_minus,
-                                   delta_colmass,
-                                   opac_wg_lay,
-                                   cloud_abs_cross_lay_,
-                                   meanmolmass_lay,
-                                   *scatter_cross_section_lay,
-                                   cloud_scat_cross_lay,
-                                   *w0_wg,
-                                   *g0_wg,
-                                   g_0_cloud_lay_,
-                                   g_0,
-                                   epsi,
-                                   epsilon2_,
-                                   mu_star_local,
-                                   w_0_limit,
-                                   scat,
-                                   nbin,
-                                   ny,
-                                   nlayer,
-                                   fcloud,
-                                   clouds,
-                                   scat_corr,
-                                   G_pm_limiter,
-                                   G_pm_denom_limit,
-                                   *hit_G_pm_denom_limit,
-                                   debug,
-                                   i2s_transition);
+    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
+    dim3 block(16, 4, 4);
+    trans_iso<<<grid, block>>>(trans_wg,
+                               *delta_tau_wg,
+                               *M_term,
+                               *N_term,
+                               *P_term,
+                               *G_plus,
+                               *G_minus,
+                               delta_colmass,
+                               opac_wg_lay,
+                               cloud_abs_cross_lay_,
+                               meanmolmass_lay,
+                               *scatter_cross_section_lay,
+                               cloud_scat_cross_lay,
+                               *w0_wg,
+                               *g0_wg,
+                               g_0_cloud_lay_,
+                               g_0,
+                               epsi,
+                               epsilon2_,
+                               zenith_angle_cols,
+                               *mu_star_cols,
+                               w_0_limit,
+                               scat,
+                               nbin,
+                               ny,
+                               nlayer,
+                               num_cols,
+                               fcloud,
+                               clouds,
+                               scat_corr,
+                               mu_star_wiggle_increment,
+                               G_pm_limiter,
+                               G_pm_denom_limit,
+                               *hit_G_pm_denom_limit,
+                               debug,
+                               i2s_transition);
 
-        cudaDeviceSynchronize();
-        cudaMemcpy(
-            &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+    cudaDeviceSynchronize();
+    cudaMemcpy(
+        &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
-        if (hit_G_pm_denom_limit_h) {
-            double zenith_angle = acos(mu_star_);
-            mu_star_wiggle_factor += 1.0;
-
-            mu_star_local =
-                cos(zenith_angle + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
-            printf("Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g)\n",
-                   mu_star_,
-                   zenith_angle / M_PI * 180.0,
-                   mu_star_wiggle_factor * mu_star_wiggle_increment,
-                   mu_star_local);
-        }
-
-    } while (hit_G_pm_denom_limit_h);
-
-    return mu_star_local;
+    if (hit_G_pm_denom_limit_h) {
+        printf("Hit G_pm denom limit, wiggled mu_star\n");
+    }
 }
 
-double alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
-                                                       double* trans_wg_lower,
-                                                       double* delta_col_upper,
-                                                       double* delta_col_lower,
-                                                       double* opac_wg_lay,
-                                                       double* opac_wg_int,
-                                                       double* cloud_abs_cross_lay_,
-                                                       double* cloud_abs_cross_int_,
-                                                       double* meanmolmass_lay,
-                                                       double* meanmolmass_int,
-                                                       double* cloud_scat_cross_lay,
-                                                       double* cloud_scat_cross_int,
-                                                       double* g_0_cloud_lay_,
-                                                       double* g_0_cloud_int_,
-                                                       double  g_0,
-                                                       double  epsi,
-                                                       double  epsilon2_,
-                                                       double  mu_star_,
-                                                       bool    scat,
-                                                       bool    clouds) {
-    double mu_star_wiggle_factor = 0.0;
-
-    double mu_star_local = mu_star_;
+void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
+                                                     double* trans_wg_lower,
+                                                     double* delta_col_upper,
+                                                     double* delta_col_lower,
+                                                     double* opac_wg_lay,
+                                                     double* opac_wg_int,
+                                                     double* cloud_abs_cross_lay_,
+                                                     double* cloud_abs_cross_int_,
+                                                     double* meanmolmass_lay,
+                                                     double* meanmolmass_int,
+                                                     double* cloud_scat_cross_lay,
+                                                     double* cloud_scat_cross_int,
+                                                     double* g_0_cloud_lay_,
+                                                     double* g_0_cloud_int_,
+                                                     double  g_0,
+                                                     double  epsi,
+                                                     double  epsilon2_,
+                                                     double* zenith_angle_cols,
+                                                     bool    scat,
+                                                     bool    clouds,
+                                                     int     num_cols) {
 
     bool hit_G_pm_denom_limit_h = false;
-    do {
-        hit_G_pm_denom_limit_h = false;
-        // set wiggle checker to 0;
-        cudaMemcpy(
-            *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
-        int nbin = opacities.nbin;
+    // set wiggle checker to 0;
+    cudaMemcpy(
+        *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
-        int ny = opacities.ny;
+    int nbin = opacities.nbin;
 
-        dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
-        dim3 block(16, 4, 4);
+    int ny = opacities.ny;
 
-        trans_noniso<<<grid, block>>>(trans_wg_upper,
-                                      trans_wg_lower,
-                                      *delta_tau_wg_upper,
-                                      *delta_tau_wg_lower,
-                                      *M_upper,
-                                      *M_lower,
-                                      *N_upper,
-                                      *N_lower,
-                                      *P_upper,
-                                      *P_lower,
-                                      *G_plus_upper,
-                                      *G_plus_lower,
-                                      *G_minus_upper,
-                                      *G_minus_lower,
-                                      delta_col_upper,
-                                      delta_col_lower,
-                                      opac_wg_lay,
-                                      opac_wg_int,
-                                      cloud_abs_cross_lay_,
-                                      cloud_abs_cross_int_,
-                                      meanmolmass_lay,
-                                      meanmolmass_int,
-                                      *scatter_cross_section_lay,
-                                      *scatter_cross_section_inter,
-                                      cloud_scat_cross_lay,
-                                      cloud_scat_cross_int,
-                                      *w0_wg_upper,
-                                      *w0_wg_lower,
-                                      *g0_wg_upper,
-                                      *g0_wg_lower,
-                                      g_0_cloud_lay_,
-                                      g_0_cloud_int_,
-                                      g_0,
-                                      epsi,
-                                      epsilon2_,
-                                      mu_star_local,
-                                      w_0_limit,
-                                      scat,
-                                      nbin,
-                                      ny,
-                                      nlayer,
-                                      fcloud,
-                                      clouds,
-                                      scat_corr,
-                                      G_pm_limiter,
-                                      G_pm_denom_limit,
-                                      *hit_G_pm_denom_limit,
-                                      debug,
-                                      i2s_transition);
+    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
+    dim3 block(16, 4, 4);
 
-        cudaMemcpy(
-            &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+    trans_noniso<<<grid, block>>>(trans_wg_upper,
+                                  trans_wg_lower,
+                                  *delta_tau_wg_upper,
+                                  *delta_tau_wg_lower,
+                                  *M_upper,
+                                  *M_lower,
+                                  *N_upper,
+                                  *N_lower,
+                                  *P_upper,
+                                  *P_lower,
+                                  *G_plus_upper,
+                                  *G_plus_lower,
+                                  *G_minus_upper,
+                                  *G_minus_lower,
+                                  delta_col_upper,
+                                  delta_col_lower,
+                                  opac_wg_lay,
+                                  opac_wg_int,
+                                  cloud_abs_cross_lay_,
+                                  cloud_abs_cross_int_,
+                                  meanmolmass_lay,
+                                  meanmolmass_int,
+                                  *scatter_cross_section_lay,
+                                  *scatter_cross_section_inter,
+                                  cloud_scat_cross_lay,
+                                  cloud_scat_cross_int,
+                                  *w0_wg_upper,
+                                  *w0_wg_lower,
+                                  *g0_wg_upper,
+                                  *g0_wg_lower,
+                                  g_0_cloud_lay_,
+                                  g_0_cloud_int_,
+                                  g_0,
+                                  epsi,
+                                  epsilon2_,
+                                  zenith_angle_cols,
+                                  *mu_star_cols,
+                                  w_0_limit,
+                                  scat,
+                                  nbin,
+                                  ny,
+                                  nlayer,
+                                  num_cols,
+                                  fcloud,
+                                  clouds,
+                                  scat_corr,
+                                  mu_star_wiggle_increment,
+                                  G_pm_limiter,
+                                  G_pm_denom_limit,
+                                  *hit_G_pm_denom_limit,
+                                  debug,
+                                  i2s_transition);
+    cudaDeviceSynchronize();
+    cudaMemcpy(
+        &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
-        if (hit_G_pm_denom_limit_h) {
-            double zenith_angle = acos(mu_star_);
-            mu_star_wiggle_factor += 1.0;
-
-            printf("Hit G_pm denom limit, wiggle mu_star by %g degree\n",
-                   mu_star_wiggle_factor * mu_star_wiggle_increment);
-            mu_star_local =
-                cos(zenith_angle + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
-        }
-
-    } while (hit_G_pm_denom_limit_h);
-
-    return mu_star_local;
+    if (hit_G_pm_denom_limit_h) {
+        printf("Hit G_pm denom limit, wiggled mu_star\n");
+    }
 }
 
 bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                         double* Fc_dir_wg,
                                         double* z_lay,
-                                        double  mu_star,
                                         double  R_planet,
                                         double  R_star,
                                         double  a,
                                         bool    dir_beam,
-                                        bool    geom_zenith_corr) {
+                                        bool    geom_zenith_corr,
+                                        int     num_cols) {
 
     int nbin = opacities.nbin;
 
@@ -1295,7 +1274,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                   *planckband_lay,
                                   *delta_tau_wg,
                                   z_lay,
-                                  mu_star,
+                                  *mu_star_cols,
                                   mu_star_limit,
                                   R_planet,
                                   R_star,
@@ -1304,7 +1283,8 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                   geom_zenith_corr,
                                   ninterface,
                                   nbin,
-                                  ny);
+                                  ny,
+                                  num_cols);
 
         cudaDeviceSynchronize();
     }
@@ -1318,7 +1298,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                      *delta_tau_wg_upper,
                                      *delta_tau_wg_lower,
                                      z_lay,
-                                     mu_star,
+                                     *mu_star_cols,
                                      mu_star_limit,
                                      R_planet,
                                      R_star,
@@ -1327,7 +1307,8 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                      geom_zenith_corr,
                                      ninterface,
                                      nbin,
-                                     ny);
+                                     ny,
+                                     num_cols);
 
         cudaDeviceSynchronize();
     }
@@ -1343,15 +1324,14 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // o
                                                          double  Rstar,
                                                          double  a,
                                                          double  f_factor,
-                                                         double  mu_star,
                                                          double  epsi,
                                                          double  w_0_limit,
                                                          bool    dir_beam,
-                                                         bool    clouds) {
+                                                         bool    clouds,
+                                                         int     num_cols) {
 
     int nbin = opacities.nbin;
-
-    int ny = opacities.ny;
+    int ny   = opacities.ny;
 
     dim3 block(16, 16, 1);
     dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
@@ -1379,8 +1359,9 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // o
                                       ninterface,
                                       nbin,
                                       f_factor,
-                                      mu_star,
+                                      *mu_star_cols,
                                       ny,
+                                      num_cols,
                                       epsi,
                                       dir_beam,
                                       clouds,
@@ -1401,15 +1382,14 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg, // out
                                                   double  Rstar,
                                                   double  a,
                                                   double  f_factor,
-                                                  double  mu_star,
                                                   double  epsi,
                                                   double  w_0_limit,
                                                   bool    dir_beam,
-                                                  bool    clouds) {
+                                                  bool    clouds,
+                                                  int     num_cols) {
 
     int nbin = opacities.nbin;
-
-    int ny = opacities.ny;
+    int ny   = opacities.ny;
 
     dim3 block(16, 16, 1);
     dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
@@ -1430,8 +1410,9 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg, // out
                                       ninterface,
                                       nbin,
                                       f_factor,
-                                      mu_star,
+                                      *mu_star_cols,
                                       ny,
+                                      num_cols,
                                       epsi,
                                       dir_beam,
                                       clouds,
@@ -1456,17 +1437,16 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double  Rstar,
                                                      double  a,
                                                      double  f_factor,
-                                                     double  mu_star,
                                                      double  epsi,
                                                      double  w_0_limit,
                                                      double  delta_tau_limit,
                                                      bool    dir_beam,
                                                      bool    clouds,
                                                      double* trans_wg_upper,
-                                                     double* trans_wg_lower) {
-    int nbin = opacities.nbin;
-    int ny   = opacities.ny;
-
+                                                     double* trans_wg_lower,
+                                                     int     num_cols) {
+    int  nbin = opacities.nbin;
+    int  ny   = opacities.ny;
     dim3 block(16, 16, 1);
 
     dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
@@ -1502,8 +1482,9 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                          ninterface,
                                          nbin,
                                          f_factor,
-                                         mu_star,
+                                         *mu_star_cols,
                                          ny,
+                                         num_cols,
                                          epsi,
                                          delta_tau_limit,
                                          dir_beam,
@@ -1530,14 +1511,14 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                                             double  Rstar,
                                                             double  a,
                                                             double  f_factor,
-                                                            double  mu_star,
                                                             double  epsi,
                                                             double  w_0_limit,
                                                             double  delta_tau_limit,
                                                             bool    dir_beam,
                                                             bool    clouds,
                                                             double* trans_wg_upper,
-                                                            double* trans_wg_lower) {
+                                                            double* trans_wg_lower,
+                                                            int     num_cols) {
     int nbin = opacities.nbin;
     int ny   = opacities.ny;
 
@@ -1583,8 +1564,9 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                          ninterface,
                                          nbin,
                                          f_factor,
-                                         mu_star,
+                                         *mu_star_cols,
                                          ny,
+                                         num_cols,
                                          epsi,
                                          delta_tau_limit,
                                          dir_beam,

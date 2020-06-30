@@ -72,7 +72,7 @@ using std::string;
 
 
 // show progress bar
-//#define COLUMN_LOOP_PROGRESS_BAR
+#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
 //#define DEBUG_PRINTOUT_ARRAYS
@@ -740,7 +740,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         if (nstep % compute_every_n_iteration == 0 || start_up) {
             std::shared_ptr<double[]> col_cos_zenith_angle_h =
                 esp.insolation.get_host_cos_zenith_angles();
-
+            double* col_cos_zenith_angle_d = esp.insolation.get_device_cos_zenith_angles();
             Qheat.zero();
             F_down_tot.zero();
             F_up_tot.zero();
@@ -979,9 +979,11 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 bool singlewalk_loc = scat_single_walk;
                 int  ninterface     = nlayer + 1;
                 for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
-                    // printf("column_c: %d\n", c);
-                    double mu_star           = -col_cos_zenith_angle_h[column_idx + c];
-                    int    column_offset_int = (column_idx + c) * ninterface;
+                    int current_num_cols = min(num_cols, esp.point_num - column_idx);
+                    //printf("column_c: %d, current numcols: %d\n", c, current_num_cols);
+                    double  mu_star               = -col_cos_zenith_angle_h[column_idx + c];
+                    double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx + c]);
+                    int     column_offset_int     = (column_idx + c) * ninterface;
 
                     double* F_col_down_tot = &((*F_down_tot)[column_offset_int]);
                     double* F_col_up_tot   = &((*F_up_tot)[column_offset_int]);
@@ -1019,7 +1021,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         &((*F_up_band)[c * ninterface * nbin]),
                         F_dir_band_col,
                         F_up_TOA_spectrum_col,
-                        mu_star,
+                        cos_zenith_angle_cols,
+                        current_num_cols,
                         c);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);

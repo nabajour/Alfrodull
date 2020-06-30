@@ -39,7 +39,6 @@ __global__ void integrate_flux_double(double* deltalambda,  // in
     int x = threadIdx.x;
     int y = threadIdx.y;
     int i = threadIdx.z;
-
     // set memory to 0.
 
     if (y == 0) {
@@ -204,7 +203,7 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                          double* planckband_lay, // in
                          double* delta_tau_wg,   // in
                          double* z_lay,          // in
-                         double  mu_star,
+                         double* mu_star_cols,
                          double  mu_star_limit,
                          double  R_planet,
                          double  R_star,
@@ -213,13 +212,16 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
                          bool    geom_zenith_corr,
                          int     ninterface,
                          int     nbin,
-                         int     ny) {
+                         int     ny,
+                         int     num_cols) {
 
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int x = threadIdx.y + blockIdx.y * blockDim.y;
     int y = threadIdx.z + blockIdx.z * blockDim.z;
-
-    if (i < ninterface && x < nbin && y < ny) {
+    // column
+    int c = 0;
+    if (i < ninterface && x < nbin && y < ny && c < num_cols) {
+        double mu_star = mu_star_cols[c];
 
         // the stellar intensity at TOA
         double I_dir = ((R_star / a) * (R_star / a)) * PI
@@ -264,7 +266,7 @@ __global__ void fdir_noniso(double* F_dir_wg,
                             double* delta_tau_wg_upper,
                             double* delta_tau_wg_lower,
                             double* z_lay,
-                            double  mu_star,
+                            double* mu_star_cols,
                             double  mu_star_limit,
                             double  R_planet,
                             double  R_star,
@@ -273,13 +275,17 @@ __global__ void fdir_noniso(double* F_dir_wg,
                             bool    geom_zenith_corr,
                             int     ninterface,
                             int     nbin,
-                            int     ny) {
+                            int     ny,
+                            int     num_cols) {
 
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int x = threadIdx.y + blockIdx.y * blockDim.y;
     int y = threadIdx.z + blockIdx.z * blockDim.z;
-
-    if (i < ninterface && x < nbin && y < ny) {
+    // column
+    int c = 0;
+    // TODO: fix check on column
+    if (i < ninterface && x < nbin && y < ny && c < num_cols) {
+        double mu_star = mu_star_cols[c];
 
         // the stellar intensity at TOA
         double I_dir = ((R_star / a) * (R_star / a)) * PI
@@ -342,8 +348,9 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
                                  int     numinterfaces,
                                  int     nbin,
                                  double  f_factor,
-                                 double  mu_star,
+                                 double* mu_star_cols,
                                  int     ny,
+                                 int     num_cols,
                                  double  epsi,
                                  bool    dir_beam,
                                  bool    clouds,
@@ -353,8 +360,10 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x < nbin && y < ny) {
 
+    int c = 0;
+    if (x < nbin && y < ny && c < num_cols) {
+        double mu_star = mu_star_cols[c];
         double w0;
         double M;
         double N;
@@ -537,8 +546,9 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
                                     int     numinterfaces,
                                     int     nbin,
                                     double  f_factor,
-                                    double  mu_star,
+                                    double* mu_star_cols,
                                     int     ny,
+                                    int     num_cols,
                                     double  epsi,
                                     double  delta_tau_limit,
                                     bool    dir_beam,
@@ -549,8 +559,9 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-
-    if (x < nbin && y < ny) {
+    int c = 0;
+    if (x < nbin && y < ny * c < num_cols) {
+        double mu_star = mu_star_cols[c];
 
         double w0_up;
         double del_tau_up;
@@ -873,8 +884,9 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  int     numinterfaces,
                                  int     nbin,
                                  double  f_factor,
-                                 double  mu_star,
+                                 double* mu_star_cols,
                                  int     ny,
+                                 int     num_cols,
                                  double  epsi,
                                  bool    dir_beam,
                                  bool    clouds,
@@ -886,7 +898,8 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     // weight index
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x < nbin && y < ny) {
+    int c = 0;
+    if (x < nbin && y < ny && c < num_cols) {
         // make contiguous address space for worker memory, fastest idx is interface
         // two equations per interface, one matrix block per interface
         int      N       = numinterfaces;
@@ -897,6 +910,8 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
         double2* X       = (double2*)&(X_buff[(x * ny + y) * N * 2]);
         double4* C_prime = (double4*)&(C_prime_buff[(x * ny + y) * N * 4]);
         double2* D_prime = (double2*)&(D_prime_buff[(x * ny + y) * N * 2]);
+
+        double mu_star = mu_star_cols[c];
 
         // TODO: how do we treat boundary ?
 
@@ -1170,8 +1185,9 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
                                     int     numinterfaces,
                                     int     nbin,
                                     double  f_factor,
-                                    double  mu_star,
+                                    double* mu_star_cols,
                                     int     ny,
+                                    int     num_cols,
                                     double  epsi,
                                     double  delta_tau_limit,
                                     bool    dir_beam,
@@ -1183,11 +1199,14 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     // weight index
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x < nbin && y < ny) {
+    int c = 0;
+
+    if (x < nbin && y < ny && c < num_cols) {
         // make contiguous address space for worker memory, fastest idx is interface
         // two equations per interface, one matrix block per interface
         // Num input layers
-        int num_layers = numinterfaces - 1;
+        double mu_star    = mu_star_cols[c];
+        int    num_layers = numinterfaces - 1;
 
         // num interfaces with duplication
         int num_th_layers     = 2 * num_layers;

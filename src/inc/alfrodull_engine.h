@@ -150,6 +150,8 @@ public:
     std::function<void()> calc_z_func;
 
     // device memory
+    // mu_star: computed from zenith_angle and modified by wiggle
+    cuda_device_memory<double> mu_star_cols;
     //  scattering
     cuda_device_memory<double> scatter_cross_section_lay;
     cuda_device_memory<double> scatter_cross_section_inter;
@@ -243,8 +245,9 @@ public:
                                     double*     F_up_band,
                                     double*     F_dir_band,
                                     double*     F_up_TOA_spectrum,
-                                    double      mu_star,
-                                    int         num_cols);
+                                    double*     zenith_angle,
+                                    int         num_cols,
+                                    int         current_col_temp);
 
     bool prepare_compute_flux(double*       dev_starflux,
                               double*       dev_T_lay,
@@ -274,50 +277,52 @@ public:
                         double* F_up_TOA_spectrum,
                         double* gauss_weight);
 
-    double calculate_transmission_iso(double* trans_wg,             // out
-                                      double* delta_colmass,        // in
-                                      double* opac_wg_lay,          // in
-                                      double* cloud_abs_cross_lay,  // in
-                                      double* meanmolmass_lay,      // in
-                                      double* cloud_scat_cross_lay, // in
-                                      double* g_0_tot_lay,          // in
-                                      double  g_0,
-                                      double  epsi,
-                                      double  epsilon_2_,
-                                      double  mu_star,
-                                      bool    scat,
-                                      bool    clouds);
+    void calculate_transmission_iso(double* trans_wg,             // out
+                                    double* delta_colmass,        // in
+                                    double* opac_wg_lay,          // in
+                                    double* cloud_abs_cross_lay,  // in
+                                    double* meanmolmass_lay,      // in
+                                    double* cloud_scat_cross_lay, // in
+                                    double* g_0_tot_lay,          // in
+                                    double  g_0,
+                                    double  epsi,
+                                    double  epsilon_2_,
+                                    double* zenith_angle_cols,
+                                    bool    scat,
+                                    bool    clouds,
+                                    int     num_cols);
 
-    double calculate_transmission_noniso(double* trans_wg_upper,
-                                         double* trans_wg_lower,
-                                         double* delta_col_upper,
-                                         double* delta_col_lower,
-                                         double* opac_wg_lay,
-                                         double* opac_wg_int,
-                                         double* cloud_abs_cross_lay,
-                                         double* cloud_abs_cross_int,
-                                         double* meanmolmass_lay,
-                                         double* meanmolmass_int,
-                                         double* cloud_scat_cross_lay,
-                                         double* cloud_scat_cross_int,
-                                         double* g_0_tot_lay,
-                                         double* g_0_tot_int,
-                                         double  g_0,
-                                         double  epsi,
-                                         double  epsilon_2_,
-                                         double  mu_star,
-                                         bool    scat,
-                                         bool    clouds);
+    void calculate_transmission_noniso(double* trans_wg_upper,
+                                       double* trans_wg_lower,
+                                       double* delta_col_upper,
+                                       double* delta_col_lower,
+                                       double* opac_wg_lay,
+                                       double* opac_wg_int,
+                                       double* cloud_abs_cross_lay,
+                                       double* cloud_abs_cross_int,
+                                       double* meanmolmass_lay,
+                                       double* meanmolmass_int,
+                                       double* cloud_scat_cross_lay,
+                                       double* cloud_scat_cross_int,
+                                       double* g_0_tot_lay,
+                                       double* g_0_tot_int,
+                                       double  g_0,
+                                       double  epsi,
+                                       double  epsilon_2_,
+                                       double* zenith_angle_cols,
+                                       bool    scat,
+                                       bool    clouds,
+                                       int     num_cols);
 
     bool direct_beam_flux(double* F_dir_wg,
                           double* Fc_dir_wg,
                           double* z_lay,
-                          double  mu_star,
                           double  R_planet,
                           double  R_star,
                           double  a,
                           bool    dir_beam,
-                          bool    geom_zenith_corr);
+                          bool    geom_zenith_corr,
+                          int     num_cols);
 
     bool populate_spectral_flux_iso_thomas(double* F_down_wg, // out
                                            double* F_up_wg,   // out
@@ -327,11 +332,11 @@ public:
                                            double  Rstar,
                                            double  a,
                                            double  f_factor,
-                                           double  mu_star,
                                            double  epsi,
                                            double  w_0_limit,
                                            bool    dir_beam,
-                                           bool    clouds);
+                                           bool    clouds,
+                                           int     num_cols);
 
     bool populate_spectral_flux_iso(double* F_down_wg, // out
                                     double* F_up_wg,   // out
@@ -341,11 +346,11 @@ public:
                                     double  Rstar,
                                     double  a,
                                     double  f_factor,
-                                    double  mu_star,
                                     double  epsi,
                                     double  w_0_limit,
                                     bool    dir_beam,
-                                    bool    clouds);
+                                    bool    clouds,
+                                    int     num_cols);
 
     bool populate_spectral_flux_noniso(double* F_down_wg,
                                        double* F_up_wg,
@@ -359,14 +364,14 @@ public:
                                        double  Rstar,
                                        double  a,
                                        double  f_factor,
-                                       double  mu_star,
                                        double  epsi,
                                        double  w_0_limit,
                                        double  delta_tau_limit,
                                        bool    dir_beam,
                                        bool    clouds,
                                        double* trans_wg_upper,
-                                       double* trans_wg_lower);
+                                       double* trans_wg_lower,
+                                       int     num_cols);
 
     bool populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                               double* F_up_wg,
@@ -380,12 +385,12 @@ public:
                                               double  Rstar,
                                               double  a,
                                               double  f_factor,
-                                              double  mu_star,
                                               double  epsi,
                                               double  w_0_limit,
                                               double  delta_tau_limit,
                                               bool    dir_beam,
                                               bool    clouds,
                                               double* trans_wg_upper,
-                                              double* trans_wg_lower);
+                                              double* trans_wg_lower,
+                                              int     num_cols);
 };
