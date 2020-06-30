@@ -323,20 +323,21 @@ __global__ void trans_iso(double* trans_wg,             // out
 
         } while (hit_G_pm_limit);
 
-        // printf("%d: w0: %g, g0: %g dtau: %g sc: %g csc: %g mabs: %g, cabs: %g cg0: %g mmm: %g dcm: "
-        //        "%g mu*: %g\n",
-        //        x,
-        //        w0,
-        //        g0,
-        //        del_tau,
-        //        ray_cross,
-        //        cloud_scat_cross,
-        //        opac_wg_lay[y + ny * x + ny * nbin * i],
-        //        cloud_abs_cross_lay[x],
-        //        g0_cloud,
-        //        meanmolmass_lay[i],
-        //        delta_colmass[i],
-        //        mu_star_used);
+        // printf(
+        //     "%d: w0: %g, g0: %g dtau: %g gsc: %g csc: %g gabs: %g, cabs: %g cg0: %g mmm: %g dcm: "
+        //     "%g mu*: %g\n",
+        //     x,
+        //     w0,
+        //     g0,
+        //     del_tau,
+        //     ray_cross,
+        //     cloud_scat_cross,
+        //     opac_wg_lay[y + ny * x + ny * nbin * i],
+        //     cloud_abs_cross_lay[x],
+        //     g0_cloud,
+        //     meanmolmass_lay[i],
+        //     delta_colmass[i],
+        //     mu_star_used);
 
         mu_star_cols[c] = mu_star_used;
     }

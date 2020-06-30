@@ -573,6 +573,38 @@ void alfrodull_engine::compute_radiative_transfer(
 {
     int nbin = opacities.nbin;
     int ny   = opacities.ny;
+    USE_BENCHMARK();
+    {
+        prepare_compute_flux(
+            dev_starflux,
+            dev_T_lay_cols, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+            dev_T_int_cols,   // in: it, pii, ioi, mmmi, kii
+            dev_p_lay_cols,   // in: io, mmm, kil
+            dev_p_int_cols,   // in: ioi, mmmi, kii
+            *opac_wg_lay,     // out: io
+            *opac_wg_int,     // out: ioi
+            *meanmolmass_lay, // out: mmm
+            *meanmolmass_int, // out: mmmi
+            real_star,        // pil
+            fake_opac,        // io
+            interpolate_temp_and_pres,
+            interp_and_calc_flux_step,
+            num_cols);
+
+        cuda_check_status_or_exit(__FILE__, __LINE__);
+
+
+        BENCH_POINT_I_S(debug_nstep,
+                        debug_col_idx,
+                        "Alf_prep_flx",
+                        (),
+                        ("opac_wg_lay",
+                         "opac_wg_int",
+                         "meanmolmass_lay",
+                         "meanmolmass_int",
+                         "cloud_scat_cross_lay",
+                         "planckband_lay"));
+    }
     for (int c = 0; c < num_cols; c++) {
         USE_BENCHMARK();
 
@@ -609,34 +641,6 @@ void alfrodull_engine::compute_radiative_transfer(
 
         double* deltalambda = *opacities.dev_opac_deltawave;
 
-        prepare_compute_flux(
-            dev_starflux,
-            dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
-            dev_T_int,        // in: it, pii, ioi, mmmi, kii
-            dev_p_lay,        // in: io, mmm, kil
-            dev_p_int,        // in: ioi, mmmi, kii
-            *opac_wg_lay,     // out: io
-            *opac_wg_int,     // out: ioi
-            *meanmolmass_lay, // out: mmm
-            *meanmolmass_int, // out: mmmi
-            real_star,        // pil
-            fake_opac,        // io
-            interpolate_temp_and_pres,
-            interp_and_calc_flux_step);
-
-        cuda_check_status_or_exit(__FILE__, __LINE__);
-
-
-        BENCH_POINT_I_S(debug_nstep,
-                        debug_col_idx,
-                        "Alf_prep_flx",
-                        (),
-                        ("opac_wg_lay",
-                         "opac_wg_int",
-                         "meanmolmass_lay",
-                         "meanmolmass_int",
-                         "cloud_scat_cross_lay",
-                         "planckband_lay"));
 
         // also lookup and interpolate cloud values here if cloud values
         // per volume element is needed
@@ -658,7 +662,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                            zenith_angle,
                                            scat,
                                            clouds,
-                                           1);
+                                           c);
 
                 BENCH_POINT_I_S(debug_nstep,
                                 debug_col_idx,
@@ -705,7 +709,7 @@ void alfrodull_engine::compute_radiative_transfer(
                     zenith_angle,
                     scat,
                     clouds,
-                    1);
+                    c);
                 BENCH_POINT_I_S(debug_nstep,
                                 debug_col_idx,
                                 "Alf_comp_trans",
@@ -734,7 +738,7 @@ void alfrodull_engine::compute_radiative_transfer(
             call_z_callback();
 
             direct_beam_flux(
-                F_dir_wg, Fc_dir_wg, z_lay, R_planet, R_star, a, dir_beam, geom_zenith_corr, 1);
+                F_dir_wg, Fc_dir_wg, z_lay, R_planet, R_star, a, dir_beam, geom_zenith_corr, c);
 
             BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
 
@@ -755,7 +759,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                                   w_0_limit,
                                                   dir_beam,
                                                   clouds,
-                                                  1);
+                                                  c);
             }
             else {
                 populate_spectral_flux_noniso_thomas(F_down_wg,
@@ -777,7 +781,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                                      clouds,
                                                      *trans_wg_upper,
                                                      *trans_wg_lower,
-                                                     1);
+                                                     c);
             }
             cuda_check_status_or_exit(__FILE__, __LINE__);
 
@@ -881,152 +885,172 @@ bool alfrodull_engine::prepare_compute_flux(
     // state variables
     // TODO: check which ones can be internal only
     double*
-                  dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
-    double*       dev_T_int,           // in: it, pii, ioi, mmmi, kii
-    double*       dev_p_lay,           // in: io, mmm, kil
-    double*       dev_p_int,           // in: ioi, mmmi, kii
-    double*       dev_opac_wg_lay,     // out: io
-    double*       dev_opac_wg_int,     // out: ioi
-    double*       dev_meanmolmass_lay, // out: mmm
-    double*       dev_meanmolmass_int, // out: mmmi
-    const bool&   real_star,           // pil
-    const double& fake_opac,           // io
+                  dev_T_lay_cols, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+    double*       dev_T_int_cols,           // in: it, pii, ioi, mmmi, kii
+    double*       dev_p_lay_cols,           // in: io, mmm, kil
+    double*       dev_p_int_cols,           // in: ioi, mmmi, kii
+    double*       dev_opac_wg_lay_cols,     // out: io
+    double*       dev_opac_wg_int_cols,     // out: ioi
+    double*       dev_meanmolmass_lay_cols, // out: mmm
+    double*       dev_meanmolmass_int_cols, // out: mmmi
+    const bool&   real_star,                // pil
+    const double& fake_opac,                // io
     const bool&   interpolate_temp_and_pres,
-    const bool&   interp_and_calc_flux_step) {
+    const bool&   interp_and_calc_flux_step,
+    const int&    num_cols) {
 
     int nbin = opacities.nbin;
+    int ny   = opacities.ny;
+    for (int c = 0; c < num_cols; c++) {
+        double* dev_T_lay             = &(dev_T_lay_cols[c * (nlayer + 1)]);
+        double* dev_T_int             = &(dev_T_int_cols[c * ninterface]);
+        double* dev_p_lay             = &(dev_p_lay_cols[c * nlayer]);
+        double* dev_p_int             = &(dev_p_int_cols[c * ninterface]);
+        double* dev_opac_wg_lay       = &(dev_opac_wg_lay_cols[c * nlayer * ny * nbin]);
+        double* dev_meanmolmass_lay   = &(dev_meanmolmass_lay_cols[c * nlayer]);
+        double* planckband_lay_curcol = &((*planckband_lay)[c * (nlayer + 2) * nbin]);
 
 
-    // TODO: check where those planckband values are used, where used here in
-    // calculate_surface_planck and correc_surface_emission that's not used anymore
-    // out: csp, cse
-    int plancktable_dim  = plancktable.dim;
-    int plancktable_step = plancktable.step;
+        // TODO: check where those planckband values are used, where used here in
+        // calculate_surface_planck and correc_surface_emission that's not used anymore
+        // out: csp, cse
+        int plancktable_dim  = plancktable.dim;
+        int plancktable_step = plancktable.step;
 
-    if (interpolate_temp_and_pres) {
-        // it
-        dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
-        dim3 it_block(16, 1, 1);
+        if (interpolate_temp_and_pres) {
+            // it
+            dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
+            dim3 it_block(16, 1, 1);
 
-        interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, // out
-                                                       dev_T_int, // in
-                                                       ninterface);
-        cudaDeviceSynchronize();
-    }
-
-    // pil
-    dim3 pil_grid(int((nbin + 15) / 16), int(((nlayer + 2) + 15)) / 16, 1);
-    dim3 pil_block(16, 16, 1);
-    planck_interpol_layer<<<pil_grid, pil_block>>>(dev_T_lay,                // in
-                                                   *planckband_lay,          // out
-                                                   *plancktable.planck_grid, // in
-                                                   dev_starflux,             // in
-                                                   real_star,
-                                                   nlayer,
-                                                   nbin,
-                                                   plancktable_dim,
-                                                   plancktable_step);
-    cudaDeviceSynchronize();
-
-    if (!iso) {
-        // pii
-        dim3 pii_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
-        dim3 pii_block(16, 16, 1);
-        planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int,                // in
-                                                           *planckband_int,          // out
-                                                           *plancktable.planck_grid, // in
-                                                           ninterface,
-                                                           nbin,
-                                                           plancktable_dim,
-                                                           plancktable_step);
-        cudaDeviceSynchronize();
-    }
-
-    if (interp_and_calc_flux_step) {
-        // io
-        dim3 io_grid(int((nbin + 15) / 16), int((nlayer + 15) / 16), 1);
-        dim3 io_block(16, 16, 1);
-        // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
-        // out -> opacities (dev_opac_wg_lay)
-        // out -> scetter cross section (scatter_cross_section_...)
-        interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,                          // in
-                                                     *opacities.dev_temperatures,        // in
-                                                     dev_p_lay,                          // in
-                                                     *opacities.dev_pressures,           // in
-                                                     *opacities.dev_kpoints,             // in
-                                                     dev_opac_wg_lay,                    // out
-                                                     *opacities.dev_scat_cross_sections, // in
-                                                     *scatter_cross_section_lay,         // out
-                                                     opacities.n_pressures,
-                                                     opacities.n_temperatures,
-                                                     opacities.ny,
-                                                     nbin,
-                                                     fake_opac,
-                                                     nlayer);
-
-
-        cudaDeviceSynchronize();
-
-        if (!iso) {
-            // ioi
-            dim3 ioi_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
-            dim3 ioi_block(16, 16, 1);
-
-            interpolate_opacities<<<ioi_grid, ioi_block>>>(dev_T_int,                   // in
-                                                           *opacities.dev_temperatures, // in
-                                                           dev_p_int,                   // in
-                                                           *opacities.dev_pressures,    // in
-                                                           *opacities.dev_kpoints,      // in
-                                                           dev_opac_wg_int,             // out
-                                                           *opacities.dev_scat_cross_sections, // in
-                                                           *scatter_cross_section_inter, // out
-                                                           opacities.n_pressures,
-                                                           opacities.n_temperatures,
-                                                           opacities.ny,
-                                                           nbin,
-                                                           fake_opac,
+            interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, // out
+                                                           dev_T_int, // in
                                                            ninterface);
-
             cudaDeviceSynchronize();
         }
 
-        // mmm
-        dim3 mmm_block(16, 1, 1);
-        dim3 mmm_grid(int((nlayer + 15) / 16), 1, 1);
-
-        meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,                   // in
-                                                      *opacities.dev_temperatures, // in
-                                                      dev_meanmolmass_lay,         // out
-                                                      *opacities.dev_meanmolmass,  // in
-                                                      dev_p_lay,                   // in
-                                                      *opacities.dev_pressures,    // in
-                                                      opacities.n_pressures,
-                                                      opacities.n_temperatures,
-                                                      nlayer);
-
-
+        // pil
+        dim3 pil_grid(int((nbin + 15) / 16), int(((nlayer + 2) + 15)) / 16, 1);
+        dim3 pil_block(16, 16, 1);
+        planck_interpol_layer<<<pil_grid, pil_block>>>(dev_T_lay,                // in
+                                                       planckband_lay_curcol,    // out
+                                                       *plancktable.planck_grid, // in
+                                                       dev_starflux,             // in
+                                                       real_star,
+                                                       nlayer,
+                                                       nbin,
+                                                       plancktable_dim,
+                                                       plancktable_step);
         cudaDeviceSynchronize();
 
         if (!iso) {
-            // mmmi
-            dim3 mmmi_block(16, 1, 1);
-            dim3 mmmi_grid(int((ninterface + 15) / 16), 1, 1);
 
-            meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,                   // in
-                                                            *opacities.dev_temperatures, // in
-                                                            dev_meanmolmass_int,         // out
-                                                            *opacities.dev_meanmolmass,  // in
-                                                            dev_p_int,                   // in
-                                                            *opacities.dev_pressures,    // in
-                                                            opacities.n_pressures,
-                                                            opacities.n_temperatures,
-                                                            ninterface);
+            double* planckband_int_curcol = &((*planckband_int)[c * ninterface * nbin]);
+
+            // pii
+            dim3 pii_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
+            dim3 pii_block(16, 16, 1);
+            planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int,                // in
+                                                               *planckband_int,          // out
+                                                               *plancktable.planck_grid, // in
+                                                               ninterface,
+                                                               nbin,
+                                                               plancktable_dim,
+                                                               plancktable_step);
+            cudaDeviceSynchronize();
+        }
+
+        if (interp_and_calc_flux_step) {
+            // io
+            dim3 io_grid(int((nbin + 15) / 16), int((nlayer + 15) / 16), 1);
+            dim3 io_block(16, 16, 1);
+            // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
+            // out -> opacities (dev_opac_wg_lay)
+            // out -> scetter cross section (scatter_cross_section_...)
+            interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,                          // in
+                                                         *opacities.dev_temperatures,        // in
+                                                         dev_p_lay,                          // in
+                                                         *opacities.dev_pressures,           // in
+                                                         *opacities.dev_kpoints,             // in
+                                                         dev_opac_wg_lay,                    // out
+                                                         *opacities.dev_scat_cross_sections, // in
+                                                         *scatter_cross_section_lay,         // out
+                                                         opacities.n_pressures,
+                                                         opacities.n_temperatures,
+                                                         opacities.ny,
+                                                         nbin,
+                                                         fake_opac,
+                                                         nlayer);
 
 
             cudaDeviceSynchronize();
+
+            if (!iso) {
+
+                double* dev_opac_wg_int = &(dev_opac_wg_int_cols[c * ninterface * ny * nbin]);
+
+
+                // ioi
+                dim3 ioi_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
+                dim3 ioi_block(16, 16, 1);
+
+                interpolate_opacities<<<ioi_grid, ioi_block>>>(
+                    dev_T_int,                          // in
+                    *opacities.dev_temperatures,        // in
+                    dev_p_int,                          // in
+                    *opacities.dev_pressures,           // in
+                    *opacities.dev_kpoints,             // in
+                    dev_opac_wg_int,                    // out
+                    *opacities.dev_scat_cross_sections, // in
+                    *scatter_cross_section_inter,       // out
+                    opacities.n_pressures,
+                    opacities.n_temperatures,
+                    opacities.ny,
+                    nbin,
+                    fake_opac,
+                    ninterface);
+
+                cudaDeviceSynchronize();
+            }
+
+            // mmm
+            dim3 mmm_block(16, 1, 1);
+            dim3 mmm_grid(int((nlayer + 15) / 16), 1, 1);
+
+            meanmolmass_interpol<<<mmm_grid, mmm_block>>>(dev_T_lay,                   // in
+                                                          *opacities.dev_temperatures, // in
+                                                          dev_meanmolmass_lay,         // out
+                                                          *opacities.dev_meanmolmass,  // in
+                                                          dev_p_lay,                   // in
+                                                          *opacities.dev_pressures,    // in
+                                                          opacities.n_pressures,
+                                                          opacities.n_temperatures,
+                                                          nlayer);
+
+
+            cudaDeviceSynchronize();
+
+            if (!iso) {
+                double* dev_meanmolmass_int = &(dev_meanmolmass_int_cols[c * ninterface]);
+
+                // mmmi
+                dim3 mmmi_block(16, 1, 1);
+                dim3 mmmi_grid(int((ninterface + 15) / 16), 1, 1);
+
+                meanmolmass_interpol<<<mmmi_grid, mmmi_block>>>(dev_T_int,                   // in
+                                                                *opacities.dev_temperatures, // in
+                                                                dev_meanmolmass_int,         // out
+                                                                *opacities.dev_meanmolmass,  // in
+                                                                dev_p_int,                   // in
+                                                                *opacities.dev_pressures,    // in
+                                                                opacities.n_pressures,
+                                                                opacities.n_temperatures,
+                                                                ninterface);
+
+
+                cudaDeviceSynchronize();
+            }
         }
     }
-
     // TODO: add state check and return value
 
     return true;
@@ -1152,10 +1176,10 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                *G_plus,
                                *G_minus,
                                delta_colmass,
-                               opac_wg_lay,
+                               &(opac_wg_lay[num_cols * nlayer * ny * nbin]),
                                cloud_abs_cross_lay_,
-                               meanmolmass_lay,
-                               *scatter_cross_section_lay,
+                               &(meanmolmass_lay[num_cols * nlayer]),
+                               &((*scatter_cross_section_lay)[num_cols * nlayer * nbin]),
                                cloud_scat_cross_lay,
                                *w0_wg,
                                *g0_wg,
@@ -1170,7 +1194,7 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                nbin,
                                ny,
                                nlayer,
-                               num_cols,
+                               1, // num_cols,
                                fcloud,
                                clouds,
                                scat_corr,
@@ -1241,14 +1265,14 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                   *G_minus_lower,
                                   delta_col_upper,
                                   delta_col_lower,
-                                  opac_wg_lay,
-                                  opac_wg_int,
+                                  &(opac_wg_lay[num_cols * nlayer * ny * nbin]),
+                                  &(opac_wg_int[num_cols * ninterface * ny * nbin]),
                                   cloud_abs_cross_lay_,
                                   cloud_abs_cross_int_,
-                                  meanmolmass_lay,
-                                  meanmolmass_int,
-                                  *scatter_cross_section_lay,
-                                  *scatter_cross_section_inter,
+                                  &(meanmolmass_lay[num_cols * nlayer]),
+                                  &(meanmolmass_int[num_cols * ninterface]),
+                                  &((*scatter_cross_section_lay)[num_cols * nlayer * nbin]),
+                                  &((*scatter_cross_section_inter)[num_cols * ninterface * nbin]),
                                   cloud_scat_cross_lay,
                                   cloud_scat_cross_int,
                                   *w0_wg_upper,
@@ -1267,7 +1291,7 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                   nbin,
                                   ny,
                                   nlayer,
-                                  num_cols,
+                                  1,
                                   fcloud,
                                   clouds,
                                   scat_corr,
@@ -1306,8 +1330,8 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
         dim3 block(4, 32, 4);
         dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (ny + 3) / 4);
         fdir_iso<<<grid, block>>>(F_dir_wg,
-                                  *planckband_lay,
-                                  *delta_tau_wg,
+                                  &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
+                                  &((*delta_tau_wg)[num_cols * nlayer * ny * nbin]),
                                   z_lay,
                                   *mu_star_cols,
                                   mu_star_limit,
@@ -1319,7 +1343,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                   ninterface,
                                   nbin,
                                   ny,
-                                  num_cols);
+                                  1);
 
         cudaDeviceSynchronize();
     }
@@ -1329,9 +1353,9 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
 
         fdir_noniso<<<grid, block>>>(F_dir_wg,
                                      Fc_dir_wg,
-                                     *planckband_lay,
-                                     *delta_tau_wg_upper,
-                                     *delta_tau_wg_lower,
+                                     &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
+                                     &((*delta_tau_wg_upper)[num_cols * nlayer * ny * nbin]),
+                                     &((*delta_tau_wg_lower)[num_cols * nlayer * ny * nbin]),
                                      z_lay,
                                      *mu_star_cols,
                                      mu_star_limit,
@@ -1343,7 +1367,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                      ninterface,
                                      nbin,
                                      ny,
-                                     num_cols);
+                                     1);
 
         cudaDeviceSynchronize();
     }
@@ -1373,7 +1397,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // o
     fband_iso_thomas<<<grid, block>>>(F_down_wg,
                                       F_up_wg,
                                       F_dir_wg,
-                                      *planckband_lay,
+                                      &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
                                       *w0_wg,
                                       *M_term,
                                       *N_term,
@@ -1396,7 +1420,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // o
                                       f_factor,
                                       *mu_star_cols,
                                       ny,
-                                      num_cols,
+                                      1,
                                       epsi,
                                       dir_beam,
                                       clouds,
@@ -1568,8 +1592,8 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                          Fc_up_wg,
                                          F_dir_wg,
                                          Fc_dir_wg,
-                                         *planckband_lay,
-                                         *planckband_int,
+                                         &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
+                                         &((*planckband_int)[num_cols * ninterface * nbin]),
                                          *w0_wg_upper,
                                          *w0_wg_lower,
                                          *delta_tau_wg_upper,
@@ -1601,7 +1625,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                          f_factor,
                                          *mu_star_cols,
                                          ny,
-                                         num_cols,
+                                         1,
                                          epsi,
                                          delta_tau_limit,
                                          dir_beam,

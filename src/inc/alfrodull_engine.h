@@ -261,7 +261,8 @@ public:
                               const bool&   real_star,
                               const double& fake_opac,
                               const bool&   interp_temp_and_pres,
-                              const bool&   interp_and_calc_flux_step);
+                              const bool&   interp_and_calc_flux_step,
+                              const int&    num_col);
 
     void integrate_flux(double* deltalambda,
                         double* F_down_tot,
