@@ -9,14 +9,21 @@
 __global__ void interpolate_temperature(double* tlay, double* tint, int numinterfaces) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
 
+    int c = blockIdx.z;
+
     if (0 < i && i < numinterfaces - 1) {
-        tint[i] = tlay[i - 1] + 0.5 * (tlay[i] - tlay[i - 1]);
+        tint[i + c * numinterfaces] =
+            tlay[i - 1 + c * numinterfaces]
+            + 0.5 * (tlay[i + c * numinterfaces] - tlay[i - 1 + c * numinterfaces]);
     }
     if (i == 0) {
-        tint[i] = tlay[numinterfaces - 1]; // set equal to the surface/BOA temperature
+        tint[i + c * numinterfaces] =
+            tlay[numinterfaces - 1 + c * numinterfaces]; // set equal to the surface/BOA temperature
     }
     if (i == numinterfaces - 1) {
-        tint[i] = tlay[i - 1] + 0.5 * (tlay[i - 1] - tlay[i - 2]);
+        tint[i + c * numinterfaces] =
+            tlay[i - 1 + c * numinterfaces]
+            + 0.5 * (tlay[i - 1 + c * numinterfaces] - tlay[i - 2 + c * numinterfaces]);
     }
 }
 
@@ -33,18 +40,21 @@ __global__ void planck_interpol_layer(double* temp,           // in
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int i = threadIdx.y + blockIdx.y * blockDim.y;
+    int c = blockIdx.z;
 
     if (x < nwave && i < numlayers + 2) {
 
-        planckband_lay[i + x * (numlayers + 2)] = 0.0;
+        planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] = 0.0;
 
         // getting the stellar flux --- is redundant to do it every interpolation, but probably has negligible costs ...
         if (i == numlayers) {
             if (realstar) {
-                planckband_lay[i + x * (numlayers + 2)] = starflux[x] / PI;
+                planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] =
+                    starflux[x] / PI;
             }
             else {
-                planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + dim * nwave];
+                planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] =
+                    planck_grid[x + dim * nwave];
             }
         }
         else {
@@ -52,11 +62,11 @@ __global__ void planck_interpol_layer(double* temp,           // in
 
             // interpolating for layer temperatures
             if (i < numlayers) {
-                t = (temp[i] - 1.0) / step;
+                t = (temp[i + c * (numlayers + 1)] - 1.0) / step;
             }
             // interpolating for below (surface/BOA) temperature
             if (i == numlayers + 1) {
-                t = (temp[numlayers] - 1.0) / step;
+                t = (temp[numlayers + c * (numlayers + 1)] - 1.0) / step;
             }
 
             t = max(0.001, min(dim - 1.001, t));
@@ -65,15 +75,16 @@ __global__ void planck_interpol_layer(double* temp,           // in
             int tup   = ceil(t);
 
             if (tdown != tup) {
-                planckband_lay[i + x * (numlayers + 2)] =
+                planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] =
                     planck_grid[x + tdown * nwave] * (tup - t)
                     + planck_grid[x + tup * nwave] * (t - tdown);
             }
             if (tdown == tup) {
-                planckband_lay[i + x * (numlayers + 2)] = planck_grid[x + tdown * nwave];
+                planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] =
+                    planck_grid[x + tdown * nwave];
             }
 #ifdef ZERO_PLANCK_FUNCTION
-            planckband_lay[i + x * (numlayers + 2)] = 0.0;
+            planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] = 0.0;
 #endif //  ZERO_PLANCK_FUNCTION
         }
     }
@@ -91,10 +102,11 @@ __global__ void planck_interpol_interface(double* temp,           // in
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int i = threadIdx.y + blockIdx.y * blockDim.y;
+    int c = blockIdx.z;
 
     if (x < nwave && i < numinterfaces) {
 
-        double t = (temp[i] - 1.0) / step;
+        double t = (temp[i + c * numinterfaces] - 1.0) / step;
 
         t = max(0.001, min(dim - 1.001, t));
 
@@ -102,14 +114,16 @@ __global__ void planck_interpol_interface(double* temp,           // in
         int tup   = ceil(t);
 
         if (tdown != tup) {
-            planckband_int[i + x * numinterfaces] = planck_grid[x + tdown * nwave] * (tup - t)
-                                                    + planck_grid[x + tup * nwave] * (t - tdown);
+            planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] =
+                planck_grid[x + tdown * nwave] * (tup - t)
+                + planck_grid[x + tup * nwave] * (t - tdown);
         }
         if (tdown == tup) {
-            planckband_int[i + x * numinterfaces] = planck_grid[x + tdown * nwave];
+            planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] =
+                planck_grid[x + tdown * nwave];
         }
 #ifdef ZERO_PLANCK_FUNCTION
-        planckband_int[i + x * numinterfaces] = 0.0;
+        planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] = 0.0;
 #endif //  ZERO_PLANCK_FUNCTION
     }
 }

@@ -901,6 +901,53 @@ bool alfrodull_engine::prepare_compute_flux(
 
     int nbin = opacities.nbin;
     int ny   = opacities.ny;
+
+    // TODO: check where those planckband values are used, where used here in
+    // calculate_surface_planck and correc_surface_emission that's not used anymore
+    // out: csp, cse
+    int plancktable_dim  = plancktable.dim;
+    int plancktable_step = plancktable.step;
+
+    if (interpolate_temp_and_pres) {
+        // it
+        dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
+        dim3 it_block(16, 1, 1);
+
+        interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay_cols, // out
+                                                       dev_T_int_cols, // in
+                                                       ninterface);
+        cudaDeviceSynchronize();
+    }
+
+
+    // pil
+    dim3 pil_grid(int((nbin + 15) / 16), int(((nlayer + 2) + 15)) / 16, num_cols);
+    dim3 pil_block(16, 16, 1);
+    planck_interpol_layer<<<pil_grid, pil_block>>>(dev_T_lay_cols,           // in
+                                                   *planckband_lay,          // out
+                                                   *plancktable.planck_grid, // in
+                                                   dev_starflux,             // in
+                                                   real_star,
+                                                   nlayer,
+                                                   nbin,
+                                                   plancktable_dim,
+                                                   plancktable_step);
+    cudaDeviceSynchronize();
+
+    if (!iso) {
+        // pii
+        dim3 pii_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), num_cols);
+        dim3 pii_block(16, 16, 1);
+        planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int_cols,           // in
+                                                           *planckband_int,          // out
+                                                           *plancktable.planck_grid, // in
+                                                           ninterface,
+                                                           nbin,
+                                                           plancktable_dim,
+                                                           plancktable_step);
+        cudaDeviceSynchronize();
+    }
+
     for (int c = 0; c < num_cols; c++) {
         double* dev_T_lay             = &(dev_T_lay_cols[c * (nlayer + 1)]);
         double* dev_T_int             = &(dev_T_int_cols[c * ninterface]);
@@ -910,54 +957,6 @@ bool alfrodull_engine::prepare_compute_flux(
         double* dev_meanmolmass_lay   = &(dev_meanmolmass_lay_cols[c * nlayer]);
         double* planckband_lay_curcol = &((*planckband_lay)[c * (nlayer + 2) * nbin]);
 
-
-        // TODO: check where those planckband values are used, where used here in
-        // calculate_surface_planck and correc_surface_emission that's not used anymore
-        // out: csp, cse
-        int plancktable_dim  = plancktable.dim;
-        int plancktable_step = plancktable.step;
-
-        if (interpolate_temp_and_pres) {
-            // it
-            dim3 it_grid(int((ninterface + 15) / 16), 1, 1);
-            dim3 it_block(16, 1, 1);
-
-            interpolate_temperature<<<it_grid, it_block>>>(dev_T_lay, // out
-                                                           dev_T_int, // in
-                                                           ninterface);
-            cudaDeviceSynchronize();
-        }
-
-        // pil
-        dim3 pil_grid(int((nbin + 15) / 16), int(((nlayer + 2) + 15)) / 16, 1);
-        dim3 pil_block(16, 16, 1);
-        planck_interpol_layer<<<pil_grid, pil_block>>>(dev_T_lay,                // in
-                                                       planckband_lay_curcol,    // out
-                                                       *plancktable.planck_grid, // in
-                                                       dev_starflux,             // in
-                                                       real_star,
-                                                       nlayer,
-                                                       nbin,
-                                                       plancktable_dim,
-                                                       plancktable_step);
-        cudaDeviceSynchronize();
-
-        if (!iso) {
-
-            double* planckband_int_curcol = &((*planckband_int)[c * ninterface * nbin]);
-
-            // pii
-            dim3 pii_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
-            dim3 pii_block(16, 16, 1);
-            planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int,                // in
-                                                               planckband_int_curcol,    // out
-                                                               *plancktable.planck_grid, // in
-                                                               ninterface,
-                                                               nbin,
-                                                               plancktable_dim,
-                                                               plancktable_step);
-            cudaDeviceSynchronize();
-        }
 
         if (interp_and_calc_flux_step) {
             // io
