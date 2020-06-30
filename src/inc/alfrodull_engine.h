@@ -276,7 +276,8 @@ public:
                         double* F_up_band,
                         double* F_dir_band,
                         double* F_up_TOA_spectrum,
-                        double* gauss_weight);
+                        double* gauss_weight,
+                        int     num_cols);
 
     void calculate_transmission_iso(double* trans_wg,             // out
                                     double* delta_colmass,        // in

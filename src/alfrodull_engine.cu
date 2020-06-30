@@ -605,6 +605,7 @@ void alfrodull_engine::compute_radiative_transfer(
                          "cloud_scat_cross_lay",
                          "planckband_lay"));
     }
+    double* deltalambda = *opacities.dev_opac_deltawave;
     for (int c = 0; c < num_cols; c++) {
         USE_BENCHMARK();
 
@@ -637,9 +638,6 @@ void alfrodull_engine::compute_radiative_transfer(
         double* F_dir_band  = &(F_dir_band_cols[c * ninterface * nbin]);
 
         double* F_up_TOA_spectrum = &(F_up_TOA_spectrum_cols[c * nbin]);
-
-
-        double* deltalambda = *opacities.dev_opac_deltawave;
 
 
         // also lookup and interpolate cloud values here if cloud values
@@ -846,36 +844,34 @@ void alfrodull_engine::compute_radiative_transfer(
             BENCH_POINT_I_S(
                 debug_nstep, debug_col_idx, "Alf_pop_spec_flx", (), ("F_up_wg", "F_down_wg"));
         }
+    }
 
-        double* gauss_weight = *gauss_weights;
-        integrate_flux(deltalambda,
-                       F_down_tot,
-                       F_up_tot,
-                       F_dir_tot,
-                       F_net,
-                       F_down_wg,
-                       F_up_wg,
-                       F_dir_wg,
-                       F_down_band,
-                       F_up_band,
-                       F_dir_band,
-                       F_up_TOA_spectrum,
-                       gauss_weight);
+    double* gauss_weight = *gauss_weights;
+    integrate_flux(deltalambda,
+                   F_down_tot_cols,
+                   F_up_tot_cols,
+                   F_dir_tot_cols,
+                   F_net_cols,
+                   F_down_wg_cols,
+                   F_up_wg_cols,
+                   F_dir_wg_cols,
+                   F_down_band_cols,
+                   F_up_band_cols,
+                   F_dir_band_cols,
+                   F_up_TOA_spectrum_cols,
+                   gauss_weight,
+                   num_cols);
 
-        BENCH_POINT_I_S(debug_nstep,
-                        debug_col_idx,
-                        "Alf_int_flx",
-                        (),
-                        ("F_up_band", "F_down_band", "F_dir_band"));
+    BENCH_POINT_I_S(
+        debug_nstep, debug_col_idx, "Alf_int_flx", (), ("F_up_band", "F_down_band", "F_dir_band"));
 
 
-        cuda_check_status_or_exit(__FILE__, __LINE__);
+    cuda_check_status_or_exit(__FILE__, __LINE__);
 
-        cudaError_t err = cudaGetLastError();
+    cudaError_t err = cudaGetLastError();
 
-        if (err != cudaSuccess) {
-            printf("compute_radiative_transfer: cuda error: %s\n", cudaGetErrorString(err));
-        }
+    if (err != cudaSuccess) {
+        printf("compute_radiative_transfer: cuda error: %s\n", cudaGetErrorString(err));
     }
 }
 
@@ -1059,7 +1055,8 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
                                       double* F_up_band,
                                       double* F_dir_band,
                                       double* F_up_TOA_spectrum,
-                                      double* gauss_weight) {
+                                      double* gauss_weight,
+                                      int     num_cols) {
     bool opt = true;
 
     int nbin = opacities.nbin;
@@ -1069,8 +1066,9 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
         {
             int  num_levels_per_block = 16;
             int  num_bins_per_block   = 16;
-            dim3 gridsize(ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1);
-            dim3 blocksize(num_levels_per_block, num_bins_per_block);
+            dim3 gridsize(
+                ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1, num_cols);
+            dim3 blocksize(num_levels_per_block, num_bins_per_block, 1);
             //printf("nbin: %d, ny: %d\n", nbin, ny);
 
             integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
@@ -1090,8 +1088,8 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
 
         {
             int  num_levels_per_block = 256;
-            dim3 gridsize(ninterface / num_levels_per_block + 1);
-            dim3 blocksize(num_levels_per_block);
+            dim3 gridsize(ninterface / num_levels_per_block + 1, 1, num_cols);
+            dim3 blocksize(num_levels_per_block, 1, 1);
             integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
                                                         F_down_tot,
                                                         F_up_tot,

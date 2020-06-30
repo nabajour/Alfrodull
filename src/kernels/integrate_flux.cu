@@ -138,19 +138,22 @@ __global__ void integrate_flux_band(double* F_down_wg,         // in
 
     int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
     int bin_idx       = blockIdx.y * blockDim.y + threadIdx.y;
+    int c             = blockIdx.z;
 
 
     if (interface_idx < numinterfaces && bin_idx < nbin) {
         // set memory to 0.
-        F_dir_band[bin_idx + nbin * interface_idx]  = 0;
-        F_up_band[bin_idx + nbin * interface_idx]   = 0;
-        F_down_band[bin_idx + nbin * interface_idx] = 0;
+        F_dir_band[bin_idx + nbin * interface_idx + c * nbin * numinterfaces] = 0;
 
-        int bin_offset = bin_idx + nbin * interface_idx;
+        F_up_band[bin_idx + nbin * interface_idx + c * nbin * numinterfaces]   = 0;
+        F_down_band[bin_idx + nbin * interface_idx + c * nbin * numinterfaces] = 0;
+
+        int bin_offset = bin_idx + nbin * interface_idx + c * nbin * numinterfaces;
 
         for (int y = 0; y < ny; y++) {
-            double w             = gauss_weight[y];
-            int    weight_offset = y + ny * bin_idx + ny * nbin * interface_idx;
+            double w = gauss_weight[y];
+            int    weight_offset =
+                y + ny * bin_idx + ny * nbin * interface_idx + c * nbin * ny * numinterfaces;
 
             F_dir_band[bin_offset] += 0.5 * w * F_dir_wg[weight_offset];
             F_up_band[bin_offset] += 0.5 * w * F_up_wg[weight_offset];
@@ -159,7 +162,7 @@ __global__ void integrate_flux_band(double* F_down_wg,         // in
 
         // copy TOA spectrum to spectra array for TOA at each col.
         if (interface_idx == numinterfaces - 1)
-            F_up_TOA_spectrum[bin_idx] = F_up_band[bin_offset];
+            F_up_TOA_spectrum[bin_idx + c * nbin] = F_up_band[bin_offset];
     }
 }
 
@@ -177,23 +180,25 @@ __global__ void integrate_flux_tot(double* deltalambda, // in
 
 
     int interface_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int c             = blockIdx.z;
 
     if (interface_idx < numinterfaces) {
 
-        F_up_tot[interface_idx]   = 0;
-        F_down_tot[interface_idx] = 0;
-        F_dir_tot[interface_idx]  = 0;
+        F_up_tot[interface_idx + c * numinterfaces]   = 0;
+        F_down_tot[interface_idx + c * numinterfaces] = 0;
+        F_dir_tot[interface_idx + c * numinterfaces]  = 0;
 
         for (int bin = 0; bin < nbin; bin++) {
-            int band_idx = interface_idx * nbin + bin;
-            F_up_tot[interface_idx] += F_up_band[band_idx] * deltalambda[bin];
-            F_down_tot[interface_idx] +=
+            int band_idx = interface_idx * nbin + bin + c * numinterfaces * nbin;
+            F_up_tot[interface_idx + c * numinterfaces] += F_up_band[band_idx] * deltalambda[bin];
+            F_down_tot[interface_idx + c * numinterfaces] +=
                 (F_down_band[band_idx] + F_dir_band[band_idx]) * deltalambda[bin];
-            F_dir_tot[interface_idx] += F_dir_band[band_idx] * deltalambda[bin];
+            F_dir_tot[interface_idx + c * numinterfaces] += F_dir_band[band_idx] * deltalambda[bin];
         }
 
         __syncthreads();
-        F_net[interface_idx] = F_up_tot[interface_idx] - F_down_tot[interface_idx];
+        F_net[interface_idx + c * numinterfaces] = F_up_tot[interface_idx + c * numinterfaces]
+                                                   - F_down_tot[interface_idx + c * numinterfaces];
     }
 }
 
