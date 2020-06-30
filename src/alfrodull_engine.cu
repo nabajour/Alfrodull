@@ -950,7 +950,7 @@ bool alfrodull_engine::prepare_compute_flux(
             dim3 pii_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
             dim3 pii_block(16, 16, 1);
             planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int,                // in
-                                                               *planckband_int,          // out
+                                                               planckband_int_curcol,    // out
                                                                *plancktable.planck_grid, // in
                                                                ninterface,
                                                                nbin,
@@ -966,20 +966,21 @@ bool alfrodull_engine::prepare_compute_flux(
             // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
             // out -> opacities (dev_opac_wg_lay)
             // out -> scetter cross section (scatter_cross_section_...)
-            interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay,                          // in
-                                                         *opacities.dev_temperatures,        // in
-                                                         dev_p_lay,                          // in
-                                                         *opacities.dev_pressures,           // in
-                                                         *opacities.dev_kpoints,             // in
-                                                         dev_opac_wg_lay,                    // out
-                                                         *opacities.dev_scat_cross_sections, // in
-                                                         *scatter_cross_section_lay,         // out
-                                                         opacities.n_pressures,
-                                                         opacities.n_temperatures,
-                                                         opacities.ny,
-                                                         nbin,
-                                                         fake_opac,
-                                                         nlayer);
+            interpolate_opacities<<<io_grid, io_block>>>(
+                dev_T_lay,                                          // in
+                *opacities.dev_temperatures,                        // in
+                dev_p_lay,                                          // in
+                *opacities.dev_pressures,                           // in
+                *opacities.dev_kpoints,                             // in
+                dev_opac_wg_lay,                                    // out
+                *opacities.dev_scat_cross_sections,                 // in
+                &((*scatter_cross_section_lay)[c * nlayer * nbin]), // out
+                opacities.n_pressures,
+                opacities.n_temperatures,
+                opacities.ny,
+                nbin,
+                fake_opac,
+                nlayer);
 
 
             cudaDeviceSynchronize();
@@ -994,14 +995,14 @@ bool alfrodull_engine::prepare_compute_flux(
                 dim3 ioi_block(16, 16, 1);
 
                 interpolate_opacities<<<ioi_grid, ioi_block>>>(
-                    dev_T_int,                          // in
-                    *opacities.dev_temperatures,        // in
-                    dev_p_int,                          // in
-                    *opacities.dev_pressures,           // in
-                    *opacities.dev_kpoints,             // in
-                    dev_opac_wg_int,                    // out
-                    *opacities.dev_scat_cross_sections, // in
-                    *scatter_cross_section_inter,       // out
+                    dev_T_int,                                                // in
+                    *opacities.dev_temperatures,                              // in
+                    dev_p_int,                                                // in
+                    *opacities.dev_pressures,                                 // in
+                    *opacities.dev_kpoints,                                   // in
+                    dev_opac_wg_int,                                          // out
+                    *opacities.dev_scat_cross_sections,                       // in
+                    &((*scatter_cross_section_inter)[c * ninterface * nbin]), // out
                     opacities.n_pressures,
                     opacities.n_temperatures,
                     opacities.ny,
@@ -1331,7 +1332,8 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
         dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (ny + 3) / 4);
         fdir_iso<<<grid, block>>>(F_dir_wg,
                                   &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
-                                  &((*delta_tau_wg)[num_cols * nlayer * ny * nbin]),
+                                  //&((*delta_tau_wg)[num_cols * nlayer * ny * nbin]),
+                                  *delta_tau_wg,
                                   z_lay,
                                   *mu_star_cols,
                                   mu_star_limit,
@@ -1354,8 +1356,8 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
         fdir_noniso<<<grid, block>>>(F_dir_wg,
                                      Fc_dir_wg,
                                      &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
-                                     &((*delta_tau_wg_upper)[num_cols * nlayer * ny * nbin]),
-                                     &((*delta_tau_wg_lower)[num_cols * nlayer * ny * nbin]),
+                                     *delta_tau_wg_upper,
+                                     *delta_tau_wg_lower,
                                      z_lay,
                                      *mu_star_cols,
                                      mu_star_limit,

@@ -983,7 +983,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 {
                     int current_num_cols = min(num_cols, esp.point_num - column_idx);
 
-                    printf("column_idx: %d, current numcols: %d\n", column_idx, current_num_cols);
+                    //printf("column_idx: %d, current numcols: %d\n", column_idx, current_num_cols);
                     double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx]);
                     int     column_offset_int     = column_idx * ninterface;
 
