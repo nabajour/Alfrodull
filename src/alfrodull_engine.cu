@@ -948,6 +948,60 @@ bool alfrodull_engine::prepare_compute_flux(
         cudaDeviceSynchronize();
     }
 
+    if (interp_and_calc_flux_step) {
+        // io
+        dim3 io_grid(int((nbin + 15) / 16), int((nlayer + 15) / 16), num_cols);
+        dim3 io_block(16, 16, 1);
+        // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
+        // out -> opacities (dev_opac_wg_lay)
+        // out -> scetter cross section (scatter_cross_section_...)
+        interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay_cols,                     // in
+                                                     *opacities.dev_temperatures,        // in
+                                                     dev_p_lay_cols,                     // in
+                                                     *opacities.dev_pressures,           // in
+                                                     *opacities.dev_kpoints,             // in
+                                                     dev_opac_wg_lay_cols,               // out
+                                                     *opacities.dev_scat_cross_sections, // in
+                                                     *scatter_cross_section_lay,         // out
+                                                     opacities.n_pressures,
+                                                     opacities.n_temperatures,
+                                                     opacities.ny,
+                                                     nbin,
+                                                     fake_opac,
+                                                     nlayer + 1,
+                                                     nlayer,
+                                                     nlayer);
+
+
+        cudaDeviceSynchronize();
+
+        if (!iso) {
+
+            // ioi
+            dim3 ioi_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), num_cols);
+            dim3 ioi_block(16, 16, 1);
+
+            interpolate_opacities<<<ioi_grid, ioi_block>>>(dev_T_int_cols,              // in
+                                                           *opacities.dev_temperatures, // in
+                                                           dev_p_int_cols,              // in
+                                                           *opacities.dev_pressures,    // in
+                                                           *opacities.dev_kpoints,      // in
+                                                           dev_opac_wg_int_cols,        // out
+                                                           *opacities.dev_scat_cross_sections, // in
+                                                           *scatter_cross_section_inter, // out
+                                                           opacities.n_pressures,
+                                                           opacities.n_temperatures,
+                                                           opacities.ny,
+                                                           nbin,
+                                                           fake_opac,
+                                                           ninterface,
+                                                           ninterface,
+                                                           ninterface);
+
+            cudaDeviceSynchronize();
+        }
+    }
+
     for (int c = 0; c < num_cols; c++) {
         double* dev_T_lay             = &(dev_T_lay_cols[c * (nlayer + 1)]);
         double* dev_T_int             = &(dev_T_int_cols[c * ninterface]);
@@ -959,59 +1013,6 @@ bool alfrodull_engine::prepare_compute_flux(
 
 
         if (interp_and_calc_flux_step) {
-            // io
-            dim3 io_grid(int((nbin + 15) / 16), int((nlayer + 15) / 16), 1);
-            dim3 io_block(16, 16, 1);
-            // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
-            // out -> opacities (dev_opac_wg_lay)
-            // out -> scetter cross section (scatter_cross_section_...)
-            interpolate_opacities<<<io_grid, io_block>>>(
-                dev_T_lay,                                          // in
-                *opacities.dev_temperatures,                        // in
-                dev_p_lay,                                          // in
-                *opacities.dev_pressures,                           // in
-                *opacities.dev_kpoints,                             // in
-                dev_opac_wg_lay,                                    // out
-                *opacities.dev_scat_cross_sections,                 // in
-                &((*scatter_cross_section_lay)[c * nlayer * nbin]), // out
-                opacities.n_pressures,
-                opacities.n_temperatures,
-                opacities.ny,
-                nbin,
-                fake_opac,
-                nlayer);
-
-
-            cudaDeviceSynchronize();
-
-            if (!iso) {
-
-                double* dev_opac_wg_int = &(dev_opac_wg_int_cols[c * ninterface * ny * nbin]);
-
-
-                // ioi
-                dim3 ioi_grid(int((nbin + 15) / 16), int((ninterface + 15) / 16), 1);
-                dim3 ioi_block(16, 16, 1);
-
-                interpolate_opacities<<<ioi_grid, ioi_block>>>(
-                    dev_T_int,                                                // in
-                    *opacities.dev_temperatures,                              // in
-                    dev_p_int,                                                // in
-                    *opacities.dev_pressures,                                 // in
-                    *opacities.dev_kpoints,                                   // in
-                    dev_opac_wg_int,                                          // out
-                    *opacities.dev_scat_cross_sections,                       // in
-                    &((*scatter_cross_section_inter)[c * ninterface * nbin]), // out
-                    opacities.n_pressures,
-                    opacities.n_temperatures,
-                    opacities.ny,
-                    nbin,
-                    fake_opac,
-                    ninterface);
-
-                cudaDeviceSynchronize();
-            }
-
             // mmm
             dim3 mmm_block(16, 1, 1);
             dim3 mmm_grid(int((nlayer + 15) / 16), 1, 1);

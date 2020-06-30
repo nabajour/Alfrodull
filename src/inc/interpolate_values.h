@@ -37,6 +37,8 @@ __global__ void interpolate_opacities(double* temp,
                                       int     ny,
                                       int     nbin,
                                       double  opaclimit,
+                                      int     temp_num_per_col,
+                                      int     press_num_per_col,
                                       int     nlay_or_nint);
 
 

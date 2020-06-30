@@ -132,24 +132,27 @@ __global__ void planck_interpol_interface(double* temp,           // in
 // interpolate layer and interface opacities from opacity table
 // Note - US: this doesn't care about geometry, only pressure and temperature. works on a list of T and P for each wavelength bin - can be abstracted.
 __global__ void interpolate_opacities(
-    double* temp,        // in, layer temperature
-    double* opactemp,    // in, opac reference table temperatures
-    double* press,       // in, layer pressure
-    double* opacpress,   // in, opac reference table pressure
-    double* ktable,      // in, reference opacity table
-    double* opac,        // out, opacities
-    double* crosstable,  // in, reference scatter cross-section
-    double* scat_cross,  // out, scattering cross-sections
-    int     npress,      // in, ref table pressures count
-    int     ntemp,       // in, ref table temperatures count
-    int     ny,          // in, ref table gaussians y-points count
-    int     nbin,        // in, ref wavelength bin count
-    double  opaclimit,   // in, opacity limit for max cutoff for low wavelength bin idx
+    double* temp,       // in, layer temperature
+    double* opactemp,   // in, opac reference table temperatures
+    double* press,      // in, layer pressure
+    double* opacpress,  // in, opac reference table pressure
+    double* ktable,     // in, reference opacity table
+    double* opac,       // out, opacities
+    double* crosstable, // in, reference scatter cross-section
+    double* scat_cross, // out, scattering cross-sections
+    int     npress,     // in, ref table pressures count
+    int     ntemp,      // in, ref table temperatures count
+    int     ny,         // in, ref table gaussians y-points count
+    int     nbin,       // in, ref wavelength bin count
+    double  opaclimit,  // in, opacity limit for max cutoff for low wavelength bin idx
+    int     temp_num_per_col,
+    int     press_num_per_col,
     int     nlay_or_nint // in, number of layer or interfaces (physical position bins count)
 ) {
 
     int x = threadIdx.x + blockIdx.x * blockDim.x; // wavelength bin index
     int i = threadIdx.y + blockIdx.y * blockDim.y; // volume element (layer or interface) bin index
+    int c = blockIdx.z;
 
     if (x < nbin && i < nlay_or_nint) {
 
@@ -162,14 +165,14 @@ __global__ void interpolate_opacities(
         double deltaopactemp = (opactemp[ntemp - 1] - opactemp[0]) / (ntemp - 1.0);
         double deltaopacpress =
             (log10(opacpress[npress - 1]) - log10(opacpress[0])) / (npress - 1.0);
-        double t = (temp[i] - opactemp[0]) / deltaopactemp;
+        double t = (temp[i + c * (temp_num_per_col)] - opactemp[0]) / deltaopactemp;
 
         t = min(ntemp - 1.001, max(0.001, t));
 
         int tdown = floor(t);
         int tup   = ceil(t);
 
-        double p = (log10(press[i]) - log10(opacpress[0])) / deltaopacpress;
+        double p = (log10(press[i + c * press_num_per_col]) - log10(opacpress[0])) / deltaopacpress;
 
         // do the cloud deck
         double k_cloud = 0.0; //1e-1 * norm_pdf(log10(press[i]),0,1);
@@ -192,16 +195,18 @@ __global__ void interpolate_opacities(
                           * (t - tdown);
 
                 if (x < x_1micron) {
-                    opac[y + ny * x + ny * nbin * i] = max(interpolated_opac, opaclimit);
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        max(interpolated_opac, opaclimit);
                 }
                 else {
-                    opac[y + ny * x + ny * nbin * i] = interpolated_opac;
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        interpolated_opac;
                 }
 
-                opac[y + ny * x + ny * nbin * i] += k_cloud;
+                opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] += k_cloud;
             }
 
-            scat_cross[x + nbin * i] =
+            scat_cross[x + nbin * i + c * nlay_or_nint * nbin] =
                 crosstable[x + nbin * pdown + nbin * npress * tdown] * (pup - p) * (tup - t)
                 + crosstable[x + nbin * pup + nbin * npress * tdown] * (p - pdown) * (tup - t)
                 + crosstable[x + nbin * pdown + nbin * npress * tup] * (pup - p) * (t - tdown)
@@ -215,16 +220,18 @@ __global__ void interpolate_opacities(
                     + ktable[y + ny * x + ny * nbin * pup + ny * nbin * npress * tdown]
                           * (p - pdown);
                 if (x < x_1micron) {
-                    opac[y + ny * x + ny * nbin * i] = max(interpolated_opac, opaclimit);
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        max(interpolated_opac, opaclimit);
                 }
                 else {
-                    opac[y + ny * x + ny * nbin * i] = interpolated_opac;
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        interpolated_opac;
                 }
 
-                opac[y + ny * x + ny * nbin * i] += k_cloud;
+                opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] += k_cloud;
             }
 
-            scat_cross[x + nbin * i] =
+            scat_cross[x + nbin * i + c * nlay_or_nint * nbin] =
                 crosstable[x + nbin * pdown + nbin * npress * tdown] * (pup - p)
                 + crosstable[x + nbin * pup + nbin * npress * tdown] * (p - pdown);
         }
@@ -236,16 +243,18 @@ __global__ void interpolate_opacities(
                     + ktable[y + ny * x + ny * nbin * pdown + ny * nbin * npress * tup]
                           * (t - tdown);
                 if (x < x_1micron) {
-                    opac[y + ny * x + ny * nbin * i] = max(interpolated_opac, opaclimit);
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        max(interpolated_opac, opaclimit);
                 }
                 else {
-                    opac[y + ny * x + ny * nbin * i] = interpolated_opac;
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        interpolated_opac;
                 }
 
-                opac[y + ny * x + ny * nbin * i] += k_cloud;
+                opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] += k_cloud;
             }
 
-            scat_cross[x + nbin * i] =
+            scat_cross[x + nbin * i + c * nlay_or_nint * nbin] =
                 crosstable[x + nbin * pdown + nbin * npress * tdown] * (tup - t)
                 + crosstable[x + nbin * pdown + nbin * npress * tup] * (t - tdown);
         }
@@ -257,16 +266,19 @@ __global__ void interpolate_opacities(
                     ktable[y + ny * x + ny * nbin * pdown + ny * nbin * npress * tdown];
 
                 if (x < x_1micron) {
-                    opac[y + ny * x + ny * nbin * i] = max(interpolated_opac, opaclimit);
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        max(interpolated_opac, opaclimit);
                 }
                 else {
-                    opac[y + ny * x + ny * nbin * i] = interpolated_opac;
+                    opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] =
+                        interpolated_opac;
                 }
 
-                opac[y + ny * x + ny * nbin * i] += k_cloud;
+                opac[y + ny * x + ny * nbin * i + c * nlay_or_nint * ny * nbin] += k_cloud;
             }
 
-            scat_cross[x + nbin * i] = crosstable[x + nbin * pdown + nbin * npress * tdown];
+            scat_cross[x + nbin * i + c * nlay_or_nint * nbin] =
+                crosstable[x + nbin * pdown + nbin * npress * tdown];
         }
     }
 }
