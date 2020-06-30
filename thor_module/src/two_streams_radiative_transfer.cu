@@ -670,12 +670,12 @@ __global__ void compute_column_Qheat(double* F_net_cols, // net flux, layer
                                      double* Qheat_cols,
                                      double  F_intern,
                                      int     num_layers,
-                                     int     num_cols) {
+                                     int     tot_num_cols) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
     int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
     // index of column in column batch.
     int col_block_idx = blockIdx.z;
-    if (col_idx < num_cols) {
+    if (col_idx < tot_num_cols) {
         double* F_net = &(F_net_cols[col_block_idx * (num_layers + 1)]);
         double* Qheat = &(Qheat_cols[col_idx * num_layers]);
 
@@ -978,8 +978,61 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
                 bool singlewalk_loc = scat_single_walk;
                 int  ninterface     = nlayer + 1;
+
+
+                {
+                    int current_num_cols = min(num_cols, esp.point_num - column_idx);
+
+                    printf("column_idx: %d, current numcols: %d\n", column_idx, current_num_cols);
+                    double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx]);
+                    int     column_offset_int     = column_idx * ninterface;
+
+                    double* F_col_down_tot = &((*F_down_tot)[column_offset_int]);
+                    double* F_col_up_tot   = &((*F_up_tot)[column_offset_int]);
+                    double* F_col_dir_tot  = &((*F_dir_tot)[column_offset_int]);
+                    double* F_col_net      = &((*F_net)[column_offset_int]);
+
+                    //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
+                    //double* F_dir_band_col = &((*F_dir_band)[0]);
+
+                    double* F_up_TOA_spectrum_col = &((*F_up_TOA_spectrum)[column_idx * nbin]);
+
+                    alf.compute_radiative_transfer(dev_starflux,          // dev_starflux
+                                                   *temperature_lay,      // dev_T_lay
+                                                   *temperature_int,      // dev_T_int
+                                                   column_layer_pressure, // dev_p_lay
+                                                   *pressure_int,         // dev_p_int
+                                                   false,                 // interp_press_and_temp
+                                                   true,           // interp_and_calc_flux_step
+                                                   z_lay,          // z_lay
+                                                   singlewalk_loc, // singlewalk
+                                                   *F_down_wg,
+                                                   *F_up_wg,
+                                                   *Fc_down_wg,
+                                                   *Fc_up_wg,
+                                                   *F_dir_wg,
+                                                   *Fc_dir_wg,
+                                                   delta_tau_limit,
+                                                   F_col_down_tot,
+                                                   F_col_up_tot,
+                                                   F_col_dir_tot,
+                                                   F_col_net,
+                                                   *F_down_band,
+                                                   *F_up_band,
+                                                   *F_dir_band,
+                                                   F_up_TOA_spectrum_col,
+                                                   cos_zenith_angle_cols,
+                                                   current_num_cols,
+                                                   0);
+                    cudaDeviceSynchronize();
+                    cuda_check_status_or_exit(__FILE__, __LINE__);
+                }
+
+                /*
                 for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
                     int current_num_cols = min(num_cols, esp.point_num - column_idx);
+                    current_num_cols     = 1;
+
                     //printf("column_c: %d, current numcols: %d\n", c, current_num_cols);
                     double  mu_star               = -col_cos_zenith_angle_h[column_idx + c];
                     double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx + c]);
@@ -1027,9 +1080,12 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
+
+                */
                 for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
                     int current_num_cols = min(num_cols, esp.point_num - column_idx);
                     // get the g0 and w0 integrated
+                    // TODO: make work correctly once alf compute_radiative_transfer works per columns
                     if (store_w0_g0) {
                         // TODO could be optimised by storing band values and integrate only on output
                         // but takes up more space
@@ -1039,32 +1095,26 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     }
                     // compute Delta flux
                 }
-                for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
-                    int current_num_cols  = min(num_cols, esp.point_num - column_idx);
-                    int column_offset_int = (column_idx + c) * ninterface;
-                    // set Qheat
-                    //printf("increment_column_Qheat\n");
-                    {
-                        dim3    grid(int((esp.nv / num_blocks) + 1), 1, num_cols);
-                        dim3    block(num_blocks, 1, 1);
-                        double* qheat     = &((*Qheat)[(column_idx + c) * nlayer]);
-                        double* F_col_net = &((*F_net)[column_offset_int]);
-                        compute_column_Qheat<<<grid, block>>>(F_col_net, // net flux, layer
-                                                              z_int,
-                                                              qheat,
-                                                              F_intern,
-                                                              num_layers,
-                                                              num_cols);
-                        cudaDeviceSynchronize();
-                        cuda_check_status_or_exit(__FILE__, __LINE__);
-                    }
-#ifdef DEBUG_PRINTOUT_ARRAYS
-                    debug_print_columns(
-                        esp, -col_cos_zenith_angle_h[column_idx], nstep, column_idx);
-#endif // DEBUG_PRINTOUT_ARRAYS
+                // set Qheat
+                //printf("increment_column_Qheat\n");
+                {
+                    int     current_num_cols = min(num_cols, esp.point_num - column_idx);
+                    dim3    grid(int((esp.nv / num_blocks) + 1), 1, current_num_cols);
+                    dim3    block(num_blocks, 1, 1);
+                    double* qheat     = &((*Qheat)[column_idx * nlayer]);
+                    double* F_col_net = &((*F_net)[column_idx * ninterface]);
+                    compute_column_Qheat<<<grid, block>>>(F_col_net, // net flux, layer
+                                                          z_int,
+                                                          qheat,
+                                                          F_intern,
+                                                          num_layers,
+                                                          esp.point_num);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
+#ifdef DEBUG_PRINTOUT_ARRAYS
+                debug_print_columns(esp, -col_cos_zenith_angle_h[column_idx], nstep, column_idx);
+#endif // DEBUG_PRINTOUT_ARRAYS
             }
             start_up = false;
         }

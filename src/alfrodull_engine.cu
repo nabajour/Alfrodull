@@ -544,299 +544,334 @@ void alfrodull_engine::compute_radiative_transfer(
     // state variables
     // TODO: check which ones can be internal only
     double*
-                dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
-    double*     dev_T_int, // in: it, pii, ioi, mmmi, kii
-    double*     dev_p_lay, // in: io, mmm, kil
-    double*     dev_p_int, // in: ioi, mmmi, kii
+                dev_T_lay_cols, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+    double*     dev_T_int_cols, // in: it, pii, ioi, mmmi, kii
+    double*     dev_p_lay_cols, // in: io, mmm, kil
+    double*     dev_p_int_cols, // in: ioi, mmmi, kii
     const bool& interpolate_temp_and_pres,
     const bool& interp_and_calc_flux_step,
     double*     z_lay,
     bool        single_walk,
-    double*     F_down_wg,
-    double*     F_up_wg,
-    double*     Fc_down_wg,
-    double*     Fc_up_wg,
-    double*     F_dir_wg,
-    double*     Fc_dir_wg,
+    double*     F_down_wg_cols,
+    double*     F_up_wg_cols,
+    double*     Fc_down_wg_cols,
+    double*     Fc_up_wg_cols,
+    double*     F_dir_wg_cols,
+    double*     Fc_dir_wg_cols,
     double      delta_tau_limit,
-    double*     F_down_tot,
-    double*     F_up_tot,
-    double*     F_dir_tot,
-    double*     F_net,
-    double*     F_down_band,
-    double*     F_up_band,
-    double*     F_dir_band,
-    double*     F_up_TOA_spectrum,
-    double*     zenith_angle,
+    double*     F_down_tot_cols,
+    double*     F_up_tot_cols,
+    double*     F_dir_tot_cols,
+    double*     F_net_cols,
+    double*     F_down_band_cols,
+    double*     F_up_band_cols,
+    double*     F_dir_band_cols,
+    double*     F_up_TOA_spectrum_cols,
+    double*     zenith_angle_cols,
     int         num_cols,
     int         current_col_temp) // number of columns this function works on
 {
+    int nbin = opacities.nbin;
+    int ny   = opacities.ny;
+    for (int c = 0; c < num_cols; c++) {
+        USE_BENCHMARK();
 
-    USE_BENCHMARK();
+        // TODO: for development, propagate current column number
+        double* delta_colmass = &((*delta_col_mass)[c * nlayer]);
+        double* dev_T_lay     = &(dev_T_lay_cols[c * (nlayer + 1)]);
+        double* dev_T_int     = &(dev_T_int_cols[c * ninterface]);
+        double* dev_p_lay     = &(dev_p_lay_cols[c * nlayer]);
+        double* dev_p_int     = &(dev_p_int_cols[c * ninterface]);
 
-    // TODO: for development, propagate current column number
-    double* delta_colmass = &((*delta_col_mass)[current_col_temp * nlayer]);
+        double* F_down_wg    = &(F_down_wg_cols[c * ninterface * nbin * ny]);
+        double* F_up_wg      = &(F_up_wg_cols[c * ninterface * nbin * ny]);
+        double* Fc_down_wg   = &(Fc_down_wg_cols[c * ninterface * nbin * ny]);
+        double* Fc_up_wg     = &(Fc_up_wg_cols[c * ninterface * nbin * ny]);
+        double* F_dir_wg     = &(F_dir_wg_cols[c * ninterface * nbin * ny]);
+        double* Fc_dir_wg    = &(Fc_dir_wg_cols[c * ninterface * nbin * ny]);
+        double* zenith_angle = &(zenith_angle_cols[c]);
 
-
-    double* deltalambda = *opacities.dev_opac_deltawave;
-
-    prepare_compute_flux(
-        dev_starflux,
-        dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
-        dev_T_int,        // in: it, pii, ioi, mmmi, kii
-        dev_p_lay,        // in: io, mmm, kil
-        dev_p_int,        // in: ioi, mmmi, kii
-        *opac_wg_lay,     // out: io
-        *opac_wg_int,     // out: ioi
-        *meanmolmass_lay, // out: mmm
-        *meanmolmass_int, // out: mmmi
-        real_star,        // pil
-        fake_opac,        // io
-        interpolate_temp_and_pres,
-        interp_and_calc_flux_step);
-
-    cuda_check_status_or_exit(__FILE__, __LINE__);
+        int column_offset_int = c * ninterface;
 
 
-    BENCH_POINT_I_S(debug_nstep,
-                    debug_col_idx,
-                    "Alf_prep_flx",
-                    (),
-                    ("opac_wg_lay",
-                     "opac_wg_int",
-                     "meanmolmass_lay",
-                     "meanmolmass_int",
-                     "cloud_scat_cross_lay",
-                     "planckband_lay"));
+        double* F_down_tot = &(F_down_tot_cols[column_offset_int]);
+        double* F_up_tot   = &(F_up_tot_cols[column_offset_int]);
+        double* F_dir_tot  = &(F_dir_tot_cols[column_offset_int]);
+        double* F_net      = &(F_net_cols[column_offset_int]);
 
-    // also lookup and interpolate cloud values here if cloud values
-    // per volume element is needed
-    // fill in g_0_cloud_lay, g_0_cloud_int, cloud_scat_cross_lay, cloud_scat_cross_int
-    if (interp_and_calc_flux_step) {
-        if (iso) {
-            BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
+        //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
+        double* F_down_band = &(F_down_band_cols[c * ninterface * nbin]);
+        double* F_up_band   = &(F_up_band_cols[c * ninterface * nbin]);
+        double* F_dir_band  = &(F_dir_band_cols[c * ninterface * nbin]);
 
-            calculate_transmission_iso(*trans_wg,            // out
-                                       delta_colmass,        // in
-                                       *opac_wg_lay,         // in
-                                       cloud_abs_cross_lay,  // in
-                                       *meanmolmass_lay,     // in
-                                       cloud_scat_cross_lay, // in
-                                       g_0_cloud_lay,        // in
-                                       g_0,
-                                       epsi,
-                                       epsilon2,
-                                       zenith_angle,
-                                       scat,
-                                       clouds,
-                                       num_cols);
-
-            BENCH_POINT_I_S(debug_nstep,
-                            debug_col_idx,
-                            "Alf_comp_trans",
-                            (),
-                            ("delta_colmass",
-                             "trans_wg",
-                             "delta_tau_wg",
-                             "M_term",
-                             "N_term",
-                             "P_term",
-                             "w_0",
-                             "g_0",
-                             "G_plus",
-                             "G_minus"));
-        }
-        else {
-            BENCH_POINT_I_S(debug_nstep,
-                            debug_col_idx,
-                            "Alf_prep_II",
-                            (),
-                            ("delta_col_upper", "delta_col_lower",
+        double* F_up_TOA_spectrum = &(F_up_TOA_spectrum_cols[c * nbin]);
 
 
-                             ));
-            calculate_transmission_noniso(
-                *trans_wg_upper,
-                *trans_wg_lower,
-                &((*delta_col_upper)
-                      [nlayer * current_col_temp]), // TODO: temporary while using external loop
-                &((*delta_col_lower)[nlayer * current_col_temp]), // TODO: temporary
-                *opac_wg_lay,
-                *opac_wg_int,
-                cloud_abs_cross_lay,
-                cloud_abs_cross_int,
-                *meanmolmass_lay,
-                *meanmolmass_int,
-                cloud_scat_cross_lay,
-                cloud_scat_cross_int,
-                g_0_cloud_lay,
-                g_0_cloud_int,
-                g_0,
-                epsi,
-                epsilon2,
-                zenith_angle,
-                scat,
-                clouds,
-                num_cols);
-            BENCH_POINT_I_S(debug_nstep,
-                            debug_col_idx,
-                            "Alf_comp_trans",
-                            (),
-                            ("trans_wg_upper",
-                             "trans_wg_lower",
-                             "delta_tau_wg_upper",
-                             "delta_tau_wg_lower",
-                             "planckband_lay",
-                             "planckband_int",
-                             "M_upper",
-                             "M_lower",
-                             "N_upper",
-                             "N_lower",
-                             "P_upper",
-                             "P_lower",
-                             "G_plus_upper",
-                             "G_plus_lower",
-                             "G_minus_upper",
-                             "G_minus_lower",
-                             "w_0_upper",
-                             "w_0_lower"));
-        }
+        double* deltalambda = *opacities.dev_opac_deltawave;
+
+        prepare_compute_flux(
+            dev_starflux,
+            dev_T_lay, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
+            dev_T_int,        // in: it, pii, ioi, mmmi, kii
+            dev_p_lay,        // in: io, mmm, kil
+            dev_p_int,        // in: ioi, mmmi, kii
+            *opac_wg_lay,     // out: io
+            *opac_wg_int,     // out: ioi
+            *meanmolmass_lay, // out: mmm
+            *meanmolmass_int, // out: mmmi
+            real_star,        // pil
+            fake_opac,        // io
+            interpolate_temp_and_pres,
+            interp_and_calc_flux_step);
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
-        call_z_callback();
 
-        direct_beam_flux(
-            F_dir_wg, Fc_dir_wg, z_lay, R_planet, R_star, a, dir_beam, geom_zenith_corr, num_cols);
 
-        BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
+        BENCH_POINT_I_S(debug_nstep,
+                        debug_col_idx,
+                        "Alf_prep_flx",
+                        (),
+                        ("opac_wg_lay",
+                         "opac_wg_int",
+                         "meanmolmass_lay",
+                         "meanmolmass_int",
+                         "cloud_scat_cross_lay",
+                         "planckband_lay"));
 
-        cuda_check_status_or_exit(__FILE__, __LINE__);
-    }
-
-    if (thomas) {
-        if (iso) {
-            populate_spectral_flux_iso_thomas(F_down_wg, // out
-                                              F_up_wg,   // out
-                                              F_dir_wg,  // in
-                                              *g0_wg,    // in
-                                              single_walk,
-                                              R_star,
-                                              a,
-                                              f_factor,
-                                              epsi,
-                                              w_0_limit,
-                                              dir_beam,
-                                              clouds,
-                                              num_cols);
-        }
-        else {
-            populate_spectral_flux_noniso_thomas(F_down_wg,
-                                                 F_up_wg,
-                                                 Fc_down_wg,
-                                                 Fc_up_wg,
-                                                 F_dir_wg,
-                                                 Fc_dir_wg,
-                                                 *g0_wg_upper,
-                                                 *g0_wg_lower,
-                                                 single_walk,
-                                                 R_star,
-                                                 a,
-                                                 f_factor,
-                                                 epsi,
-                                                 w_0_limit,
-                                                 delta_tau_limit,
-                                                 dir_beam,
-                                                 clouds,
-                                                 *trans_wg_upper,
-                                                 *trans_wg_lower,
-                                                 num_cols);
-        }
-        cuda_check_status_or_exit(__FILE__, __LINE__);
-
-        BENCH_POINT_I_S(
-            debug_nstep, debug_col_idx, "Alf_pop_spec_flx_thomas", (), ("F_up_wg", "F_down_wg"));
-    }
-    else {
-        int nscat_step = 0;
-        if (single_walk)
-            nscat_step = 200;
-        else
-            nscat_step = 3;
-
-        if (!scat)
-            nscat_step = 0;
-
-        for (int scat_iter = 0; scat_iter < nscat_step + 1; scat_iter++) {
+        // also lookup and interpolate cloud values here if cloud values
+        // per volume element is needed
+        // fill in g_0_cloud_lay, g_0_cloud_int, cloud_scat_cross_lay, cloud_scat_cross_int
+        if (interp_and_calc_flux_step) {
             if (iso) {
-                populate_spectral_flux_iso(F_down_wg, // out
-                                           F_up_wg,   // out
-                                           F_dir_wg,  // in
-                                           *g0_wg,    // in
-                                           single_walk,
-                                           R_star,
-                                           a,
-                                           f_factor,
+                BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
+
+                calculate_transmission_iso(*trans_wg,            // out
+                                           delta_colmass,        // in
+                                           *opac_wg_lay,         // in
+                                           cloud_abs_cross_lay,  // in
+                                           *meanmolmass_lay,     // in
+                                           cloud_scat_cross_lay, // in
+                                           g_0_cloud_lay,        // in
+                                           g_0,
                                            epsi,
-                                           w_0_limit,
-                                           dir_beam,
+                                           epsilon2,
+                                           zenith_angle,
+                                           scat,
                                            clouds,
-                                           num_cols);
+                                           1);
+
+                BENCH_POINT_I_S(debug_nstep,
+                                debug_col_idx,
+                                "Alf_comp_trans",
+                                (),
+                                ("delta_colmass",
+                                 "trans_wg",
+                                 "delta_tau_wg",
+                                 "M_term",
+                                 "N_term",
+                                 "P_term",
+                                 "w_0",
+                                 "g_0",
+                                 "G_plus",
+                                 "G_minus"));
             }
             else {
-                populate_spectral_flux_noniso(F_down_wg,
-                                              F_up_wg,
-                                              Fc_down_wg,
-                                              Fc_up_wg,
-                                              F_dir_wg,
-                                              Fc_dir_wg,
-                                              *g0_wg_upper,
-                                              *g0_wg_lower,
-                                              single_walk,
-                                              R_star,
-                                              a,
-                                              f_factor,
-                                              epsi,
-                                              w_0_limit,
-                                              delta_tau_limit,
-                                              dir_beam,
-                                              clouds,
-                                              *trans_wg_upper,
-                                              *trans_wg_lower,
-                                              num_cols);
+                BENCH_POINT_I_S(debug_nstep,
+                                debug_col_idx,
+                                "Alf_prep_II",
+                                (),
+                                ("delta_col_upper", "delta_col_lower",
+
+
+                                 ));
+                calculate_transmission_noniso(
+                    *trans_wg_upper,
+                    *trans_wg_lower,
+                    &((*delta_col_upper)[nlayer * c]), // TODO: temporary while using external loop
+                    &((*delta_col_lower)[nlayer * c]), // TODO: temporary
+                    *opac_wg_lay,
+                    *opac_wg_int,
+                    cloud_abs_cross_lay,
+                    cloud_abs_cross_int,
+                    *meanmolmass_lay,
+                    *meanmolmass_int,
+                    cloud_scat_cross_lay,
+                    cloud_scat_cross_int,
+                    g_0_cloud_lay,
+                    g_0_cloud_int,
+                    g_0,
+                    epsi,
+                    epsilon2,
+                    zenith_angle,
+                    scat,
+                    clouds,
+                    1);
+                BENCH_POINT_I_S(debug_nstep,
+                                debug_col_idx,
+                                "Alf_comp_trans",
+                                (),
+                                ("trans_wg_upper",
+                                 "trans_wg_lower",
+                                 "delta_tau_wg_upper",
+                                 "delta_tau_wg_lower",
+                                 "planckband_lay",
+                                 "planckband_int",
+                                 "M_upper",
+                                 "M_lower",
+                                 "N_upper",
+                                 "N_lower",
+                                 "P_upper",
+                                 "P_lower",
+                                 "G_plus_upper",
+                                 "G_plus_lower",
+                                 "G_minus_upper",
+                                 "G_minus_lower",
+                                 "w_0_upper",
+                                 "w_0_lower"));
             }
+
+            cuda_check_status_or_exit(__FILE__, __LINE__);
+            call_z_callback();
+
+            direct_beam_flux(
+                F_dir_wg, Fc_dir_wg, z_lay, R_planet, R_star, a, dir_beam, geom_zenith_corr, 1);
+
+            BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
 
             cuda_check_status_or_exit(__FILE__, __LINE__);
         }
 
-        BENCH_POINT_I_S(
-            debug_nstep, debug_col_idx, "Alf_pop_spec_flx", (), ("F_up_wg", "F_down_wg"));
-    }
+        if (thomas) {
+            if (iso) {
+                populate_spectral_flux_iso_thomas(F_down_wg, // out
+                                                  F_up_wg,   // out
+                                                  F_dir_wg,  // in
+                                                  *g0_wg,    // in
+                                                  single_walk,
+                                                  R_star,
+                                                  a,
+                                                  f_factor,
+                                                  epsi,
+                                                  w_0_limit,
+                                                  dir_beam,
+                                                  clouds,
+                                                  1);
+            }
+            else {
+                populate_spectral_flux_noniso_thomas(F_down_wg,
+                                                     F_up_wg,
+                                                     Fc_down_wg,
+                                                     Fc_up_wg,
+                                                     F_dir_wg,
+                                                     Fc_dir_wg,
+                                                     *g0_wg_upper,
+                                                     *g0_wg_lower,
+                                                     single_walk,
+                                                     R_star,
+                                                     a,
+                                                     f_factor,
+                                                     epsi,
+                                                     w_0_limit,
+                                                     delta_tau_limit,
+                                                     dir_beam,
+                                                     clouds,
+                                                     *trans_wg_upper,
+                                                     *trans_wg_lower,
+                                                     1);
+            }
+            cuda_check_status_or_exit(__FILE__, __LINE__);
 
-    double* gauss_weight = *gauss_weights;
-    integrate_flux(deltalambda,
-                   F_down_tot,
-                   F_up_tot,
-                   F_dir_tot,
-                   F_net,
-                   F_down_wg,
-                   F_up_wg,
-                   F_dir_wg,
-                   F_down_band,
-                   F_up_band,
-                   F_dir_band,
-                   F_up_TOA_spectrum,
-                   gauss_weight);
+            BENCH_POINT_I_S(debug_nstep,
+                            debug_col_idx,
+                            "Alf_pop_spec_flx_thomas",
+                            (),
+                            ("F_up_wg", "F_down_wg"));
+        }
+        else {
+            int nscat_step = 0;
+            if (single_walk)
+                nscat_step = 200;
+            else
+                nscat_step = 3;
 
-    BENCH_POINT_I_S(
-        debug_nstep, debug_col_idx, "Alf_int_flx", (), ("F_up_band", "F_down_band", "F_dir_band"));
+            if (!scat)
+                nscat_step = 0;
+
+            for (int scat_iter = 0; scat_iter < nscat_step + 1; scat_iter++) {
+                if (iso) {
+                    populate_spectral_flux_iso(F_down_wg, // out
+                                               F_up_wg,   // out
+                                               F_dir_wg,  // in
+                                               *g0_wg,    // in
+                                               single_walk,
+                                               R_star,
+                                               a,
+                                               f_factor,
+                                               epsi,
+                                               w_0_limit,
+                                               dir_beam,
+                                               clouds,
+                                               1);
+                }
+                else {
+                    populate_spectral_flux_noniso(F_down_wg,
+                                                  F_up_wg,
+                                                  Fc_down_wg,
+                                                  Fc_up_wg,
+                                                  F_dir_wg,
+                                                  Fc_dir_wg,
+                                                  *g0_wg_upper,
+                                                  *g0_wg_lower,
+                                                  single_walk,
+                                                  R_star,
+                                                  a,
+                                                  f_factor,
+                                                  epsi,
+                                                  w_0_limit,
+                                                  delta_tau_limit,
+                                                  dir_beam,
+                                                  clouds,
+                                                  *trans_wg_upper,
+                                                  *trans_wg_lower,
+                                                  1);
+                }
+
+                cuda_check_status_or_exit(__FILE__, __LINE__);
+            }
+
+            BENCH_POINT_I_S(
+                debug_nstep, debug_col_idx, "Alf_pop_spec_flx", (), ("F_up_wg", "F_down_wg"));
+        }
+
+        double* gauss_weight = *gauss_weights;
+        integrate_flux(deltalambda,
+                       F_down_tot,
+                       F_up_tot,
+                       F_dir_tot,
+                       F_net,
+                       F_down_wg,
+                       F_up_wg,
+                       F_dir_wg,
+                       F_down_band,
+                       F_up_band,
+                       F_dir_band,
+                       F_up_TOA_spectrum,
+                       gauss_weight);
+
+        BENCH_POINT_I_S(debug_nstep,
+                        debug_col_idx,
+                        "Alf_int_flx",
+                        (),
+                        ("F_up_band", "F_down_band", "F_dir_band"));
 
 
-    cuda_check_status_or_exit(__FILE__, __LINE__);
+        cuda_check_status_or_exit(__FILE__, __LINE__);
 
-    cudaError_t err = cudaGetLastError();
+        cudaError_t err = cudaGetLastError();
 
-    if (err != cudaSuccess) {
-        printf("compute_radiative_transfer: cuda error: %s\n", cudaGetErrorString(err));
+        if (err != cudaSuccess) {
+            printf("compute_radiative_transfer: cuda error: %s\n", cudaGetErrorString(err));
+        }
     }
 }
 
