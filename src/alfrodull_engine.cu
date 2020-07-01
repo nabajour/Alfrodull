@@ -731,22 +731,24 @@ void alfrodull_engine::compute_radiative_transfer(
 
             cuda_check_status_or_exit(__FILE__, __LINE__);
             call_z_callback();
-
-            direct_beam_flux(F_dir_wg_cols,
-                             Fc_dir_wg_cols,
-                             z_lay,
-                             R_planet,
-                             R_star,
-                             a,
-                             dir_beam,
-                             geom_zenith_corr,
-                             c);
-
-            BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
-
-            cuda_check_status_or_exit(__FILE__, __LINE__);
         }
     }
+    if (interp_and_calc_flux_step) {
+        direct_beam_flux(F_dir_wg_cols,
+                         Fc_dir_wg_cols,
+                         z_lay,
+                         R_planet,
+                         R_star,
+                         a,
+                         dir_beam,
+                         geom_zenith_corr,
+                         num_cols);
+
+        BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_dir_beam_trans", (), ("F_dir_wg"));
+
+        cuda_check_status_or_exit(__FILE__, __LINE__);
+    }
+
     if (thomas) {
         if (iso) {
             populate_spectral_flux_iso_thomas(F_down_wg_cols, // out
@@ -1316,14 +1318,13 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
     //printf("R_star: %g, R_planet: %g, a: %g\n", R_star, R_planet, a);
     //printf("dir beam: %d, geom_z_corr: %d, mu_star: %g\n", dir_beam, geom_zenith_corr, mu_star);
     if (iso) {
+        dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (num_cols * ny + 3) / 4);
         dim3 block(4, 32, 4);
-        dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (ny + 3) / 4);
-        fdir_iso<<<grid, block>>>(&(F_dir_wg[num_cols * (nlayer + 1) * nbin * ny]),
-                                  &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
-                                  //&((*delta_tau_wg)[num_cols * nlayer * ny * nbin]),
-                                  &((*delta_tau_wg)[num_cols * nlayer * ny * nbin]),
+        fdir_iso<<<grid, block>>>(F_dir_wg,
+                                  *planckband_lay,
+                                  *delta_tau_wg,
                                   z_lay,
-                                  &((*mu_star_cols)[num_cols]),
+                                  *mu_star_cols,
                                   mu_star_limit,
                                   R_planet,
                                   R_star,
@@ -1333,14 +1334,13 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                   ninterface,
                                   nbin,
                                   ny,
-                                  1);
+                                  num_cols);
 
         cudaDeviceSynchronize();
     }
     else {
-        dim3 block(4, 32, 4);
         dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (ny + 3) / 4);
-
+        dim3 block(4, 32, 4);
         fdir_noniso<<<grid, block>>>(&(F_dir_wg[num_cols * (nlayer + 1) * nbin * ny]),
                                      &(Fc_dir_wg[num_cols * (nlayer + 1) * nbin * ny]),
                                      &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
