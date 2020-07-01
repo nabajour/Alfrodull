@@ -303,7 +303,7 @@ dgrt_spindown_stop = 28800
 two_streams_radiative_transfer = true
 
 # Isothermal or non-isothermal treatment of layers for two stream RT
-Alf_iso = true
+Alf_iso = false
 
 # use Thomas algorithm for solver instead of iterative solver.
 Alf_thomas = true
@@ -345,8 +345,8 @@ Alf_opacities_file = ./Alfrodull/input/opac_sample_r5.h5
 #Alf_opacities_file = ./Alfrodull/input/opac_sample_r50.h5
 
 # clouds
-Alf_clouds = true
-Alf_fcloud = 0.1
+Alf_clouds = false
+Alf_fcloud = 1.0
 Alf_cloudfile = ./Alfrodull/input/cloud_sample_r5.h5
 
 # store w0 and g0 per wavelength (optional, to avoid storing a giant amount of data

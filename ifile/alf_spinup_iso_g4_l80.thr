@@ -71,7 +71,7 @@ Top_altitude = 1.4e6
 glevel = 4
 
 # Number of vertical layers
-vlevel = 40
+vlevel = 80
 
 # Spring dynamics
 spring_dynamics = true
@@ -94,7 +94,7 @@ NonHydro = true
 DeepModel = true
 
 # Initial conditions
-rest = false
+rest = true
 
 # initial conditions file, used if rest is set to false
 # (path relative to current working directory)
@@ -286,10 +286,10 @@ sync_rot = true
 # spin up and spin down start and stop. Set to negative value to ignore and run at full power
 # spins up/down with a multiplication factor following a sine from 0 to 1 from
 # start to stop of spin up time
-dgrt_spinup_start = -1
-dgrt_spinup_stop = -1
-dgrt_spindown_start = 0
-dgrt_spindown_stop = 28800
+dgrt_spinup_start = 0
+dgrt_spinup_stop = 143999
+dgrt_spindown_start = 144000
+dgrt_spindown_stop = 172800
 
 
 #-- Alfrodull options --------------------------------------------------------#
@@ -345,8 +345,8 @@ Alf_opacities_file = ./Alfrodull/input/opac_sample_r5.h5
 #Alf_opacities_file = ./Alfrodull/input/opac_sample_r50.h5
 
 # clouds
-Alf_clouds = true
-Alf_fcloud = 0.1
+Alf_clouds = false
+Alf_fcloud = 1.0
 Alf_cloudfile = ./Alfrodull/input/cloud_sample_r5.h5
 
 # store w0 and g0 per wavelength (optional, to avoid storing a giant amount of data
@@ -377,8 +377,8 @@ Alf_num_parallel_columns = 2562
 # spins up/down with a multiplication factor following a sine from 0 to 1 from
 # start to stop of spin up time and a sine from 1 to 0 for spin down
 # can be used in parallel with double grey radiative transfer above for faster spinup
-Alf_spinup_start = 0
-Alf_spinup_stop = 28800
+Alf_spinup_start = 144000
+Alf_spinup_stop = 172800
 Alf_spindown_start = -1
 Alf_spindown_stop = -1
 

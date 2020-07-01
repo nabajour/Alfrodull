@@ -306,7 +306,7 @@ two_streams_radiative_transfer = true
 Alf_iso = true
 
 # use Thomas algorithm for solver instead of iterative solver.
-Alf_thomas = true
+Alf_thomas = false
 
 # if not using Thomas, run in single walk mode. 
 # true -> 200 iterations, HELIOS "post-processing" code
@@ -345,8 +345,8 @@ Alf_opacities_file = ./Alfrodull/input/opac_sample_r5.h5
 #Alf_opacities_file = ./Alfrodull/input/opac_sample_r50.h5
 
 # clouds
-Alf_clouds = true
-Alf_fcloud = 0.1
+Alf_clouds = false
+Alf_fcloud = 1.0
 Alf_cloudfile = ./Alfrodull/input/cloud_sample_r5.h5
 
 # store w0 and g0 per wavelength (optional, to avoid storing a giant amount of data
