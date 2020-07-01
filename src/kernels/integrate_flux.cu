@@ -1175,37 +1175,37 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
 
 
 // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
-__global__ void fband_noniso_thomas(double* F_down_wg,
-                                    double* F_up_wg,
-                                    double* Fc_down_wg,
-                                    double* Fc_up_wg,
-                                    double* F_dir_wg,
-                                    double* Fc_dir_wg,
-                                    double* planckband_lay,
-                                    double* planckband_int,
-                                    double* w_0_upper,
-                                    double* w_0_lower,
-                                    double* delta_tau_wg_upper,
-                                    double* delta_tau_wg_lower,
-                                    double* M_upper,
-                                    double* M_lower,
-                                    double* N_upper,
-                                    double* N_lower,
-                                    double* P_upper,
-                                    double* P_lower,
-                                    double* G_plus_upper,
-                                    double* G_plus_lower,
-                                    double* G_minus_upper,
-                                    double* G_minus_lower,
-                                    double* A_buff,       // thomas worker
-                                    double* B_buff,       // thomas worker
-                                    double* C_buff,       // thomas worker
-                                    double* D_buff,       // thomas worker
-                                    double* C_prime_buff, // thomas worker
-                                    double* D_prime_buff, // thomas worker
-                                    double* X_buff,       // thomas worker
-                                    double* g_0_tot_upper,
-                                    double* g_0_tot_lower,
+__global__ void fband_noniso_thomas(double* F_down_wg_,
+                                    double* F_up_wg_,
+                                    double* Fc_down_wg_,
+                                    double* Fc_up_wg_,
+                                    double* F_dir_wg_,
+                                    double* Fc_dir_wg_,
+                                    double* planckband_lay_,
+                                    double* planckband_int_,
+                                    double* w_0_upper_,
+                                    double* w_0_lower_,
+                                    double* delta_tau_wg_upper_,
+                                    double* delta_tau_wg_lower_,
+                                    double* M_upper_,
+                                    double* M_lower_,
+                                    double* N_upper_,
+                                    double* N_lower_,
+                                    double* P_upper_,
+                                    double* P_lower_,
+                                    double* G_plus_upper_,
+                                    double* G_plus_lower_,
+                                    double* G_minus_upper_,
+                                    double* G_minus_lower_,
+                                    double* A_buff_,       // thomas worker
+                                    double* B_buff_,       // thomas worker
+                                    double* C_buff_,       // thomas worker
+                                    double* D_buff_,       // thomas worker
+                                    double* C_prime_buff_, // thomas worker
+                                    double* D_prime_buff_, // thomas worker
+                                    double* X_buff_,       // thomas worker
+                                    double* g_0_tot_upper_,
+                                    double* g_0_tot_lower_,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -1226,9 +1226,42 @@ __global__ void fband_noniso_thomas(double* F_down_wg,
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     // weight index
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-    int c = 0;
+    int c = blockIdx.z;
 
-    if (x < nbin && y < ny && c < num_cols) {
+    int nlayer = numinterfaces - 1;
+    if (x < nbin && y < ny) {
+        double* F_down_wg          = &(F_down_wg_[c * numinterfaces * nbin * ny]);
+        double* F_up_wg            = &(F_up_wg_[c * numinterfaces * nbin * ny]);
+        double* Fc_down_wg         = &(Fc_down_wg_[c * numinterfaces * nbin * ny]);
+        double* Fc_up_wg           = &(Fc_up_wg_[c * numinterfaces * nbin * ny]);
+        double* F_dir_wg           = &(F_dir_wg_[c * numinterfaces * nbin * ny]);
+        double* Fc_dir_wg          = &(Fc_dir_wg_[c * numinterfaces * nbin * ny]);
+        double* planckband_lay     = &(planckband_lay_[c * (nlayer + 2) * nbin]);
+        double* planckband_int     = &(planckband_int_[c * (nlayer + 1) * nbin]);
+        double* w_0_upper          = &(w_0_upper_[c * nlayer * nbin * ny]);
+        double* w_0_lower          = &(w_0_lower_[c * nlayer * nbin * ny]);
+        double* delta_tau_wg_upper = &(delta_tau_wg_upper_[c * nlayer * nbin * ny]);
+        double* delta_tau_wg_lower = &(delta_tau_wg_lower_[c * nlayer * nbin * ny]);
+        double* M_upper            = &(M_upper_[c * nlayer * nbin * ny]);
+        double* M_lower            = &(M_lower_[c * nlayer * nbin * ny]);
+        double* N_upper            = &(N_upper_[c * nlayer * nbin * ny]);
+        double* N_lower            = &(N_lower_[c * nlayer * nbin * ny]);
+        double* P_upper            = &(P_upper_[c * nlayer * nbin * ny]);
+        double* P_lower            = &(P_lower_[c * nlayer * nbin * ny]);
+        double* G_plus_upper       = &(G_plus_upper_[c * nlayer * nbin * ny]);
+        double* G_plus_lower       = &(G_plus_lower_[c * nlayer * nbin * ny]);
+        double* G_minus_upper      = &(G_minus_upper_[c * nlayer * nbin * ny]);
+        double* G_minus_lower      = &(G_minus_lower_[c * nlayer * nbin * ny]);
+        double* A_buff             = &(A_buff_[c * (2 * nlayer + 1) * nbin * ny * 4]);
+        double* B_buff             = &(B_buff_[c * (2 * nlayer + 1) * nbin * ny * 4]);
+        double* C_buff             = &(C_buff_[c * (2 * nlayer + 1) * nbin * ny * 4]);
+        double* D_buff             = &(D_buff_[c * (2 * nlayer + 1) * nbin * ny * 2]);
+        double* C_prime_buff       = &(C_prime_buff_[c * (2 * nlayer + 1) * nbin * ny * 4]);
+        double* D_prime_buff       = &(D_prime_buff_[c * (2 * nlayer + 1) * nbin * ny * 2]);
+        double* X_buff             = &(X_buff_[c * (2 * nlayer + 1) * nbin * ny * 2]);
+        double* g_0_tot_upper      = &(g_0_tot_upper_[c * nlayer * nbin * ny]);
+        double* g_0_tot_lower      = &(g_0_tot_lower_[c * nlayer * nbin * ny]);
+
         // make contiguous address space for worker memory, fastest idx is interface
         // two equations per interface, one matrix block per interface
         // Num input layers
