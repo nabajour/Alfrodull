@@ -727,9 +727,7 @@ void alfrodull_engine::compute_radiative_transfer(
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
         call_z_callback();
-    }
 
-    if (interp_and_calc_flux_step) {
         direct_beam_flux(F_dir_wg_cols,
                          Fc_dir_wg_cols,
                          z_lay,
@@ -800,41 +798,41 @@ void alfrodull_engine::compute_radiative_transfer(
 
         for (int scat_iter = 0; scat_iter < nscat_step + 1; scat_iter++) {
             if (iso) {
-                // populate_spectral_flux_iso(F_down_wg, // out
-                //                            F_up_wg,   // out
-                //                            F_dir_wg,  // in
-                //                            *g0_wg,    // in
-                //                            single_walk,
-                //                            R_star,
-                //                            a,
-                //                            f_factor,
-                //                            epsi,
-                //                            w_0_limit,
-                //                            dir_beam,
-                //                            clouds,
-                //                            1);
+                populate_spectral_flux_iso(F_down_wg_cols, // out
+                                           F_up_wg_cols,   // out
+                                           F_dir_wg_cols,  // in
+                                           *g0_wg,         // in
+                                           single_walk,
+                                           R_star,
+                                           a,
+                                           f_factor,
+                                           epsi,
+                                           w_0_limit,
+                                           dir_beam,
+                                           clouds,
+                                           num_cols);
             }
             else {
-                // populate_spectral_flux_noniso(F_down_wg,
-                //                               F_up_wg,
-                //                               Fc_down_wg,
-                //                               Fc_up_wg,
-                //                               F_dir_wg,
-                //                               Fc_dir_wg,
-                //                               *g0_wg_upper,
-                //                               *g0_wg_lower,
-                //                               single_walk,
-                //                               R_star,
-                //                               a,
-                //                               f_factor,
-                //                               epsi,
-                //                               w_0_limit,
-                //                               delta_tau_limit,
-                //                               dir_beam,
-                //                               clouds,
-                //                               *trans_wg_upper,
-                //                               *trans_wg_lower,
-                //                               1);
+                populate_spectral_flux_noniso(F_down_wg_cols,
+                                              F_up_wg_cols,
+                                              Fc_down_wg_cols,
+                                              Fc_up_wg_cols,
+                                              F_dir_wg_cols,
+                                              Fc_dir_wg_cols,
+                                              *g0_wg_upper,
+                                              *g0_wg_lower,
+                                              single_walk,
+                                              R_star,
+                                              a,
+                                              f_factor,
+                                              epsi,
+                                              w_0_limit,
+                                              delta_tau_limit,
+                                              dir_beam,
+                                              clouds,
+                                              *trans_wg_upper,
+                                              *trans_wg_lower,
+                                              num_cols);
             }
 
             cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -1056,75 +1054,47 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
                                       double* F_up_TOA_spectrum,
                                       double* gauss_weight,
                                       int     num_cols) {
-    bool opt = true;
 
     int nbin = opacities.nbin;
     int ny   = opacities.ny;
 
-    if (opt) {
-        {
-            int  num_levels_per_block = 16;
-            int  num_bins_per_block   = 16;
-            dim3 gridsize(
-                ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1, num_cols);
-            dim3 blocksize(num_levels_per_block, num_bins_per_block, 1);
-            //printf("nbin: %d, ny: %d\n", nbin, ny);
+    {
+        int  num_levels_per_block = 16;
+        int  num_bins_per_block   = 16;
+        dim3 gridsize(
+            ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1, num_cols);
+        dim3 blocksize(num_levels_per_block, num_bins_per_block, 1);
+        //printf("nbin: %d, ny: %d\n", nbin, ny);
 
-            integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
-                                                         F_up_wg,
-                                                         F_dir_wg,
-                                                         F_down_band,
-                                                         F_up_band,
-                                                         F_dir_band,
-                                                         F_up_TOA_spectrum,
-                                                         gauss_weight,
-                                                         nbin,
-                                                         ninterface,
-                                                         ny);
+        integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
+                                                     F_up_wg,
+                                                     F_dir_wg,
+                                                     F_down_band,
+                                                     F_up_band,
+                                                     F_dir_band,
+                                                     F_up_TOA_spectrum,
+                                                     gauss_weight,
+                                                     nbin,
+                                                     ninterface,
+                                                     ny);
 
-            cudaDeviceSynchronize();
-        }
-
-        {
-            int  num_levels_per_block = 256;
-            dim3 gridsize(ninterface / num_levels_per_block + 1, 1, num_cols);
-            dim3 blocksize(num_levels_per_block, 1, 1);
-            integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
-                                                        F_down_tot,
-                                                        F_up_tot,
-                                                        F_dir_tot,
-                                                        F_net,
-                                                        F_down_band,
-                                                        F_up_band,
-                                                        F_dir_band,
-                                                        nbin,
-                                                        ninterface);
-            cudaDeviceSynchronize();
-        }
+        cudaDeviceSynchronize();
     }
-    else {
 
-        dim3 threadsPerBlock(1, 1, 1);
-        dim3 numBlocks(32, 4, 8);
-
-
-        //printf("Running Alfrodull Wrapper for integrate flux\n");
-        integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
-                                                              F_down_tot,
-                                                              F_up_tot,
-                                                              F_dir_tot,
-                                                              F_net,
-                                                              F_down_wg,
-                                                              F_up_wg,
-                                                              F_dir_wg,
-                                                              F_down_band,
-                                                              F_up_band,
-                                                              F_dir_band,
-                                                              gauss_weight,
-                                                              nbin,
-                                                              ninterface,
-                                                              ny);
-
+    {
+        int  num_levels_per_block = 256;
+        dim3 gridsize(ninterface / num_levels_per_block + 1, 1, num_cols);
+        dim3 blocksize(num_levels_per_block, 1, 1);
+        integrate_flux_tot<<<gridsize, blocksize>>>(deltalambda,
+                                                    F_down_tot,
+                                                    F_up_tot,
+                                                    F_dir_tot,
+                                                    F_net,
+                                                    F_down_band,
+                                                    F_up_band,
+                                                    F_dir_band,
+                                                    nbin,
+                                                    ninterface);
         cudaDeviceSynchronize();
     }
 }
@@ -1233,52 +1203,52 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
 
     int ny = opacities.ny;
 
-    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
+    dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
     dim3 block(16, 4, 4);
 
-    trans_noniso<<<grid, block>>>(&(trans_wg_upper[num_cols * nlayer * ny * nbin]),
-                                  &(trans_wg_lower[num_cols * nlayer * ny * nbin]),
-                                  &((*delta_tau_wg_upper)[num_cols * nlayer * ny * nbin]),
-                                  &((*delta_tau_wg_lower)[num_cols * nlayer * ny * nbin]),
-                                  &((*M_upper)[num_cols * nlayer * ny * nbin]),
-                                  &((*M_lower)[num_cols * nlayer * ny * nbin]),
-                                  &((*N_upper)[num_cols * nlayer * ny * nbin]),
-                                  &((*N_lower)[num_cols * nlayer * ny * nbin]),
-                                  &((*P_upper)[num_cols * nlayer * ny * nbin]),
-                                  &((*P_lower)[num_cols * nlayer * ny * nbin]),
-                                  &((*G_plus_upper)[num_cols * nlayer * ny * nbin]),
-                                  &((*G_plus_lower)[num_cols * nlayer * ny * nbin]),
-                                  &((*G_minus_upper)[num_cols * nlayer * ny * nbin]),
-                                  &((*G_minus_lower)[num_cols * nlayer * ny * nbin]),
-                                  &(delta_col_upper[num_cols * nlayer]),
-                                  &(delta_col_lower[num_cols * nlayer]),
-                                  &(opac_wg_lay[num_cols * nlayer * ny * nbin]),
-                                  &(opac_wg_int[num_cols * ninterface * ny * nbin]),
+    trans_noniso<<<grid, block>>>(trans_wg_upper,
+                                  trans_wg_lower,
+                                  *delta_tau_wg_upper,
+                                  *delta_tau_wg_lower,
+                                  *M_upper,
+                                  *M_lower,
+                                  *N_upper,
+                                  *N_lower,
+                                  *P_upper,
+                                  *P_lower,
+                                  *G_plus_upper,
+                                  *G_plus_lower,
+                                  *G_minus_upper,
+                                  *G_minus_lower,
+                                  delta_col_upper,
+                                  delta_col_lower,
+                                  opac_wg_lay,
+                                  opac_wg_int,
                                   cloud_abs_cross_lay_,
                                   cloud_abs_cross_int_,
-                                  &(meanmolmass_lay[num_cols * nlayer]),
-                                  &(meanmolmass_int[num_cols * ninterface]),
-                                  &((*scatter_cross_section_lay)[num_cols * nlayer * nbin]),
-                                  &((*scatter_cross_section_inter)[num_cols * ninterface * nbin]),
+                                  meanmolmass_lay,
+                                  meanmolmass_int,
+                                  *scatter_cross_section_lay,
+                                  *scatter_cross_section_inter,
                                   cloud_scat_cross_lay,
                                   cloud_scat_cross_int,
-                                  &((*w0_wg_upper)[num_cols * nlayer * nbin * ny]),
-                                  &((*w0_wg_lower)[num_cols * nlayer * nbin * ny]),
-                                  &((*g0_wg_upper)[num_cols * nlayer * nbin * ny]),
-                                  &((*g0_wg_lower)[num_cols * nlayer * nbin * ny]),
+                                  *w0_wg_upper,
+                                  *w0_wg_lower,
+                                  *g0_wg_upper,
+                                  *g0_wg_lower,
                                   g_0_cloud_lay_,
                                   g_0_cloud_int_,
                                   g_0,
                                   epsi,
                                   epsilon2_,
-                                  &(zenith_angle_cols[num_cols]),
-                                  &((*mu_star_cols)[num_cols]),
+                                  zenith_angle_cols,
+                                  *mu_star_cols,
                                   w_0_limit,
                                   scat,
                                   nbin,
                                   ny,
                                   nlayer,
-                                  1,
+                                  num_cols,
                                   fcloud,
                                   clouds,
                                   scat_corr,
@@ -1437,8 +1407,8 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg, // out
     int nbin = opacities.nbin;
     int ny   = opacities.ny;
 
+    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, num_cols);
     dim3 block(16, 16, 1);
-    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
     fband_iso_notabu<<<grid, block>>>(F_down_wg,
                                       F_up_wg,
                                       F_dir_wg,
@@ -1491,12 +1461,12 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double* trans_wg_upper,
                                                      double* trans_wg_lower,
                                                      int     num_cols) {
-    int  nbin = opacities.nbin;
-    int  ny   = opacities.ny;
+    int nbin = opacities.nbin;
+    int ny   = opacities.ny;
+
+
+    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, num_cols);
     dim3 block(16, 16, 1);
-
-    dim3 grid((nbin + 15) / 16, (ny + 15) / 16, 1);
-
     // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
     fband_noniso_notabu<<<grid, block>>>(F_down_wg,
                                          F_up_wg,

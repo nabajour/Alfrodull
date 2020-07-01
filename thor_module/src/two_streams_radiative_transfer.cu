@@ -72,7 +72,7 @@ using std::string;
 
 
 // show progress bar
-#define COLUMN_LOOP_PROGRESS_BAR
+//#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
 //#define DEBUG_PRINTOUT_ARRAYS

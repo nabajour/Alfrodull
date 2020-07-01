@@ -20,6 +20,10 @@
     //printf("Running Alfrodull Wrapper for integrate flux\n");
     integrate_flux_double<<<threadsPerBlock, numBlocks>>>(deltalambda,
 */
+/*
+// Old version, not used, not adapted to multi-column version.
+// is slow due to usage of blocking AtomicAdd which effectively serialises 
+// additions.
 __global__ void integrate_flux_double(double* deltalambda,  // in
                                       double* F_down_tot,   // out
                                       double* F_up_tot,     // out
@@ -113,7 +117,7 @@ __global__ void integrate_flux_double(double* deltalambda,  // in
         }
     }
 }
-
+*/
 /* 
 numinterfaces: levels
 nbin:          frequency bins
@@ -241,7 +245,7 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
         double f_out = 0.0;
         // initialize each flux value
         if (dir_beam) {
-            if (fabs(mu_star) < mu_star_limit)
+            if (mu_star > mu_star_limit)
                 f_out = 0.0;
             else
                 f_out = -mu_star * I_dir;
@@ -311,7 +315,7 @@ __global__ void fdir_noniso(double* F_dir_wg,
         double fc_out = 0.0;
         // initialize each flux value
         if (dir_beam) {
-            if (fabs(mu_star) < mu_star_limit)
+            if (mu_star > mu_star_limit)
                 f_out = 0.0;
             else
                 f_out = -mu_star * I_dir;
@@ -351,17 +355,17 @@ __global__ void fdir_noniso(double* F_dir_wg,
 
 
 // calculation of the spectral fluxes, isothermal case with emphasis on on-the-fly calculations
-__global__ void fband_iso_notabu(double* F_down_wg,      // out
-                                 double* F_up_wg,        // out
-                                 double* F_dir_wg,       // in
-                                 double* planckband_lay, // in
-                                 double* w_0,            // in
-                                 double* M_term,         // in
-                                 double* N_term,         // in
-                                 double* P_term,         // in
-                                 double* G_plus,         // in
-                                 double* G_minus,        // in
-                                 double* g_0_tot,        // in (clouds)
+__global__ void fband_iso_notabu(double* F_down_wg_,      // out
+                                 double* F_up_wg_,        // out
+                                 double* F_dir_wg_,       // in
+                                 double* planckband_lay_, // in
+                                 double* w_0_,            // in
+                                 double* M_term_,         // in
+                                 double* N_term_,         // in
+                                 double* P_term_,         // in
+                                 double* G_plus_,         // in
+                                 double* G_minus_,        // in
+                                 double* g_0_tot_,        // in (clouds)
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -381,8 +385,23 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
 
-    int c = 0;
+    int c = blockIdx.z;
     if (x < nbin && y < ny && c < num_cols) {
+        int nlayer = numinterfaces - 1;
+        // Start by applying column offset
+        double* F_down_wg      = &(F_down_wg_[c * numinterfaces * nbin * ny]);
+        double* F_up_wg        = &(F_up_wg_[c * numinterfaces * nbin * ny]);
+        double* F_dir_wg       = &(F_dir_wg_[c * numinterfaces * nbin * ny]);
+        double* planckband_lay = &(planckband_lay_[c * (nlayer + 2) * nbin]);
+        double* w_0            = &(w_0_[c * nlayer * nbin * ny]);
+        double* M_term         = &(M_term_[c * nlayer * nbin * ny]);
+        double* N_term         = &(N_term_[c * nlayer * nbin * ny]);
+        double* P_term         = &(P_term_[c * nlayer * nbin * ny]);
+        double* G_plus         = &(G_plus_[c * nlayer * nbin * ny]);
+        double* G_minus        = &(G_minus_[c * nlayer * nbin * ny]);
+        double* g_0_tot        = &(g_0_tot_[c * nlayer * nbin * ny]);
+
+
         double mu_star = mu_star_cols[c];
         double w0;
         double M;
@@ -536,30 +555,30 @@ __global__ void fband_iso_notabu(double* F_down_wg,      // out
 }
 
 // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
-__global__ void fband_noniso_notabu(double* F_down_wg,
-                                    double* F_up_wg,
-                                    double* Fc_down_wg,
-                                    double* Fc_up_wg,
-                                    double* F_dir_wg,
-                                    double* Fc_dir_wg,
-                                    double* planckband_lay,
-                                    double* planckband_int,
-                                    double* w_0_upper,
-                                    double* w_0_lower,
-                                    double* delta_tau_wg_upper,
-                                    double* delta_tau_wg_lower,
-                                    double* M_upper,
-                                    double* M_lower,
-                                    double* N_upper,
-                                    double* N_lower,
-                                    double* P_upper,
-                                    double* P_lower,
-                                    double* G_plus_upper,
-                                    double* G_plus_lower,
-                                    double* G_minus_upper,
-                                    double* G_minus_lower,
-                                    double* g_0_tot_upper,
-                                    double* g_0_tot_lower,
+__global__ void fband_noniso_notabu(double* F_down_wg_,
+                                    double* F_up_wg_,
+                                    double* Fc_down_wg_,
+                                    double* Fc_up_wg_,
+                                    double* F_dir_wg_,
+                                    double* Fc_dir_wg_,
+                                    double* planckband_lay_,
+                                    double* planckband_int_,
+                                    double* w_0_upper_,
+                                    double* w_0_lower_,
+                                    double* delta_tau_wg_upper_,
+                                    double* delta_tau_wg_lower_,
+                                    double* M_upper_,
+                                    double* M_lower_,
+                                    double* N_upper_,
+                                    double* N_lower_,
+                                    double* P_upper_,
+                                    double* P_lower_,
+                                    double* G_plus_upper_,
+                                    double* G_plus_lower_,
+                                    double* G_minus_upper_,
+                                    double* G_minus_lower_,
+                                    double* g_0_tot_upper_,
+                                    double* g_0_tot_lower_,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -579,8 +598,36 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
 
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-    int c = 0;
+    int c = blockIdx.z;
+
+    int nlayer = numinterfaces - 1;
+
     if (x < nbin && y < ny * c < num_cols) {
+        double* F_down_wg          = &(F_down_wg_[c * numinterfaces * nbin * ny]);
+        double* F_up_wg            = &(F_up_wg_[c * numinterfaces * nbin * ny]);
+        double* Fc_down_wg         = &(Fc_down_wg_[c * numinterfaces * nbin * ny]);
+        double* Fc_up_wg           = &(Fc_up_wg_[c * numinterfaces * nbin * ny]);
+        double* F_dir_wg           = &(F_dir_wg_[c * numinterfaces * nbin * ny]);
+        double* Fc_dir_wg          = &(Fc_dir_wg_[c * numinterfaces * nbin * ny]);
+        double* planckband_lay     = &(planckband_lay_[c * (nlayer + 2) * nbin]);
+        double* planckband_int     = &(planckband_int_[c * (nlayer + 1) * nbin]);
+        double* w_0_upper          = &(w_0_upper_[c * nlayer * nbin * ny]);
+        double* w_0_lower          = &(w_0_lower_[c * nlayer * nbin * ny]);
+        double* delta_tau_wg_upper = &(delta_tau_wg_upper_[c * nlayer * nbin * ny]);
+        double* delta_tau_wg_lower = &(delta_tau_wg_lower_[c * nlayer * nbin * ny]);
+        double* M_upper            = &(M_upper_[c * nlayer * nbin * ny]);
+        double* M_lower            = &(M_lower_[c * nlayer * nbin * ny]);
+        double* N_upper            = &(N_upper_[c * nlayer * nbin * ny]);
+        double* N_lower            = &(N_lower_[c * nlayer * nbin * ny]);
+        double* P_upper            = &(P_upper_[c * nlayer * nbin * ny]);
+        double* P_lower            = &(P_lower_[c * nlayer * nbin * ny]);
+        double* G_plus_upper       = &(G_plus_upper_[c * nlayer * nbin * ny]);
+        double* G_plus_lower       = &(G_plus_lower_[c * nlayer * nbin * ny]);
+        double* G_minus_upper      = &(G_minus_upper_[c * nlayer * nbin * ny]);
+        double* G_minus_lower      = &(G_minus_lower_[c * nlayer * nbin * ny]);
+        double* g_0_tot_upper      = &(g_0_tot_upper_[c * nlayer * nbin * ny]);
+        double* g_0_tot_lower      = &(g_0_tot_lower_[c * nlayer * nbin * ny]);
+
         double mu_star = mu_star_cols[c];
 
         double w0_up;
@@ -879,7 +926,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
 }
 
 
-// calculation of the spectral fluxes, isothermal case, using thomas algorithm
+// calculation of the spectral fluxes, isothermal             case, using thomas algorithm
 __global__ void fband_iso_thomas(double* F_down_wg_,      // out
                                  double* F_up_wg_,        // out
                                  double* F_dir_wg_,       // in

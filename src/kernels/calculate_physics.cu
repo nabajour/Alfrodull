@@ -321,12 +321,13 @@ __global__ void trans_iso(double* trans_wg,             // out
                 mu_star_used =
                     cos(zenith_angle_loc
                         + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
-                printf(
-                    "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g)\n",
-                    mu_star_orig,
-                    zenith_angle_loc / M_PI * 180.0,
-                    mu_star_wiggle_factor * mu_star_wiggle_increment,
-                    mu_star_used);
+                printf("Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "
+                       "(colidx: %d)\n",
+                       mu_star_orig,
+                       zenith_angle_loc / M_PI * 180.0,
+                       mu_star_wiggle_factor * mu_star_wiggle_increment,
+                       mu_star_used,
+                       c);
             }
 
 
@@ -408,14 +409,18 @@ __global__ void trans_noniso(double* trans_wg_upper,
 
     // wavelength bin
     int x = threadIdx.x + blockIdx.x * blockDim.x;
-    // ktable weight
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
     // layer
     int i = threadIdx.z + blockIdx.z * blockDim.z;
-    // column
-    int c = 0;
 
-    if (x < nbin && y < ny && i < nlayer) {
+    // compound column and sampling point index
+    int cy = threadIdx.y + blockIdx.y * blockDim.y;
+
+    int y = cy % ny;
+    // column
+    int c = cy / ny;
+
+    if (x < nbin && y < ny && i < nlayer && c < num_cols) {
+        int ninterface = nlayer + 1;
 
         utype  ray_cross_up;
         utype  ray_cross_low;
@@ -429,9 +434,12 @@ __global__ void trans_noniso(double* trans_wg_upper,
         double E_low        = 1.0;
 
         if (scat) {
-            ray_cross_up =
-                (scat_cross_lay[x + nbin * i] + scat_cross_int[x + nbin * (i + 1)]) / 2.0;
-            ray_cross_low = (scat_cross_int[x + nbin * i] + scat_cross_lay[x + nbin * i]) / 2.0;
+            ray_cross_up = (scat_cross_lay[x + nbin * i + c * nlayer * nbin]
+                            + scat_cross_int[x + nbin * (i + 1) + c * ninterface * nbin])
+                           / 2.0;
+            ray_cross_low = (scat_cross_int[x + nbin * i + c * ninterface * nbin]
+                             + scat_cross_lay[x + nbin * i + c * nlayer * nbin])
+                            / 2.0;
             if (clouds) {
                 cloud_scat_cross_up  = (cloud_scat_cross_lay[x] + cloud_scat_cross_int[x]) / 2.0;
                 cloud_scat_cross_low = (cloud_scat_cross_int[x] + cloud_scat_cross_lay[x]) / 2.0;
@@ -459,20 +467,22 @@ __global__ void trans_noniso(double* trans_wg_upper,
         }
 
 
-        g0_wg_upper[y + ny * x + ny * nbin * i] = g0_up;
-        g0_wg_lower[y + ny * x + ny * nbin * i] = g0_low;
+        g0_wg_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g0_up;
+        g0_wg_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g0_low;
 
-        utype opac_up = (opac_wg_lay[y + ny * x + ny * nbin * i]
-                         + opac_wg_int[y + ny * x + ny * nbin * (i + 1)])
+        utype opac_up = (opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]
+                         + opac_wg_int[y + ny * x + ny * nbin * (i + 1) + c * ninterface * nbin])
                         / 2.0;
-        utype opac_low =
-            (opac_wg_int[y + ny * x + ny * nbin * i] + opac_wg_lay[y + ny * x + ny * nbin * i])
-            / 2.0;
+        utype opac_low = (opac_wg_int[y + ny * x + ny * nbin * i + c * ninterface * nbin]
+                          + opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+                         / 2.0;
         utype cloud_abs_cross_up  = (cloud_abs_cross_lay[x] + cloud_abs_cross_int[x]) / 2.0;
         utype cloud_abs_cross_low = (cloud_abs_cross_int[x] + cloud_abs_cross_lay[x]) / 2.0;
 
-        utype meanmolmass_up  = (meanmolmass_lay[i] + meanmolmass_int[i + 1]) / 2.0;
-        utype meanmolmass_low = (meanmolmass_int[i] + meanmolmass_lay[i]) / 2.0;
+        utype meanmolmass_up =
+            (meanmolmass_lay[i + c * nlayer] + meanmolmass_int[i + 1 + c * ninterface]) / 2.0;
+        utype meanmolmass_low =
+            (meanmolmass_int[i + c * ninterface] + meanmolmass_lay[i + c * nlayer]) / 2.0;
 
         double w_0_up = single_scat_alb(ray_cross_up,
                                         opac_up,
@@ -482,7 +492,7 @@ __global__ void trans_noniso(double* trans_wg_upper,
                                         cloud_abs_cross_up,
                                         w_0_limit);
 
-        w_0_upper[y + ny * x + ny * nbin * i] = w_0_up;
+        w_0_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = w_0_up;
 
         double w_0_low = single_scat_alb(ray_cross_low,
                                          opac_low,
@@ -492,7 +502,7 @@ __global__ void trans_noniso(double* trans_wg_upper,
                                          cloud_abs_cross_low,
                                          w_0_limit);
 
-        w_0_lower[y + ny * x + ny * nbin * i] = w_0_low;
+        w_0_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = w_0_low;
 
 
         if (scat_corr) {
@@ -500,42 +510,42 @@ __global__ void trans_noniso(double* trans_wg_upper,
             E_low = E_parameter(w_0_low, g0_low, i2s_transition);
         }
 
-        delta_tau_wg_upper[y + ny * x + ny * nbin * i] =
-            delta_col_upper[i]
+        delta_tau_wg_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+            delta_col_upper[i + c * nlayer]
             * (opac_up
                + (ray_cross_up + fcloud * (cloud_abs_cross_up + cloud_scat_cross_up))
                      / meanmolmass_up);
-        utype del_tau_up = delta_tau_wg_upper[y + ny * x + ny * nbin * i];
-        delta_tau_wg_lower[y + ny * x + ny * nbin * i] =
-            delta_col_lower[i]
+        utype del_tau_up = delta_tau_wg_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
+        delta_tau_wg_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+            delta_col_lower[i + c * nlayer]
             * (opac_low
                + (ray_cross_low + fcloud * (cloud_abs_cross_low + cloud_scat_cross_low))
                      / meanmolmass_low);
-        utype del_tau_low = delta_tau_wg_lower[y + ny * x + ny * nbin * i];
+        utype del_tau_low = delta_tau_wg_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
 
-        trans_wg_upper[y + ny * x + ny * nbin * i] =
+        trans_wg_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             trans_func(epsi, del_tau_up, w_0_up, g0_up, E_up);
-        utype trans_up = trans_wg_upper[y + ny * x + ny * nbin * i];
-        trans_wg_lower[y + ny * x + ny * nbin * i] =
+        utype trans_up = trans_wg_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
+        trans_wg_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             trans_func(epsi, del_tau_low, w_0_low, g0_low, E_low);
-        utype trans_low = trans_wg_lower[y + ny * x + ny * nbin * i];
+        utype trans_low = trans_wg_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
 
         utype zeta_min_up  = zeta_minus(w_0_up, g0_up, E_up);
         utype zeta_min_low = zeta_minus(w_0_low, g0_low, E_low);
         utype zeta_pl_up   = zeta_plus(w_0_up, g0_up, E_up);
         utype zeta_pl_low  = zeta_plus(w_0_low, g0_low, E_low);
 
-        M_upper[y + ny * x + ny * nbin * i] =
+        M_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             (zeta_min_up * zeta_min_up) * (trans_up * trans_up) - (zeta_pl_up * zeta_pl_up);
-        M_lower[y + ny * x + ny * nbin * i] =
+        M_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             (zeta_min_low * zeta_min_low) * (trans_low * trans_low) - (zeta_pl_low * zeta_pl_low);
-        N_upper[y + ny * x + ny * nbin * i] =
+        N_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             zeta_pl_up * zeta_min_up * (1.0 - (trans_up * trans_up));
-        N_lower[y + ny * x + ny * nbin * i] =
+        N_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             zeta_pl_low * zeta_min_low * (1.0 - (trans_low * trans_low));
-        P_upper[y + ny * x + ny * nbin * i] =
+        P_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             ((zeta_min_up * zeta_min_up) - (zeta_pl_up * zeta_pl_up)) * trans_up;
-        P_lower[y + ny * x + ny * nbin * i] =
+        P_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             ((zeta_min_low * zeta_min_low) - (zeta_pl_low * zeta_pl_low)) * trans_low;
 
         double mu_star_orig = -zenith_angle_cols[c];
@@ -550,23 +560,23 @@ __global__ void trans_noniso(double* trans_wg_upper,
             hit_G_pm_limit = false;
 
             if (G_pm_limiter) {
-                G_plus_upper[y + ny * x + ny * nbin * i] = G_limiter(
+                G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
                     G_plus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up), debug);
-                G_plus_lower[y + ny * x + ny * nbin * i] = G_limiter(
+                G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
                     G_plus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low), debug);
-                G_minus_upper[y + ny * x + ny * nbin * i] = G_limiter(
+                G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
                     G_minus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up), debug);
-                G_minus_lower[y + ny * x + ny * nbin * i] = G_limiter(
+                G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
                     G_minus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low), debug);
             }
             else {
-                G_plus_upper[y + ny * x + ny * nbin * i] =
+                G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_plus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up);
-                G_plus_lower[y + ny * x + ny * nbin * i] =
+                G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_plus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low);
-                G_minus_upper[y + ny * x + ny * nbin * i] =
+                G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_minus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up);
-                G_minus_lower[y + ny * x + ny * nbin * i] =
+                G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_minus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low);
             }
             loop_count += 1;
@@ -591,12 +601,13 @@ __global__ void trans_noniso(double* trans_wg_upper,
                 mu_star_used =
                     cos(zenith_angle_loc
                         + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
-                printf(
-                    "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g)\n",
-                    mu_star_orig,
-                    zenith_angle_loc / M_PI * 180.0,
-                    mu_star_wiggle_factor * mu_star_wiggle_increment,
-                    mu_star_used);
+                printf("Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "
+                       "(colidx: %d)\n",
+                       mu_star_orig,
+                       zenith_angle_loc / M_PI * 180.0,
+                       mu_star_wiggle_factor * mu_star_wiggle_increment,
+                       mu_star_used,
+                       c);
             }
         } while (hit_G_pm_limit);
         mu_star_cols[c] = mu_star_used;
