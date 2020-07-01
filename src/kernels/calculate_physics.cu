@@ -162,14 +162,19 @@ __global__ void trans_iso(double* trans_wg,             // out
     // indices
     // wavelength bin
     int x = threadIdx.x + blockIdx.x * blockDim.x;
-    // sampling point (?) y coordinate?
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
+
     // layer
     int i = threadIdx.z + blockIdx.z * blockDim.z;
-    // column
-    int c = 0;
 
-    if (x < nbin && y < ny && i < nlayer) {
+    // compound column and sampling point index
+    int cy = threadIdx.y + blockIdx.y * blockDim.y;
+
+    int y = cy % ny;
+    // column
+    int c = cy / ny;
+
+
+    if (x < nbin && y < ny && i < nlayer && c < num_cols) {
 
         double ray_cross;
         double cloud_scat_cross;
@@ -179,7 +184,7 @@ __global__ void trans_iso(double* trans_wg,             // out
 
 
         if (scat) {
-            ray_cross = scat_cross_lay[x + nbin * i];
+            ray_cross = scat_cross_lay[x + nbin * i + c * nlayer * nbin];
             if (clouds)
                 cloud_scat_cross = cloud_scat_cross_lay[x];
             else
@@ -197,43 +202,47 @@ __global__ void trans_iso(double* trans_wg,             // out
         }
 
 
-        double w0 = single_scat_alb(ray_cross,
-                                    opac_wg_lay[y + ny * x + ny * nbin * i],
-                                    meanmolmass_lay[i],
-                                    fcloud,
-                                    cloud_scat_cross,
-                                    cloud_abs_cross_lay[x],
-                                    w_0_limit);
+        double w0 =
+            single_scat_alb(ray_cross,
+                            opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                            meanmolmass_lay[i + c * nlayer],
+                            fcloud,
+                            cloud_scat_cross,
+                            cloud_abs_cross_lay[x],
+                            w_0_limit);
 
 
-        w_0[y + ny * x + ny * nbin * i]   = w0;
-        g0_wg[y + ny * x + ny * nbin * i] = g0;
+        w_0[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]   = w0;
+        g0_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g0;
 
         if (scat_corr) {
             E = E_parameter(w0, g0, i2s_transition);
         }
 
-        delta_tau_wg[y + ny * x + ny * nbin * i] =
-            delta_colmass[i]
-            * (opac_wg_lay[y + ny * x + ny * nbin * i]
+        delta_tau_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+            delta_colmass[i + c * nlayer]
+            * (opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]
                + (ray_cross + fcloud * (cloud_abs_cross_lay[x] + cloud_scat_cross))
-                     / meanmolmass_lay[i]);
+                     / meanmolmass_lay[i + c * nlayer]);
         // delta_tau_wg[y + ny * x + ny * nbin * i] =
         //     delta_colmass[i]
         //     * (opac_wg_lay[y + ny * x + ny * nbin * i] + fcloud * (cloud_abs_cross_lay[x] + cloud_scat_cross)
         //        + (ray_cross) / meanmolmass_lay[i]);
-        double del_tau                       = delta_tau_wg[y + ny * x + ny * nbin * i];
-        trans_wg[y + ny * x + ny * nbin * i] = trans_func(epsi, del_tau, w0, g0, E);
-        double trans                         = trans_wg[y + ny * x + ny * nbin * i];
+        double del_tau = delta_tau_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
+        trans_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+            trans_func(epsi, del_tau, w0, g0, E);
+        double trans = trans_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
 
 
         double zeta_min = zeta_minus(w0, g0, E);
         double zeta_pl  = zeta_plus(w0, g0, E);
 
-        M_term[y + ny * x + ny * nbin * i] =
+        M_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
             (zeta_min * zeta_min) * (trans * trans) - (zeta_pl * zeta_pl);
-        N_term[y + ny * x + ny * nbin * i] = zeta_pl * zeta_min * (1.0 - (trans * trans));
-        P_term[y + ny * x + ny * nbin * i] = ((zeta_min * zeta_min) - (zeta_pl * zeta_pl)) * trans;
+        N_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+            zeta_pl * zeta_min * (1.0 - (trans * trans));
+        P_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+            ((zeta_min * zeta_min) - (zeta_pl * zeta_pl)) * trans;
 
         // DBG:
         // if (!isfinite(M_term[y + ny * x + ny * nbin * i]))
@@ -278,15 +287,15 @@ __global__ void trans_iso(double* trans_wg,             // out
         do {
             hit_G_pm_limit = false;
             if (G_pm_limiter) {
-                G_plus[y + ny * x + ny * nbin * i] =
+                G_plus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_limiter(G_plus_func(w0, g0, epsi, epsilon2, mu_star_used, E), debug);
-                G_minus[y + ny * x + ny * nbin * i] =
+                G_minus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_limiter(G_minus_func(w0, g0, epsi, epsilon2, mu_star_used, E), debug);
             }
             else {
-                G_plus[y + ny * x + ny * nbin * i] =
+                G_plus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_plus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
-                G_minus[y + ny * x + ny * nbin * i] =
+                G_minus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_minus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
             }
 
@@ -332,11 +341,11 @@ __global__ void trans_iso(double* trans_wg,             // out
         //     del_tau,
         //     ray_cross,
         //     cloud_scat_cross,
-        //     opac_wg_lay[y + ny * x + ny * nbin * i],
+        //     opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
         //     cloud_abs_cross_lay[x],
         //     g0_cloud,
-        //     meanmolmass_lay[i],
-        //     delta_colmass[i],
+        //     meanmolmass_lay[i + c * nlayer],
+        //     delta_colmass[i + c * nlayer],
         //     mu_star_used);
 
         mu_star_cols[c] = mu_star_used;

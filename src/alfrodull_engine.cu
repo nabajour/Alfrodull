@@ -606,133 +606,129 @@ void alfrodull_engine::compute_radiative_transfer(
                          "planckband_lay"));
     }
     double* deltalambda = *opacities.dev_opac_deltawave;
-    for (int c = 0; c < num_cols; c++) {
 
 
-        // TODO: for development, propagate current column number
-        //double* delta_colmass = &((*delta_col_mass)[c * nlayer]);
-        // double* dev_T_lay     = &(dev_T_lay_cols[c * (nlayer + 1)]);
-        // double* dev_T_int     = &(dev_T_int_cols[c * ninterface]);
-        // double* dev_p_lay     = &(dev_p_lay_cols[c * nlayer]);
-        // double* dev_p_int     = &(dev_p_int_cols[c * ninterface]);
+    // TODO: for development, propagate current column number
+    //double* delta_colmass = &((*delta_col_mass)[c * nlayer]);
+    // double* dev_T_lay     = &(dev_T_lay_cols[c * (nlayer + 1)]);
+    // double* dev_T_int     = &(dev_T_int_cols[c * ninterface]);
+    // double* dev_p_lay     = &(dev_p_lay_cols[c * nlayer]);
+    // double* dev_p_int     = &(dev_p_int_cols[c * ninterface]);
 
-        // double* F_down_wg    = &(F_down_wg_cols[c * ninterface * nbin * ny]);
-        // double* F_up_wg      = &(F_up_wg_cols[c * ninterface * nbin * ny]);
-        // double* Fc_down_wg   = &(Fc_down_wg_cols[c * ninterface * nbin * ny]);
-        // double* Fc_up_wg     = &(Fc_up_wg_cols[c * ninterface * nbin * ny]);
-        //double* zenith_angle = &(zenith_angle_cols[c]);
+    // double* F_down_wg    = &(F_down_wg_cols[c * ninterface * nbin * ny]);
+    // double* F_up_wg      = &(F_up_wg_cols[c * ninterface * nbin * ny]);
+    // double* Fc_down_wg   = &(Fc_down_wg_cols[c * ninterface * nbin * ny]);
+    // double* Fc_up_wg     = &(Fc_up_wg_cols[c * ninterface * nbin * ny]);
+    //double* zenith_angle = &(zenith_angle_cols[c]);
 
-        //int column_offset_int = c * ninterface;
-
-
-        // double* F_down_tot = &(F_down_tot_cols[column_offset_int]);
-        // double* F_up_tot   = &(F_up_tot_cols[column_offset_int]);
-        // double* F_dir_tot  = &(F_dir_tot_cols[column_offset_int]);
-        // double* F_net      = &(F_net_cols[column_offset_int]);
-
-        //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
-        // double* F_down_band = &(F_down_band_cols[c * ninterface * nbin]);
-        // double* F_up_band   = &(F_up_band_cols[c * ninterface * nbin]);
-        // double* F_dir_band  = &(F_dir_band_cols[c * ninterface * nbin]);
-
-        // double* F_up_TOA_spectrum = &(F_up_TOA_spectrum_cols[c * nbin]);
+    //int column_offset_int = c * ninterface;
 
 
-        // also lookup and interpolate cloud values here if cloud values
-        // per volume element is needed
-        // fill in g_0_cloud_lay, g_0_cloud_int, cloud_scat_cross_lay, cloud_scat_cross_int
-        if (interp_and_calc_flux_step) {
-            if (iso) {
-                BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
+    // double* F_down_tot = &(F_down_tot_cols[column_offset_int]);
+    // double* F_up_tot   = &(F_up_tot_cols[column_offset_int]);
+    // double* F_dir_tot  = &(F_dir_tot_cols[column_offset_int]);
+    // double* F_net      = &(F_net_cols[column_offset_int]);
 
-                calculate_transmission_iso(*trans_wg,            // out
-                                           *delta_col_mass,      // in
-                                           *opac_wg_lay,         // in
-                                           cloud_abs_cross_lay,  // in
-                                           *meanmolmass_lay,     // in
-                                           cloud_scat_cross_lay, // in
-                                           g_0_cloud_lay,        // in
-                                           g_0,
-                                           epsi,
-                                           epsilon2,
-                                           zenith_angle_cols,
-                                           scat,
-                                           clouds,
-                                           c);
+    //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
+    // double* F_down_band = &(F_down_band_cols[c * ninterface * nbin]);
+    // double* F_up_band   = &(F_up_band_cols[c * ninterface * nbin]);
+    // double* F_dir_band  = &(F_dir_band_cols[c * ninterface * nbin]);
 
-                BENCH_POINT_I_S(debug_nstep,
-                                debug_col_idx,
-                                "Alf_comp_trans",
-                                (),
-                                ("delta_colmass",
-                                 "trans_wg",
-                                 "delta_tau_wg",
-                                 "M_term",
-                                 "N_term",
-                                 "P_term",
-                                 "w_0",
-                                 "g_0",
-                                 "G_plus",
-                                 "G_minus"));
-            }
-            else {
-                BENCH_POINT_I_S(debug_nstep,
-                                debug_col_idx,
-                                "Alf_prep_II",
-                                (),
-                                ("delta_col_upper", "delta_col_lower",
+    // double* F_up_TOA_spectrum = &(F_up_TOA_spectrum_cols[c * nbin]);
 
 
-                                 ));
-                calculate_transmission_noniso(*trans_wg_upper,
-                                              *trans_wg_lower,
-                                              *delta_col_upper,
-                                              *delta_col_lower,
-                                              *opac_wg_lay,
-                                              *opac_wg_int,
-                                              cloud_abs_cross_lay,
-                                              cloud_abs_cross_int,
-                                              *meanmolmass_lay,
-                                              *meanmolmass_int,
-                                              cloud_scat_cross_lay,
-                                              cloud_scat_cross_int,
-                                              g_0_cloud_lay,
-                                              g_0_cloud_int,
-                                              g_0,
-                                              epsi,
-                                              epsilon2,
-                                              zenith_angle_cols,
-                                              scat,
-                                              clouds,
-                                              c);
-                BENCH_POINT_I_S(debug_nstep,
-                                debug_col_idx,
-                                "Alf_comp_trans",
-                                (),
-                                ("trans_wg_upper",
-                                 "trans_wg_lower",
-                                 "delta_tau_wg_upper",
-                                 "delta_tau_wg_lower",
-                                 "planckband_lay",
-                                 "planckband_int",
-                                 "M_upper",
-                                 "M_lower",
-                                 "N_upper",
-                                 "N_lower",
-                                 "P_upper",
-                                 "P_lower",
-                                 "G_plus_upper",
-                                 "G_plus_lower",
-                                 "G_minus_upper",
-                                 "G_minus_lower",
-                                 "w_0_upper",
-                                 "w_0_lower"));
-            }
+    // also lookup and interpolate cloud values here if cloud values
+    // per volume element is needed
+    // fill in g_0_cloud_lay, g_0_cloud_int, cloud_scat_cross_lay, cloud_scat_cross_int
+    if (interp_and_calc_flux_step) {
+        if (iso) {
+            BENCH_POINT_I_S(debug_nstep, debug_col_idx, "Alf_prep_II", (), ("delta_colmass"));
 
-            cuda_check_status_or_exit(__FILE__, __LINE__);
-            call_z_callback();
+            calculate_transmission_iso(*trans_wg,            // out
+                                       *delta_col_mass,      // in
+                                       *opac_wg_lay,         // in
+                                       cloud_abs_cross_lay,  // in
+                                       *meanmolmass_lay,     // in
+                                       cloud_scat_cross_lay, // in
+                                       g_0_cloud_lay,        // in
+                                       g_0,
+                                       epsi,
+                                       epsilon2,
+                                       zenith_angle_cols,
+                                       scat,
+                                       clouds,
+                                       num_cols);
+
+            BENCH_POINT_I_S(debug_nstep,
+                            debug_col_idx,
+                            "Alf_comp_trans",
+                            (),
+                            ("delta_colmass",
+                             "trans_wg",
+                             "delta_tau_wg",
+                             "M_term",
+                             "N_term",
+                             "P_term",
+                             "w_0",
+                             "g_0",
+                             "G_plus",
+                             "G_minus"));
         }
+        else {
+            BENCH_POINT_I_S(debug_nstep,
+                            debug_col_idx,
+                            "Alf_prep_II",
+                            (),
+                            ("delta_col_upper", "delta_col_lower", ));
+            calculate_transmission_noniso(*trans_wg_upper,
+                                          *trans_wg_lower,
+                                          *delta_col_upper,
+                                          *delta_col_lower,
+                                          *opac_wg_lay,
+                                          *opac_wg_int,
+                                          cloud_abs_cross_lay,
+                                          cloud_abs_cross_int,
+                                          *meanmolmass_lay,
+                                          *meanmolmass_int,
+                                          cloud_scat_cross_lay,
+                                          cloud_scat_cross_int,
+                                          g_0_cloud_lay,
+                                          g_0_cloud_int,
+                                          g_0,
+                                          epsi,
+                                          epsilon2,
+                                          zenith_angle_cols,
+                                          scat,
+                                          clouds,
+                                          num_cols);
+            BENCH_POINT_I_S(debug_nstep,
+                            debug_col_idx,
+                            "Alf_comp_trans",
+                            (),
+                            ("trans_wg_upper",
+                             "trans_wg_lower",
+                             "delta_tau_wg_upper",
+                             "delta_tau_wg_lower",
+                             "planckband_lay",
+                             "planckband_int",
+                             "M_upper",
+                             "M_lower",
+                             "N_upper",
+                             "N_lower",
+                             "P_upper",
+                             "P_lower",
+                             "G_plus_upper",
+                             "G_plus_lower",
+                             "G_minus_upper",
+                             "G_minus_lower",
+                             "w_0_upper",
+                             "w_0_lower"));
+        }
+
+        cuda_check_status_or_exit(__FILE__, __LINE__);
+        call_z_callback();
     }
+
     if (interp_and_calc_flux_step) {
         direct_beam_flux(F_dir_wg_cols,
                          Fc_dir_wg_cols,
@@ -1157,35 +1153,35 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
     int ny = opacities.ny;
 
 
-    dim3 grid((nbin + 15) / 16, (ny + 3) / 4, (nlayer + 3) / 4);
+    dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
     dim3 block(16, 4, 4);
-    trans_iso<<<grid, block>>>(&(trans_wg[num_cols * nlayer * ny * nbin]),
-                               &((*delta_tau_wg)[num_cols * nlayer * ny * nbin]),
-                               &((*M_term)[num_cols * nlayer * ny * nbin]),
-                               &((*N_term)[num_cols * nlayer * ny * nbin]),
-                               &((*P_term)[num_cols * nlayer * ny * nbin]),
-                               &((*G_plus)[num_cols * nlayer * ny * nbin]),
-                               &((*G_minus)[num_cols * nlayer * ny * nbin]),
-                               &(delta_colmass[num_cols * nlayer]),
-                               &(opac_wg_lay[num_cols * nlayer * ny * nbin]),
+    trans_iso<<<grid, block>>>(trans_wg,
+                               *delta_tau_wg,
+                               *M_term,
+                               *N_term,
+                               *P_term,
+                               *G_plus,
+                               *G_minus,
+                               delta_colmass,
+                               opac_wg_lay,
                                cloud_abs_cross_lay_,
-                               &(meanmolmass_lay[num_cols * nlayer]),
-                               &((*scatter_cross_section_lay)[num_cols * nlayer * nbin]),
+                               meanmolmass_lay,
+                               *scatter_cross_section_lay,
                                cloud_scat_cross_lay,
-                               &((*w0_wg)[num_cols * nlayer * nbin * ny]),
-                               &((*g0_wg)[num_cols * nlayer * nbin * ny]),
+                               *w0_wg,
+                               *g0_wg,
                                g_0_cloud_lay_,
                                g_0,
                                epsi,
                                epsilon2_,
-                               &(zenith_angle_cols[num_cols]),
-                               &((*mu_star_cols)[num_cols]),
+                               zenith_angle_cols,
+                               *mu_star_cols,
                                w_0_limit,
                                scat,
                                nbin,
                                ny,
                                nlayer,
-                               1, // num_cols,
+                               num_cols,
                                fcloud,
                                clouds,
                                scat_corr,
@@ -1339,15 +1335,15 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
         cudaDeviceSynchronize();
     }
     else {
-        dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (ny + 3) / 4);
+        dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (num_cols * ny + 3) / 4);
         dim3 block(4, 32, 4);
-        fdir_noniso<<<grid, block>>>(&(F_dir_wg[num_cols * (nlayer + 1) * nbin * ny]),
-                                     &(Fc_dir_wg[num_cols * (nlayer + 1) * nbin * ny]),
-                                     &((*planckband_lay)[num_cols * (nlayer + 2) * nbin]),
-                                     &((*delta_tau_wg_upper)[num_cols * nlayer * ny * nbin]),
-                                     &((*delta_tau_wg_lower)[num_cols * nlayer * ny * nbin]),
+        fdir_noniso<<<grid, block>>>(F_dir_wg,
+                                     Fc_dir_wg,
+                                     *planckband_lay,
+                                     *delta_tau_wg_upper,
+                                     *delta_tau_wg_lower,
                                      z_lay,
-                                     &((*mu_star_cols)[num_cols]),
+                                     *mu_star_cols,
                                      mu_star_limit,
                                      R_planet,
                                      R_star,
@@ -1357,7 +1353,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                      ninterface,
                                      nbin,
                                      ny,
-                                     1);
+                                     num_cols);
 
         cudaDeviceSynchronize();
     }

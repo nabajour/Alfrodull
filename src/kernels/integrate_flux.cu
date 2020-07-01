@@ -222,6 +222,8 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
 
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int x = threadIdx.y + blockIdx.y * blockDim.y;
+
+    // compound column and weight index
     int z = threadIdx.z + blockIdx.z * blockDim.z;
     int y = z % ny;
     // column
@@ -290,16 +292,21 @@ __global__ void fdir_noniso(double* F_dir_wg,
 
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int x = threadIdx.y + blockIdx.y * blockDim.y;
-    int y = threadIdx.z + blockIdx.z * blockDim.z;
+
+    // compound column and weight index
+    int z = threadIdx.z + blockIdx.z * blockDim.z;
+    int y = z % ny;
     // column
-    int c = 0;
-    // TODO: fix check on column
+    int c      = z / ny;
+    int nlayer = ninterface - 1;
+
     if (i < ninterface && x < nbin && y < ny && c < num_cols) {
         double mu_star = mu_star_cols[c];
 
         // the stellar intensity at TOA
-        double I_dir = ((R_star / a) * (R_star / a)) * PI
-                       * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2)];
+        double I_dir =
+            ((R_star / a) * (R_star / a)) * PI
+            * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2) + c * nbin * (nlayer + 2)];
         double f_out  = 0.0;
         double fc_out = 0.0;
         // initialize each flux value
@@ -326,16 +333,19 @@ __global__ void fdir_noniso(double* F_dir_wg,
                 mu_star_layer_j = mu_star;
             }
 
-            double delta_tau = delta_tau_wg_upper[y + ny * x + ny * nbin * j]
-                               + delta_tau_wg_lower[y + ny * x + ny * nbin * j];
+            double delta_tau =
+                delta_tau_wg_upper[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
+                + delta_tau_wg_lower[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin];
 
             // direct stellar flux
-            fc_out = f_out * exp(delta_tau_wg_upper[y + ny * x + ny * nbin * j] / mu_star_layer_j);
+            fc_out = f_out
+                     * exp(delta_tau_wg_upper[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
+                           / mu_star_layer_j);
             f_out *= exp(delta_tau / mu_star_layer_j);
         }
 
-        Fc_dir_wg[y + ny * x + ny * nbin * i] = fc_out;
-        F_dir_wg[y + ny * x + ny * nbin * i]  = f_out;
+        Fc_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin] = fc_out;
+        F_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin]  = f_out;
     }
 }
 
