@@ -865,24 +865,24 @@ __global__ void fband_noniso_notabu(double* F_down_wg,
 
 
 // calculation of the spectral fluxes, isothermal case, using thomas algorithm
-__global__ void fband_iso_thomas(double* F_down_wg,      // out
-                                 double* F_up_wg,        // out
-                                 double* F_dir_wg,       // in
-                                 double* planckband_lay, // in
-                                 double* w_0,            // in
-                                 double* M_term,         // in
-                                 double* N_term,         // in
-                                 double* P_term,         // in
-                                 double* G_plus,         // in
-                                 double* G_minus,        // in
-                                 double* A_buff,         // thomas worker
-                                 double* B_buff,         // thomas worker
-                                 double* C_buff,         // thomas worker
-                                 double* D_buff,         // thomas worker
-                                 double* C_prime_buff,   // thomas worker
-                                 double* D_prime_buff,   // thomas worker
-                                 double* X_buff,         // thomas worker
-                                 double* g_0_tot,        // in (clouds)
+__global__ void fband_iso_thomas(double* F_down_wg_,      // out
+                                 double* F_up_wg_,        // out
+                                 double* F_dir_wg_,       // in
+                                 double* planckband_lay_, // in
+                                 double* w_0_,            // in
+                                 double* M_term_,         // in
+                                 double* N_term_,         // in
+                                 double* P_term_,         // in
+                                 double* G_plus_,         // in
+                                 double* G_minus_,        // in
+                                 double* A_buff_,         // thomas worker
+                                 double* B_buff_,         // thomas worker
+                                 double* C_buff_,         // thomas worker
+                                 double* D_buff_,         // thomas worker
+                                 double* C_prime_buff_,   // thomas worker
+                                 double* D_prime_buff_,   // thomas worker
+                                 double* X_buff_,         // thomas worker
+                                 double* g_0_tot_,        // in (clouds)
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -902,9 +902,31 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
     // wavelength bin index
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     // weight index
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    int c = 0;
-    if (x < nbin && y < ny && c < num_cols) {
+    int y      = threadIdx.y + blockIdx.y * blockDim.y;
+    int c      = blockIdx.z;
+    int nlayer = numinterfaces - 1;
+    if (x < nbin && y < ny) {
+        // Start by applying column offset
+        double* F_down_wg      = &(F_down_wg_[c * numinterfaces * nbin * ny]);
+        double* F_up_wg        = &(F_up_wg_[c * numinterfaces * nbin * ny]);
+        double* F_dir_wg       = &(F_dir_wg_[c * numinterfaces * nbin * ny]);
+        double* planckband_lay = &(planckband_lay_[c * (nlayer + 2) * nbin]);
+        double* w_0            = &(w_0_[c * nlayer * nbin * ny]);
+        double* M_term         = &(M_term_[c * nlayer * nbin * ny]);
+        double* N_term         = &(N_term_[c * nlayer * nbin * ny]);
+        double* P_term         = &(P_term_[c * nlayer * nbin * ny]);
+        double* G_plus         = &(G_plus_[c * nlayer * nbin * ny]);
+        double* G_minus        = &(G_minus_[c * nlayer * nbin * ny]);
+        double* A_buff         = &(A_buff_[c * numinterfaces * nbin * ny * 4]);
+        double* B_buff         = &(B_buff_[c * numinterfaces * nbin * ny * 4]);
+        double* C_buff         = &(C_buff_[c * numinterfaces * nbin * ny * 4]);
+        double* D_buff         = &(D_buff_[c * numinterfaces * nbin * ny * 2]);
+        double* C_prime_buff   = &(C_prime_buff_[c * numinterfaces * nbin * ny * 4]);
+        double* D_prime_buff   = &(D_prime_buff_[c * numinterfaces * nbin * ny * 2]);
+        double* X_buff         = &(X_buff_[c * numinterfaces * nbin * ny * 2]);
+        double* g_0_tot        = &(g_0_tot_[c * nlayer * nbin * ny]);
+
+
         // make contiguous address space for worker memory, fastest idx is interface
         // two equations per interface, one matrix block per interface
         int      N       = numinterfaces;
