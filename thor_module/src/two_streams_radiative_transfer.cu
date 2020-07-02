@@ -1028,60 +1028,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
 
-                /*
-                for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
-                    int current_num_cols = min(num_cols, esp.point_num - column_idx);
-                    current_num_cols     = 1;
-
-                    //printf("column_c: %d, current numcols: %d\n", c, current_num_cols);
-                    double  mu_star               = -col_cos_zenith_angle_h[column_idx + c];
-                    double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx + c]);
-                    int     column_offset_int     = (column_idx + c) * ninterface;
-
-                    double* F_col_down_tot = &((*F_down_tot)[column_offset_int]);
-                    double* F_col_up_tot   = &((*F_up_tot)[column_offset_int]);
-                    double* F_col_dir_tot  = &((*F_dir_tot)[column_offset_int]);
-                    double* F_col_net      = &((*F_net)[column_offset_int]);
-
-                    //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
-                    double* F_dir_band_col = &((*F_dir_band)[c * ninterface * nbin]);
-
-                    double* F_up_TOA_spectrum_col =
-                        &((*F_up_TOA_spectrum)[(column_idx + c) * nbin]);
-
-                    alf.compute_radiative_transfer(
-                        dev_starflux,                            // dev_starflux
-                        &((*temperature_lay)[c * (nlayer + 1)]), // dev_T_lay
-                        &((*temperature_int)[c * ninterface]),   // dev_T_int
-                        &(column_layer_pressure[c * nlayer]),    // dev_p_lay
-                        &((*pressure_int)[c * ninterface]),      // dev_p_int
-                        false,                                   // interp_press_and_temp
-                        true,                                    // interp_and_calc_flux_step
-                        z_lay,                                   // z_lay
-                        singlewalk_loc,                          // singlewalk
-                        &((*F_down_wg)[c * ninterface * nbin * ny]),
-                        &((*F_up_wg)[c * ninterface * nbin * ny]),
-                        &((*Fc_down_wg)[c * ninterface * nbin * ny]),
-                        &((*Fc_up_wg)[c * ninterface * nbin * ny]),
-                        &((*F_dir_wg)[c * ninterface * nbin * ny]),
-                        &((*Fc_dir_wg)[c * ninterface * nbin * ny]),
-                        delta_tau_limit,
-                        F_col_down_tot,
-                        F_col_up_tot,
-                        F_col_dir_tot,
-                        F_col_net,
-                        &((*F_down_band)[c * ninterface * nbin]),
-                        &((*F_up_band)[c * ninterface * nbin]),
-                        F_dir_band_col,
-                        F_up_TOA_spectrum_col,
-                        cos_zenith_angle_cols,
-                        current_num_cols,
-                        c);
-                    cudaDeviceSynchronize();
-                    cuda_check_status_or_exit(__FILE__, __LINE__);
-                }
-
-                */
                 for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
                     int current_num_cols = min(num_cols, esp.point_num - column_idx);
                     // get the g0 and w0 integrated
@@ -1096,7 +1042,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     // compute Delta flux
                 }
                 // set Qheat
-                //printf("increment_column_Qheat\n");
                 {
                     int     current_num_cols = min(num_cols, esp.point_num - column_idx);
                     dim3    grid(int((esp.nv / num_blocks) + 1), 1, current_num_cols);
