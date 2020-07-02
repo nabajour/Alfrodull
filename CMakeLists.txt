@@ -105,30 +105,15 @@ set_target_properties(alfrodullib PROPERTIES
 )
 
 if (DEFINED THOR_MODULE)
-  include_directories(thor_module/inc)
   include_directories(${THOR_ROOT_INCLUDES} ${SHARED_PHY_MODULES_INC_DIR})
 
   include_directories(${THOR_BASE_FOLDER}/src/physics/modules/inc/)
-  
-  # build as THOR module
-  set(SRC_THOR_MODULE
-    thor_module/src/phy_modules.cu
-    thor_module/src/two_streams_radiative_transfer.cu)
-  
+    
   set(SRC_THOR_CLASS
-    thor_module/src/two_streams_radiative_transfer.cu)
+    src/two_streams_radiative_transfer.cu)
 
   
   set(LIBRARY_OUTPUT_PATH)
-
-  
-  add_library(phy_modules STATIC ${SRC_THOR_MODULE})
-  set_target_properties(phy_modules PROPERTIES 
-    POSITION_INDEPENDENT_CODE ON
-    CUDA_VISIBILITY_PRESET "hidden"
-    CUDA_SEPARABLE_COMPILATION ON
-    )
-  target_link_libraries(phy_modules PRIVATE alfrodullib)
 
   ######################################################################
   # build and link binaries

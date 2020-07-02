@@ -29,7 +29,6 @@ THOR_ROOT = ../
 
 # Includes
 LOCAL_INCLUDE = src/inc 
-LOCAL_INCLUDE_PHY = thor_module/inc
 
 # shared modules
 SHARED_MODULES_INCLUDE = $(THOR_ROOT)src/physics/modules/inc/
@@ -56,10 +55,10 @@ $(info THOR root from submakefile: $(THOR_ROOT))
 all: libalfrodull.a
 
 # path to local module code
-vpath %.cu src src/kernels src/opacities thor_module/src
+vpath %.cu src src/kernels src/opacities 
 
 vpath %.cpp $(LOCAL_SOURCES) 
-vpath %.h $(LOCAL_INCLUDE) $(LOCAL_INCLUDE_PHY) 
+vpath %.h $(LOCAL_INCLUDE) 
 # path to thor headers
 vpath %.h $(THOR_INCLUDE)
 # path to phy_modules
@@ -100,7 +99,7 @@ $(info Dependencies dir: $(BUILDDIR)/${OUTPUTDIR}/$(DEPDIR))
 #######################################################################
 # build objects
 
-INCLUDE_DIRS = -I$(SHARED_MODULES_INCLUDE) -I$(THOR_INCLUDE) -I$(LOCAL_INCLUDE) -I$(LOCAL_INCLUDE_PHY) 
+INCLUDE_DIRS = -I$(SHARED_MODULES_INCLUDE) -I$(THOR_INCLUDE) -I$(LOCAL_INCLUDE)
 
 
 #######################################################################
@@ -126,12 +125,6 @@ $(BUILDDIR)/${OUTPUTDIR}/%.o: %.cpp $(BUILDDIR)/${OUTPUTDIR}/${DEPDIR}/%.d  | $(
 	@echo -e '$(YELLOW)creating object file for $@  $(END)'
 	$(CC) $(CC_comp_flag) $(arch) $(cpp_flags) $(h5include) $(INCLUDE_DIRS) -I$(includedir) $(CDB) -o $@ $<
 
-
-# libphy_modules.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
-# 	@echo -e '$(YELLOW)creating $@ $(END)'
-# 	@echo -e '$(GREEN)Linking Modules into static lib $(END)'
-# 	ar rcs $@ $(BUILDDIR)/${OUTPUTDIR}/phy_modules.o $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) 
-
 libalfrodull.a: $(addprefix $(BUILDDIR)/$(OUTPUTDIR)/,$(obj)) | $(BUILDDIR)/$(OUTPUTDIR) $(BUILDDIR)
 	@echo -e '$(YELLOW)creating $@ $(END)'
 	@echo -e '$(GREEN)Linking Class into static lib $(END)'
@@ -145,7 +138,6 @@ $(DEPFILES):
 .phony: clean,ar
 clean:
 	@echo -e '$(CYAN)clean up library $(END)'
-	-$(RM) libphy_modules.a
 	-$(RM) libalfrodull.a
 	@echo -e '$(CYAN)clean up modules objects $(END)'
 	-$(RM) $(BUILDDIR)/debug/*.o
