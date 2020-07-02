@@ -463,7 +463,10 @@ __global__ void fband_iso_notabu(double* F_down_wg_,      // out
                 direct_terms = -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min * M + G_pl * N)
                                + F_dir_wg[y + ny * x + ny * nbin * (i + 1)] * P * G_min;
 
-                direct_terms = min(0.0, direct_terms);
+                if (mu_star >= 0.0)
+                    direct_terms = 0.0;
+                else
+                    direct_terms = min(0.0, direct_terms);
 
                 F_down_wg[y + ny * x + ny * nbin * i] =
                     1.0 / M
@@ -532,8 +535,10 @@ __global__ void fband_iso_notabu(double* F_down_wg_,      // out
 
                 direct_terms = -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min * N + G_pl * M)
                                + F_dir_wg[y + ny * x + ny * nbin * (i - 1)] * P * G_pl;
-
-                direct_terms = min(0.0, direct_terms);
+                if (mu_star >= 0.0)
+                    direct_terms = 0.0;
+                else
+                    direct_terms = min(0.0, direct_terms);
 
                 F_up_wg[y + ny * x + ny * nbin * i] =
                     1.0 / M
@@ -721,8 +726,10 @@ __global__ void fband_noniso_notabu(double* F_down_wg_,
                 direct_terms =
                     -Fc_dir_wg[y + ny * x + ny * nbin * i] * (G_min_up * M_up + G_pl_up * N_up)
                     + F_dir_wg[y + ny * x + ny * nbin * (i + 1)] * G_min_up * P_up;
-
-                direct_terms = min(0.0, direct_terms);
+                if (mu_star >= 0.0)
+                    direct_terms = 0.0;
+                else
+                    direct_terms = min(0.0, direct_terms);
 
                 Fc_down_wg[y + ny * x + ny * nbin * i] =
                     1.0 / M_up
@@ -763,8 +770,10 @@ __global__ void fband_noniso_notabu(double* F_down_wg_,
                 direct_terms =
                     -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min_low * M_low + G_pl_low * N_low)
                     + Fc_dir_wg[y + ny * x + ny * nbin * i] * P_low * G_min_low;
-
-                direct_terms = min(0.0, direct_terms);
+                if (mu_star >= 0.0)
+                    direct_terms = 0.0;
+                else
+                    direct_terms = min(0.0, direct_terms);
 
                 F_down_wg[y + ny * x + ny * nbin * i] =
                     1.0 / M_low
@@ -859,8 +868,10 @@ __global__ void fband_noniso_notabu(double* F_down_wg_,
                     Fc_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star)
                         * (G_min_low * N_low + G_pl_low * M_low)
                     - F_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star) * P_low * G_pl_low;
-
-                direct_terms = min(0.0, direct_terms);
+                if (mu_star >= 0.0)
+                    direct_terms = 0.0;
+                else
+                    direct_terms = min(0.0, direct_terms);
 
                 Fc_up_wg[y + ny * x + ny * nbin * (i - 1)] =
                     1.0 / M_low
@@ -904,7 +915,10 @@ __global__ void fband_noniso_notabu(double* F_down_wg_,
                         * (G_min_up * N_up + G_pl_up * M_up)
                     - Fc_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star) * P_up * G_pl_up;
 
-                direct_terms = min(0.0, direct_terms);
+                if (mu_star >= 0.0)
+                    direct_terms = 0.0;
+                else
+                    direct_terms = min(0.0, direct_terms);
 
                 F_up_wg[y + ny * x + ny * nbin * i] =
                     1.0 / M_up
@@ -1034,13 +1048,14 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
             //           + BOA_part; // internal_part consists of the internal heat flux plus the surface/BOA emission
             //   }
 
-            double w0_N = w_0[y + ny * x + ny * nbin * 0];
-            double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
+            // double w0_N = w_0[y + ny * x + ny * nbin * 0];
+            // double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
+
             // improved scattering correction factor E
-            double E_N = 1.0;
-            if (scat_corr) {
-                E_N = E_parameter(w0_N, g0_N, i2s_transition);
-            }
+            // double E_N = 1.0;
+            // if (scat_corr) {
+            //     E_N = E_parameter(w0_N, g0_N, i2s_transition);
+            // }
 
             // F_BOA_up = PI * (1.0 - w0_N) / (E_N - w0_N)
             //            * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
@@ -1069,7 +1084,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
                 min(0.0,
                     -F_dir_wg[y + ny * x + ny * nbin * 0] * (G_min_0 * M_0 + G_pl_0 * N_0)
                         + F_dir_wg[y + ny * x + ny * nbin * (0 + 1)] * P_0 * G_min_0);
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_down = 0.0;
 
             // double psi = P;
@@ -1131,7 +1146,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
                 -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min_down * M_down + G_pl_down * N_down)
                     + F_dir_wg[y + ny * x + ny * nbin * (i + 1)] * P_down * G_min_down);
 
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_down = 0.0;
 
 
@@ -1140,7 +1155,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
                     -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min_up * N_up + G_pl_up * M_up)
                         + F_dir_wg[y + ny * x + ny * nbin * (i - 1)] * P_up * G_pl_up);
 
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_up = 0.0;
 
             // double psi = P;
@@ -1190,7 +1205,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
                     -F_dir_wg[y + ny * x + ny * nbin * (N - 1)] * (G_min_N * N_N + G_pl_N * M_N)
                         + F_dir_wg[y + ny * x + ny * nbin * (N - 2)] * P_N * G_pl_N);
 
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_up = 0.0;
 
             // double psi = P;
@@ -1239,8 +1254,6 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
 // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
 __global__ void fband_noniso_thomas(double* F_down_wg_,
                                     double* F_up_wg_,
-                                    double* Fc_down_wg_,
-                                    double* Fc_up_wg_,
                                     double* F_dir_wg_,
                                     double* Fc_dir_wg_,
                                     double* planckband_lay_,
@@ -1294,8 +1307,6 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
     if (x < nbin && y < ny) {
         double* F_down_wg          = &(F_down_wg_[c * numinterfaces * nbin * ny]);
         double* F_up_wg            = &(F_up_wg_[c * numinterfaces * nbin * ny]);
-        double* Fc_down_wg         = &(Fc_down_wg_[c * numinterfaces * nbin * ny]);
-        double* Fc_up_wg           = &(Fc_up_wg_[c * numinterfaces * nbin * ny]);
         double* F_dir_wg           = &(F_dir_wg_[c * numinterfaces * nbin * ny]);
         double* Fc_dir_wg          = &(Fc_dir_wg_[c * numinterfaces * nbin * ny]);
         double* planckband_lay     = &(planckband_lay_[c * (nlayer + 2) * nbin]);

@@ -377,8 +377,6 @@ public:
 
     bool populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                               double* F_up_wg,
-                                              double* Fc_down_wg,
-                                              double* Fc_up_wg,
                                               double* F_dir_wg,
                                               double* Fc_dir_wg,
                                               double* g_0_tot_upper,

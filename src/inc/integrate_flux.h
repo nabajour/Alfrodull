@@ -185,8 +185,6 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
 
 __global__ void fband_noniso_thomas(double* F_down_wg,
                                     double* F_up_wg,
-                                    double* Fc_down_wg,
-                                    double* Fc_up_wg,
                                     double* F_dir_wg,
                                     double* Fc_dir_wg,
                                     double* planckband_lay,

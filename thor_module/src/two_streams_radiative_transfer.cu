@@ -72,6 +72,7 @@ using std::string;
 
 
 // show progress bar
+// not really necessary when running on multiple columns at low res
 //#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
@@ -104,45 +105,48 @@ two_streams_radiative_transfer::~two_streams_radiative_transfer() {
 }
 
 void two_streams_radiative_transfer::print_config() {
-    log::printf("    Tstar: %g\n", T_star);
-    log::printf("    T_intern: %g\n", T_internal);
-    log::printf("    Alf_iso: %s\n", iso ? "true" : "false");
-    log::printf("    Alf_real_star: %s\n", real_star ? "true" : "false");
-    log::printf("    Alf_fake_opac: %g\n", fake_opac);
+    log::printf("    Stellar Template Temperature: %g\n", T_star);
+    log::printf("    Internal Temperature: %g\n", T_internal);
+    log::printf("    Stellar Radius: %g [R_SUN]\n", R_star_config);
+    log::printf("    Planet-Star Distance [au]\n", planet_star_dist_config);
 
-    log::printf("    Alf_stellar_spectrum: %s\n", stellar_spectrum_file.c_str());
+    log::printf("    Real Stellar Spectrum: %s\n", real_star ? "true" : "false");
+    log::printf("    Stellar Spectrum File: %s\n", stellar_spectrum_file.c_str());
 
-    log::printf("    Alf_thomas: %s\n", thomas ? "true" : "false");
-    log::printf("    Alf_scat_single_walk: %s\n", scat_single_walk ? "true" : "false");
-    log::printf("    Alf_exp_opac_offset: %g\n", experimental_opacities_offset);
+    log::printf("    Isotermal Single Layers: %s\n", iso ? "true" : "false");
 
-    log::printf("    Alf_g_0: %g\n", g_0);
-    //    log::printf("    Alf_diffusivity: %f\n", diffusivity);
-    log::printf("    Alf_epsilon_2: %g\n", epsilon_2);
+    log::printf("    Thomas Solver: %s\n", thomas ? "true" : "false");
+    log::printf("    Iterative Solver use high def: %s\n", scat_single_walk ? "true" : "false");
+    log::printf("    Experimental Constant Opacity Offsets: %g\n", experimental_opacities_offset);
 
-    log::printf("    Alf_G_pm_max_limiter: %s\n", G_pm_limiter ? "true" : "false");
+    log::printf("    Constant g0 (without clouds): %g\n", g_0);
+    log::printf("    epsilon_2: %g\n", epsilon_2);
+    log::printf("    Opacity Cutoff: %g\n", fake_opac);
+
+    log::printf("    Opacities File: %s\n", opacities_file.c_str());
+
+    log::printf("    Scattering: %s\n", scat ? "true" : "false");
+    log::printf("    Apply Scattring Correction (or E=1): %s\n", scat_corr ? "true" : "false");
+
+    log::printf("    Clouds: %s\n", clouds ? "true" : "false");
+    log::printf("    fcloud: %g\n", fcloud);
+    log::printf("    Cloud Properties File: %s\n", cloud_filename.c_str());
+    log::printf("    Store w0 g0 (per band): %s\n", store_w0_g0 ? "true" : "false");
+
+    log::printf("    Direct Beam: %s\n", dir_beam ? "true" : "false");
+    log::printf("    Geometrical Zenith Correction: %s\n", geom_zenith_corr ? "true" : "false");
+    log::printf("    Direct Beam Tangent Angle Limit: %g°\n", mu_star_limit_degrees);
+
+    log::printf("    w0 limit: %g\n", w_0_limit);
+    log::printf("    i2s transition: %g\n", i2s_transition);
+
+    log::printf("    Compute Every N step: %d\n", compute_every_n_iteration);
+    log::printf("    Number of Parallel Columns to run at a time: %d\n", num_parallel_columns);
+
+    log::printf("    Apply G_pm limiter: %s\n", G_pm_limiter ? "true" : "false");
     log::printf("    Alf_G_pm_denom_limit: %g\n", G_pm_denom_limit);
     log::printf("    Alf_G_pm_mu_star_increment: %g\n", mu_star_wiggle_increment);
-    log::printf("    Alf_direct_beam_angle_limit: %g\n", mu_star_limit_degrees);
 
-    log::printf("    Alf_scat: %s\n", scat ? "true" : "false");
-    log::printf("    Alf_scat_corr: %s\n", scat_corr ? "true" : "false");
-    log::printf("    R_star: %g [R_SUN]\n", R_star_config);
-    log::printf("    planet star dist: %g [au]\n", planet_star_dist_config);
-
-    log::printf("    Alf_dir_beam: %s\n", dir_beam ? "true" : "false");
-    log::printf("    Alf_geom_zenith_corr: %s\n", geom_zenith_corr ? "true" : "false");
-
-    log::printf("    Alf_w_0_limit: %g\n", w_0_limit);
-    log::printf("    Alf_i2s_transition: %g\n", i2s_transition);
-    log::printf("    Alf_opacities_file: %s\n", opacities_file.c_str());
-    log::printf("    Alf_compute_every_nstep: %d\n", compute_every_n_iteration);
-    log::printf("    Alf_num_parallel_columns: %d\n", num_parallel_columns);
-
-    log::printf("    Alf_clouds: %s\n", clouds ? "true" : "false");
-    log::printf("    Alf_fcloud: %g\n", fcloud);
-    log::printf("    Alf_cloudfile: %s\n", cloud_filename.c_str());
-    log::printf("    Alf_store_w0_g0: %s\n", store_w0_g0 ? "true" : "false");
     // spinup-spindown parameters
     log::printf("    Spin up start step          = %d.\n", spinup_start_step);
     log::printf("    Spin up stop step           = %d.\n", spinup_stop_step);
@@ -357,8 +361,10 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_dir_wg.allocate(ncol * ninterface_wg_nbin);
 
     if (!iso) {
-        Fc_down_wg.allocate(ncol * ninterface_wg_nbin);
-        Fc_up_wg.allocate(ncol * ninterface_wg_nbin);
+        if (!thomas) {
+            Fc_down_wg.allocate(ncol * ninterface_wg_nbin);
+            Fc_up_wg.allocate(ncol * ninterface_wg_nbin);
+        }
         Fc_dir_wg.allocate(ncol * ninterface_wg_nbin);
     }
 
@@ -758,7 +764,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             cudaDeviceSynchronize();
             cuda_check_status_or_exit(__FILE__, __LINE__);
             int nbin = alf.opacities.nbin;
-            int ny   = alf.opacities.ny;
             // loop on columns
             for (int column_idx = 0; column_idx < esp.point_num;
                  column_idx += num_parallel_columns) {
@@ -775,9 +780,10 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 if (iso) {
                 }
                 else {
-                    Fc_down_wg.zero();
-                    Fc_up_wg.zero();
-
+                    if (!thomas) {
+                        Fc_down_wg.zero();
+                        Fc_up_wg.zero();
+                    }
                     Fc_dir_wg.zero();
                 }
 

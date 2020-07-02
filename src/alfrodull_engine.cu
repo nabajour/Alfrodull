@@ -687,8 +687,6 @@ void alfrodull_engine::compute_radiative_transfer(
     int         num_cols,
     int         current_col_temp) // number of columns this function works on
 {
-    int nbin = opacities.nbin;
-    int ny   = opacities.ny;
     USE_BENCHMARK();
     {
         prepare_compute_flux(
@@ -722,35 +720,6 @@ void alfrodull_engine::compute_radiative_transfer(
                          "planckband_lay"));
     }
     double* deltalambda = *opacities.dev_opac_deltawave;
-
-
-    // TODO: for development, propagate current column number
-    //double* delta_colmass = &((*delta_col_mass)[c * nlayer]);
-    // double* dev_T_lay     = &(dev_T_lay_cols[c * (nlayer + 1)]);
-    // double* dev_T_int     = &(dev_T_int_cols[c * ninterface]);
-    // double* dev_p_lay     = &(dev_p_lay_cols[c * nlayer]);
-    // double* dev_p_int     = &(dev_p_int_cols[c * ninterface]);
-
-    // double* F_down_wg    = &(F_down_wg_cols[c * ninterface * nbin * ny]);
-    // double* F_up_wg      = &(F_up_wg_cols[c * ninterface * nbin * ny]);
-    // double* Fc_down_wg   = &(Fc_down_wg_cols[c * ninterface * nbin * ny]);
-    // double* Fc_up_wg     = &(Fc_up_wg_cols[c * ninterface * nbin * ny]);
-    //double* zenith_angle = &(zenith_angle_cols[c]);
-
-    //int column_offset_int = c * ninterface;
-
-
-    // double* F_down_tot = &(F_down_tot_cols[column_offset_int]);
-    // double* F_up_tot   = &(F_up_tot_cols[column_offset_int]);
-    // double* F_dir_tot  = &(F_dir_tot_cols[column_offset_int]);
-    // double* F_net      = &(F_net_cols[column_offset_int]);
-
-    //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
-    // double* F_down_band = &(F_down_band_cols[c * ninterface * nbin]);
-    // double* F_up_band   = &(F_up_band_cols[c * ninterface * nbin]);
-    // double* F_dir_band  = &(F_dir_band_cols[c * ninterface * nbin]);
-
-    // double* F_up_TOA_spectrum = &(F_up_TOA_spectrum_cols[c * nbin]);
 
 
     // also lookup and interpolate cloud values here if cloud values
@@ -878,8 +847,6 @@ void alfrodull_engine::compute_radiative_transfer(
         else {
             populate_spectral_flux_noniso_thomas(F_down_wg_cols,
                                                  F_up_wg_cols,
-                                                 Fc_down_wg_cols,
-                                                 Fc_up_wg_cols,
                                                  F_dir_wg_cols,
                                                  Fc_dir_wg_cols,
                                                  *g0_wg_upper,
@@ -1009,7 +976,6 @@ bool alfrodull_engine::prepare_compute_flux(
     const int&    num_cols) {
 
     int nbin = opacities.nbin;
-    int ny   = opacities.ny;
 
     // TODO: check where those planckband values are used, where used here in
     // calculate_surface_planck and correc_surface_emission that's not used anymore
@@ -1633,8 +1599,6 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
 // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
 bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                                             double* F_up_wg,
-                                                            double* Fc_down_wg,
-                                                            double* Fc_up_wg,
                                                             double* F_dir_wg,
                                                             double* Fc_dir_wg,
                                                             double* g_0_tot_upper,
@@ -1661,8 +1625,6 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
     // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
     fband_noniso_thomas<<<grid, block>>>(F_down_wg,
                                          F_up_wg,
-                                         Fc_down_wg,
-                                         Fc_up_wg,
                                          F_dir_wg,
                                          Fc_dir_wg,
                                          *planckband_lay,
