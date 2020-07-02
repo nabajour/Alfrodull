@@ -154,24 +154,23 @@ __global__ void integrate_val_band(double* val_wg,       // in
                                    double* val_band,     // out
                                    double* gauss_weight, // in
                                    int     nbin,
-                                   int     num_val,
+                                   int     num_val_per_col,
                                    int     ny) {
 
     int val_idx = blockIdx.x * blockDim.x + threadIdx.x;
     int bin_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int c       = blockIdx.z;
 
-
-    if (val_idx < num_val && bin_idx < nbin) {
+    if (val_idx < num_val_per_col && bin_idx < nbin) {
         // set memory to 0.
 
-        val_band[bin_idx + nbin * val_idx] = 0;
 
-
-        int bin_offset = bin_idx + nbin * val_idx;
-
+        int bin_offset       = bin_idx + nbin * val_idx + c * nbin * num_val_per_col;
+        val_band[bin_offset] = 0;
         for (int y = 0; y < ny; y++) {
-            double w             = gauss_weight[y];
-            int    weight_offset = y + ny * bin_idx + ny * nbin * val_idx;
+            double w = gauss_weight[y];
+            int    weight_offset =
+                y + ny * bin_idx + ny * nbin * val_idx + c * nbin * ny * num_val_per_col;
 
             val_band[bin_offset] += 0.5 * w * val_wg[weight_offset];
         }

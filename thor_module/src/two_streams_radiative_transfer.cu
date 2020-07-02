@@ -985,9 +985,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 bool singlewalk_loc = scat_single_walk;
                 int  ninterface     = nlayer + 1;
 
-
+                int current_num_cols = min(num_cols, esp.point_num - column_idx);
                 {
-                    int current_num_cols = min(num_cols, esp.point_num - column_idx);
+
 
                     //printf("column_idx: %d, current numcols: %d\n", column_idx, current_num_cols);
                     double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx]);
@@ -1034,20 +1034,16 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
 
-                for (int c = 0; c < num_cols && (column_idx + c < esp.point_num); c++) {
-                    int current_num_cols = min(num_cols, esp.point_num - column_idx);
-                    // get the g0 and w0 integrated
-                    // TODO: make work correctly once alf compute_radiative_transfer works per columns
-                    if (store_w0_g0) {
-                        // TODO could be optimised by storing band values and integrate only on output
-                        // but takes up more space
-                        double* g0_tot_col = &((*g0_tot)[(column_idx + c) * nlayer * nbin]);
-                        double* w0_tot_col = &((*w0_tot)[(column_idx + c) * nlayer * nbin]);
-                        alf.get_column_integrated_g0_w0(g0_tot_col, w0_tot_col);
-                    }
-                    // compute Delta flux
+
+                // get the g0 and w0 integrated
+                if (store_w0_g0) {
+                    double* g0_tot_col = &((*g0_tot)[column_idx * nlayer * nbin]);
+                    double* w0_tot_col = &((*w0_tot)[column_idx * nlayer * nbin]);
+                    alf.get_column_integrated_g0_w0(g0_tot_col, w0_tot_col, current_num_cols);
                 }
-                // set Qheat
+
+                // compute Delta flux
+
                 {
                     int     current_num_cols = min(num_cols, esp.point_num - column_idx);
                     dim3    grid(int((esp.nv / num_blocks) + 1), 1, current_num_cols);
@@ -1071,8 +1067,10 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         }
 
         printf("\r\n");
+
         cudaDeviceSynchronize();
         cuda_check_status_or_exit(__FILE__, __LINE__);
+        // set Qheat
         int num_samples = (esp.point_num * nlayer);
         increment_Qheat<<<(num_samples / num_blocks) + 1, num_blocks>>>(
             esp.profx_Qheat_d, *Qheat, qheat_scaling, num_samples);

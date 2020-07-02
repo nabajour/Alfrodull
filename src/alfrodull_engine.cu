@@ -1674,14 +1674,14 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
     return true;
 }
 
-bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_) {
+bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_, const int& num_cols) {
 
     int nbin = opacities.nbin;
     int ny   = opacities.ny;
 
     if (!iso) {
         // compute mean of upper and lower band
-        int  num_val              = nlayer * nbin * ny;
+        int  num_val              = nlayer * nbin * ny * num_cols;
         int  num_levels_per_block = 256;
         dim3 gridsize(num_val / num_levels_per_block + 1);
         dim3 blocksize(num_levels_per_block);
@@ -1693,8 +1693,8 @@ bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_) {
     {
         int  num_levels_per_block = 16;
         int  num_bins_per_block   = 16;
-        dim3 gridsize(nlayer / num_levels_per_block + 1, nbin / num_bins_per_block + 1);
-        dim3 blocksize(num_levels_per_block, num_bins_per_block);
+        dim3 gridsize(nlayer / num_levels_per_block + 1, nbin / num_bins_per_block + 1, num_cols);
+        dim3 blocksize(num_levels_per_block, num_bins_per_block, 1);
 
         integrate_val_band<<<gridsize, blocksize>>>(*w0_wg, w0_, *gauss_weights, nbin, nlayer, ny);
         integrate_val_band<<<gridsize, blocksize>>>(*g0_wg, g0_, *gauss_weights, nbin, nlayer, ny);
@@ -1702,6 +1702,7 @@ bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_) {
         cudaDeviceSynchronize();
     }
 
+    // This would integratee over bands
     // {
     //     int  num_levels_per_block = 256;
     //     dim3 gridsize(ninterface / num_levels_per_block + 1);

@@ -131,7 +131,7 @@ public:
     void set_z_calc_func(std::function<void()>& fun);
     void call_z_callback();
 
-    bool get_column_integrated_g0_w0(double* g0_, double* w0_);
+    bool get_column_integrated_g0_w0(double* g0_, double* w0_, const int& num_cols);
 
     //private:
     opacity_table       opacities;
