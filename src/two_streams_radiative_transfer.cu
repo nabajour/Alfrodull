@@ -76,9 +76,9 @@ using std::string;
 //#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
-//#define DEBUG_PRINTOUT_ARRAYS
+#define DEBUG_PRINTOUT_ARRAYS
 // dump TP profile to run in HELIOS for profile comparison
-//#define DUMP_HELIOS_TP
+#define DUMP_HELIOS_TP
 // stride for column TP profile dump
 #ifdef DUMP_HELIOS_TP
 const int HELIOS_TP_STRIDE = 1;
@@ -144,8 +144,8 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Number of Parallel Columns to run at a time: %d\n", num_parallel_columns);
 
     log::printf("    Apply G_pm limiter: %s\n", G_pm_limiter ? "true" : "false");
-    log::printf("    Alf_G_pm_denom_limit: %g\n", G_pm_denom_limit);
-    log::printf("    Alf_G_pm_mu_star_increment: %g\n", mu_star_wiggle_increment);
+    log::printf("    G_pm limit: %g\n", G_pm_denom_limit);
+    log::printf("    G_pm angle increment: %g\n", mu_star_wiggle_increment);
 
     // spinup-spindown parameters
     log::printf("    Spin up start step          = %d.\n", spinup_start_step);
@@ -175,7 +175,7 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_g_0", g_0, g_0);
     config_reader.append_config_var("Alf_diffusivity", diffusivity, diffusivity);
     config_reader.append_config_var("Alf_G_pm_max_limiter", G_pm_limiter, G_pm_limiter);
-    config_reader.append_config_var("Alf_G_pm_denom_limit", G_pm_denom_limit, G_pm_denom_limit);
+    config_reader.append_config_var("Alf_G_pm_limit", G_pm_denom_limit, G_pm_denom_limit);
     config_reader.append_config_var(
         "Alf_G_pm_mu_star_increment", mu_star_wiggle_increment, mu_star_wiggle_increment);
     config_reader.append_config_var(

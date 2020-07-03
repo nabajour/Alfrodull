@@ -142,7 +142,7 @@ public:
     int compute_every_n_iteration = 1;
 
     bool   G_pm_limiter             = true;
-    double G_pm_denom_limit         = 1e-5;
+    double G_pm_denom_limit         = 100.0;
     double mu_star_wiggle_increment = 0.001;
 
     int num_parallel_columns = 1;

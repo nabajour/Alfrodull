@@ -286,17 +286,16 @@ __global__ void trans_iso(double* trans_wg,             // out
         int       loop_count     = 0;
         do {
             hit_G_pm_limit = false;
+            double g_p     = G_plus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
+            double g_m     = G_minus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
             if (G_pm_limiter) {
-                G_plus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_limiter(G_plus_func(w0, g0, epsi, epsilon2, mu_star_used, E), debug);
+                G_plus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(g_p, debug);
                 G_minus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_limiter(G_minus_func(w0, g0, epsi, epsilon2, mu_star_used, E), debug);
+                    G_limiter(g_m, debug);
             }
             else {
-                G_plus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_plus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
-                G_minus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_minus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
+                G_plus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]  = g_p;
+                G_minus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m;
             }
 
             loop_count += 1;
@@ -304,15 +303,16 @@ __global__ void trans_iso(double* trans_wg,             // out
             if (loop_count > loop_threshold) {
                 // failsafe against endless loop, leave loop before changing mu_star
                 printf("calculate_physics: Ran %d times into G_pm limit, trying mu_star wiggle, "
-                       "giving up\n");
+                       "giving up\n",
+                       loop_count);
                 break;
             }
 
             // Check G_pm criteria
-            if (fabs(G_pm_denom(w0, g0, epsi, mu_star_used, E))
-                < G_pm_denom_limit_for_mu_star_wiggler) {
-                hit_G_pm_limit         = true;
-                *hit_G_pm_limit_global = true;
+            if ((fabs(g_p) > G_pm_denom_limit_for_mu_star_wiggler)
+                || (fabs(g_m) > G_pm_denom_limit_for_mu_star_wiggler)) {
+                hit_G_pm_limit           = true;
+                hit_G_pm_limit_global[0] = true;
 
                 // hit criteria, wiggle mu_star
                 double zenith_angle_loc = acos(mu_star_orig);
@@ -322,12 +322,16 @@ __global__ void trans_iso(double* trans_wg,             // out
                     cos(zenith_angle_loc
                         + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
                 printf("Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "
-                       "(colidx: %d)\n",
+                       "angle (%g) "
+                       "(colidx: %d) g_p, g_m (%g, %g)\n",
                        mu_star_orig,
                        zenith_angle_loc / M_PI * 180.0,
                        mu_star_wiggle_factor * mu_star_wiggle_increment,
                        mu_star_used,
-                       c);
+                       zenith_angle_loc + mu_star_wiggle_factor * mu_star_wiggle_increment,
+                       c,
+                       g_p,
+                       g_m);
             }
 
 
@@ -558,41 +562,42 @@ __global__ void trans_noniso(double* trans_wg_upper,
         int       loop_count     = 0;
         do {
             hit_G_pm_limit = false;
+            double g_p_u   = G_plus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up);
+            double g_p_l   = G_plus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low);
 
+            double g_m_u = G_minus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up);
+            double g_m_l = G_minus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low);
             if (G_pm_limiter) {
-                G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
-                    G_plus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up), debug);
-                G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
-                    G_plus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low), debug);
-                G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
-                    G_minus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up), debug);
-                G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(
-                    G_minus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low), debug);
+                G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+                    G_limiter(g_p_u, debug);
+                G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+                    G_limiter(g_p_l, debug);
+                G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+                    G_limiter(g_m_u, debug);
+                G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
+                    G_limiter(g_m_l, debug);
             }
             else {
-                G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_plus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up);
-                G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_plus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low);
-                G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_minus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up);
-                G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
-                    G_minus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low);
+                G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]  = g_p_u;
+                G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]  = g_p_l;
+                G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_u;
+                G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_l;
             }
             loop_count += 1;
 
             if (loop_count > loop_threshold) {
                 // failsafe against endless loop, leave loop before changing mu_star
                 printf("calculate_physics: Ran %d times into G_pm limit, trying mu_star wiggle, "
-                       "giving up\n");
+                       "giving up\n",
+                       loop_count);
                 break;
             }
-            if ((fabs(G_pm_denom(w_0_up, g0_up, epsi, mu_star_used, E_up))
-                 < G_pm_denom_limit_for_mu_star_wiggler)
-                || (fabs(G_pm_denom(w_0_low, g0_low, epsi, mu_star_used, E_low))
-                    < G_pm_denom_limit_for_mu_star_wiggler)) {
-                hit_G_pm_limit         = true;
-                *hit_G_pm_limit_global = true;
+            if ((fabs(g_p_u) > G_pm_denom_limit_for_mu_star_wiggler)
+                || (fabs(g_p_l) > G_pm_denom_limit_for_mu_star_wiggler)
+                || (fabs(g_m_u) > G_pm_denom_limit_for_mu_star_wiggler)
+                || (fabs(g_m_l) > G_pm_denom_limit_for_mu_star_wiggler)) {
+                hit_G_pm_limit           = true;
+                hit_G_pm_limit_global[0] = true;
 
                 // hit criteria, wiggle mu_star
                 double zenith_angle_loc = acos(mu_star_orig);
@@ -602,11 +607,13 @@ __global__ void trans_noniso(double* trans_wg_upper,
                     cos(zenith_angle_loc
                         + mu_star_wiggle_factor * mu_star_wiggle_increment / 180.0 * M_PI);
                 printf("Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "
+                       "angle (%g) "
                        "(colidx: %d)\n",
                        mu_star_orig,
                        zenith_angle_loc / M_PI * 180.0,
                        mu_star_wiggle_factor * mu_star_wiggle_increment,
                        mu_star_used,
+                       zenith_angle_loc + mu_star_wiggle_factor * mu_star_wiggle_increment,
                        c);
             }
         } while (hit_G_pm_limit);
