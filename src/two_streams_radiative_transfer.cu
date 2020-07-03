@@ -769,7 +769,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                  column_idx += num_parallel_columns) {
                 //printf("column_idx_tsrt: %d\n", column_idx);
 
-                alf.debug_col_idx = column_idx;
+                int current_num_cols = min(num_cols, esp.point_num - column_idx);
+                alf.debug_col_idx    = column_idx;
 #ifdef COLUMN_LOOP_PROGRESS_BAR
                 print_progress((column_idx + 1.0) / double(esp.point_num));
 #endif // COLUMN_LOOP_PROGRESS_BAR
@@ -814,53 +815,59 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 double* column_density                = &(esp.Rho_d[column_offset]);
                 // initialise interpolated T and P
                 // use mu_star per column
-                // double mu_star = -col_cos_zenith_angle_h[column_idx];
+
 #ifdef DUMP_HELIOS_TP
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
 
-                // dump a TP profile for HELIOS input
-                if (column_idx % HELIOS_TP_STRIDE == 0) {
-                    std::string DBG_OUTPUT_DIR = esp.get_output_dir()
-                                                 + "/alfprof/"
-                                                   "step_"
-                                                 + std::to_string(nstep) + "/column_"
-                                                 + std::to_string(column_idx) + "/";
-                    create_output_dir(DBG_OUTPUT_DIR);
-                    // TODO: handle multiple columns
-                    double                    lon = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
-                    double                    lat = esp.lonlat_h[column_idx * 2 + 1] * 180 / M_PI;
+                {
+                    // get data for current column batch TP profile
                     std::shared_ptr<double[]> pressure_h =
-                        get_cuda_data(column_layer_pressure, esp.nv);
+                        get_cuda_data(column_layer_pressure, esp.nv * current_num_cols);
                     std::shared_ptr<double[]> temperature_h =
-                        get_cuda_data(column_layer_temperature_thor, esp.nv);
+                        get_cuda_data(column_layer_temperature_thor, esp.nv * current_num_cols);
+
+                    for (int c = 0; c < current_num_cols; c++) {
+                        // dump a TP profile for HELIOS input
+                        if ((column_idx + c) % HELIOS_TP_STRIDE == 0) {
+                            std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                                         + "/alfprof/"
+                                                           "step_"
+                                                         + std::to_string(nstep) + "/column_"
+                                                         + std::to_string(column_idx + c) + "/";
+                            create_output_dir(DBG_OUTPUT_DIR);
+                            // TODO: handle multiple columns
+                            double lon = esp.lonlat_h[(column_idx + c) * 2 + 0] * 180 / M_PI;
+                            double lat = esp.lonlat_h[(column_idx + c) * 2 + 1] * 180 / M_PI;
 
 
-                    double p_toa = pressure_h[esp.nv - 1];
-                    double p_boa = pressure_h[0];
+                            double p_toa   = pressure_h[esp.nv * c + esp.nv - 1];
+                            double p_boa   = pressure_h[esp.nv * c];
+                            double mu_star = -col_cos_zenith_angle_h[column_idx + c];
 
+                            // Print out initial TP profile
+                            string output_file_name = DBG_OUTPUT_DIR + "tpprofile_init.dat";
 
-                    // Print out initial TP profile
-                    string output_file_name = DBG_OUTPUT_DIR + "tpprofile_init.dat";
+                            FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
+                            string comment =
+                                "# Helios TP profile table at lat: [" + std::to_string(lon)
+                                + "] lon: [" + std::to_string(lat) + "] mustar: ["
+                                + std::to_string(mu_star) + "] P_BOA: [" + std::to_string(p_boa)
+                                + "] P_TOA: [" + std::to_string(p_toa) + "]\n";
 
-                    FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
-                    string comment = "# Helios TP profile table at lat: [" + std::to_string(lon)
-                                     + "] lon: [" + std::to_string(lat) + "] mustar: ["
-                                     + std::to_string(mu_star) + "] P_BOA: ["
-                                     + std::to_string(p_boa) + "] P_TOA: [" + std::to_string(p_toa)
-                                     + "]\n";
+                            fprintf(tp_output_file, comment.c_str());
+                            fprintf(tp_output_file, "#\tT[K]\tP[bar]\n");
 
-                    fprintf(tp_output_file, comment.c_str());
-                    fprintf(tp_output_file, "#\tT[K]\tP[bar]\n");
+                            for (int i = 0; i < esp.nv; i++) {
+                                fprintf(tp_output_file,
+                                        "%#.6g\t%#.6g\n",
+                                        temperature_h[i + esp.nv * c],
+                                        pressure_h[i + esp.nv * c] / 1e5);
+                            }
 
-                    for (int i = 0; i < esp.nv; i++) {
-                        fprintf(tp_output_file,
-                                "%#.6g\t%#.6g\n",
-                                temperature_h[i],
-                                pressure_h[i] / 1e5);
+                            fclose(tp_output_file);
+                        }
                     }
-
-                    fclose(tp_output_file);
                 }
 #endif // DUMP_HELIOS_TP
                 cudaDeviceSynchronize();
@@ -888,50 +895,55 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     nstep, column_idx, "Alf_interpTnP", (), ("T_lay", "T_int", "P_int"));
 
 #ifdef DUMP_HELIOS_TP
-                // dump a TP profile for HELIOS input
-                if (column_idx % HELIOS_TP_STRIDE == 0) {
-                    std::string DBG_OUTPUT_DIR = esp.get_output_dir()
-                                                 + "/alfprof/"
-                                                   "step_"
-                                                 + std::to_string(nstep) + "/column_"
-                                                 + std::to_string(column_idx) + "/";
-                    create_output_dir(DBG_OUTPUT_DIR);
-
-                    double lon = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
-                    double lat = esp.lonlat_h[column_idx * 2 + 1] * 180 / M_PI;
-
-                    // get col mu star from zenith angle
-
+                {
+                    // dump a TP profile for HELIOS input
                     std::shared_ptr<double[]> pressure_int_h    = pressure_int.get_host_data();
                     std::shared_ptr<double[]> temperature_int_h = temperature_int.get_host_data();
+                    for (int c = 0; c < current_num_cols; c++) {
+
+                        if (column_idx % HELIOS_TP_STRIDE == 0) {
+                            std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                                         + "/alfprof/"
+                                                           "step_"
+                                                         + std::to_string(nstep) + "/column_"
+                                                         + std::to_string(column_idx + c) + "/";
+                            create_output_dir(DBG_OUTPUT_DIR);
+
+                            double lon = esp.lonlat_h[(column_idx + c) * 2 + 0] * 180 / M_PI;
+                            double lat = esp.lonlat_h[(column_idx + c) * 2 + 1] * 180 / M_PI;
+
+                            // get col mu star from zenith angle
 
 
-                    double p_toa = pressure_int_h[esp.nvi - 1];
-                    double p_boa = pressure_int_h[0];
+                            double p_toa = pressure_int_h[esp.nvi * c + esp.nvi - 1];
+                            double p_boa = pressure_int_h[esp.nvi * c];
+
+                            double mu_star = -col_cos_zenith_angle_h[column_idx + c];
+                            // Print out initial TP profile
+                            string output_file_name = DBG_OUTPUT_DIR + "tpprofile_interface.dat";
+
+                            FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
+                            string comment        = "# Helios TP interface profile table at lat: ["
+                                             + std::to_string(lon) + "] lon: ["
+                                             + std::to_string(lat) + "] mustar: ["
+                                             + std::to_string(mu_star) + "] P_BOA: ["
+                                             + std::to_string(p_boa) + "] P_TOA: ["
+                                             + std::to_string(p_toa) + "]\n";
+
+                            fprintf(tp_output_file, comment.c_str());
+                            fprintf(tp_output_file, "#\tT[K]\tP[bar]\n");
 
 
-                    // Print out initial TP profile
-                    string output_file_name = DBG_OUTPUT_DIR + "tpprofile_interface.dat";
+                            for (int i = 0; i < esp.nvi; i++) {
+                                fprintf(tp_output_file,
+                                        "%#.6g\t%#.6g\n",
+                                        temperature_int_h[i + esp.nvi * c],
+                                        pressure_int_h[i + esp.nvi * c] / 1e5);
+                            }
 
-                    FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
-                    string comment        = "# Helios TP interface profile table at lat: ["
-                                     + std::to_string(lon) + "] lon: [" + std::to_string(lat)
-                                     + "] mustar: [" + std::to_string(mu_star) + "] P_BOA: ["
-                                     + std::to_string(p_boa) + "] P_TOA: [" + std::to_string(p_toa)
-                                     + "]\n";
-
-                    fprintf(tp_output_file, comment.c_str());
-                    fprintf(tp_output_file, "#\tT[K]\tP[bar]\n");
-
-
-                    for (int i = 0; i < esp.nvi; i++) {
-                        fprintf(tp_output_file,
-                                "%#.6g\t%#.6g\n",
-                                temperature_int_h[i],
-                                pressure_int_h[i] / 1e5);
+                            fclose(tp_output_file);
+                        }
                     }
-
-                    fclose(tp_output_file);
                 }
 #endif // DUMP_HELIOS_TP
 
@@ -985,10 +997,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 bool singlewalk_loc = scat_single_walk;
                 int  ninterface     = nlayer + 1;
 
-                int current_num_cols = min(num_cols, esp.point_num - column_idx);
                 {
-
-
                     //printf("column_idx: %d, current numcols: %d\n", column_idx, current_num_cols);
                     double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx]);
                     int     column_offset_int     = column_idx * ninterface;
@@ -1045,7 +1054,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 // compute Delta flux
 
                 {
-                    int     current_num_cols = min(num_cols, esp.point_num - column_idx);
                     dim3    grid(int((esp.nv / num_blocks) + 1), 1, current_num_cols);
                     dim3    block(num_blocks, 1, 1);
                     double* qheat     = &((*Qheat)[column_idx * nlayer]);
@@ -1060,7 +1068,10 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
 #ifdef DEBUG_PRINTOUT_ARRAYS
-                debug_print_columns(esp, -col_cos_zenith_angle_h[column_idx], nstep, column_idx);
+                //printf("printcol1\n");
+                debug_print_columns(
+                    esp, col_cos_zenith_angle_h, nstep, column_idx, current_num_cols);
+                //printf("printcol2\n");
 #endif // DEBUG_PRINTOUT_ARRAYS
             }
             start_up = false;
@@ -1211,661 +1222,564 @@ bool two_streams_radiative_transfer::free_memory() {
 }
 
 // ***************************************************************************************************************
+
+// ***************************************************************************************************************
 void two_streams_radiative_transfer::print_weighted_band_data_to_file(
     ESP&                        esp,
     int                         nstep,
     int                         column_idx,
+    int                         num_stack,
+    int                         num_cols,
+    string                      stackname,
     cuda_device_memory<double>& array,
-    string                      output_file_base) {
+    string                      output_file_base,
+    bool                        global) {
+    print_weighted_band_data_to_file(esp,
+                                     nstep,
+                                     column_idx,
+                                     num_stack,
+                                     num_cols,
+                                     stackname,
+                                     *array,
+                                     array.get_size(),
+                                     output_file_base,
+                                     global);
+}
+
+void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    esp,
+                                                                      int     nstep,
+                                                                      int     column_idx,
+                                                                      int     num_stack,
+                                                                      int     num_cols,
+                                                                      string  stackname,
+                                                                      double* array,
+                                                                      int     array_size,
+                                                                      string  output_file_base,
+                                                                      bool    global) {
     int nbin = alf.opacities.nbin;
     int ny   = alf.opacities.ny;
 
-    std::string DBG_OUTPUT_DIR = esp.get_output_dir()
-                                 + "/alfprof/"
-                                   "step_"
-                                 + std::to_string(nstep) + "/column_" + std::to_string(column_idx)
-                                 + "/";
-    create_output_dir(DBG_OUTPUT_DIR);
-
+    // printf("printweight(%s) - 1\n", output_file_base.c_str());
     // Print out single scattering albedo data
 
-    int                       num_val = array.get_size() / (nbin * ny);
+    int num_val = array_size / (nbin * ny);
+
     std::shared_ptr<double[]> array_h =
-        integrate_band(*array, *alf.gauss_weights, num_val, nbin, ny);
-
-
-    string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
-
-    FILE* output_file = fopen(output_file_name.c_str(), "w");
-    // std::shared_ptr<double[]> opac_wg_lay_h =
-    //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-    std::shared_ptr<double[]> delta_lambda_h =
-        get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-    fprintf(output_file, "bin\t");
-    fprintf(output_file, "deltalambda\t");
-    for (int i = 0; i < esp.nv; i++)
-        fprintf(output_file, "layer[%d]\t", i);
-    fprintf(output_file, "\n");
-
-    for (int b = 0; b < nbin; b++) {
-        fprintf(output_file, "%d\t", b);
-        fprintf(output_file, "%#.6g\t", delta_lambda_h[b]);
-        for (int i = 0; i < esp.nv; i++) {
-            fprintf(output_file, "%#.6g\t", array_h[b + i * nbin]);
-        }
-        fprintf(output_file, "\n");
-    }
-    fclose(output_file);
-
+        integrate_band(array, *alf.gauss_weights, num_val, nbin, ny);
     cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
+
+    for (int c = 0; c < num_cols; c++) {
+        int access_idx = global ? c + column_idx : c;
+
+        // loop on columns
+        std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                     + "/alfprof/"
+                                       "step_"
+                                     + std::to_string(nstep) + "/column_"
+                                     + std::to_string(column_idx + c) + "/";
+        create_output_dir(DBG_OUTPUT_DIR);
+
+        string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
+
+        FILE* output_file = fopen(output_file_name.c_str(), "w");
+        // std::shared_ptr<double[]> opac_wg_lay_h =
+        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
+
+        std::shared_ptr<double[]> delta_lambda_h =
+            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
+        cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(),
+                                  __LINE__);
+        fprintf(output_file, "bin\t");
+        fprintf(output_file, "deltalambda\t");
+        for (int i = 0; i < num_stack; i++)
+            fprintf(output_file, "%s[%d]\t", stackname.c_str(), i);
+        fprintf(output_file, "\n");
+
+        for (int b = 0; b < nbin; b++) {
+            fprintf(output_file, "%d\t", b);
+            fprintf(output_file, "%#.6g\t", delta_lambda_h[b]);
+            for (int i = 0; i < num_stack; i++) {
+                //printf("bin: %d, layer: %d, col: %d numval: %d\n", b, i, access_idx, num_val);
+                fprintf(
+                    output_file, "%#.6g\t", array_h[b + i * nbin + access_idx * nbin * num_stack]);
+            }
+            fprintf(output_file, "\n");
+        }
+        fclose(output_file);
+    }
+
+    // printf("printweight(%s) - 2\n", output_file_base.c_str());
 }
+
+void two_streams_radiative_transfer::print_data_to_file(ESP&                        esp,
+                                                        int                         nstep,
+                                                        int                         column_idx,
+                                                        int                         num_stack,
+                                                        int                         num_cols,
+                                                        string                      stackname,
+                                                        string                      column_name,
+                                                        cuda_device_memory<double>& array,
+                                                        string output_file_base,
+                                                        bool   global,
+                                                        double scaling) {
+    // Print out single scattering albedo data
+    //    printf("printdata(%s) - 1\n", output_file_base.c_str());
+    int                       num_val = array.get_size();
+    std::shared_ptr<double[]> array_h = array.get_host_data();
+
+    for (int c = 0; c < num_cols; c++) {
+        int access_idx = global ? c + column_idx : c;
+        // loop on columns
+        std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                     + "/alfprof/"
+                                       "step_"
+                                     + std::to_string(nstep) + "/column_"
+                                     + std::to_string(column_idx + c) + "/";
+        create_output_dir(DBG_OUTPUT_DIR);
+
+        string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
+
+        FILE* output_file = fopen(output_file_name.c_str(), "w");
+        // std::shared_ptr<double[]> opac_wg_lay_h =
+        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
+
+        fprintf(output_file, "%s\t", stackname.c_str());
+        fprintf(output_file, "%s\n", column_name.c_str());
+
+        for (int i = 0; i < num_stack; i++) {
+            fprintf(output_file, "%d\t%#.6g\n", i, array_h[i + access_idx * num_stack] * scaling);
+        }
+
+        fclose(output_file);
+    }
+    cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
+    // printf("printdata(%s) - 2\n", output_file_base.c_str());
+}
+
 
 // ***************************************************************************************************************
 // Helper function to print out all datasets for debugging and comparisong to HELIOS
-void two_streams_radiative_transfer::debug_print_columns(ESP&   esp,
-                                                         double cmustar,
-                                                         int    nstep,
-                                                         int    column_idx) {
+void two_streams_radiative_transfer::debug_print_columns(ESP&                       esp,
+                                                         std::shared_ptr<double[]>& cmustar,
+                                                         int                        nstep,
+                                                         int                        column_base_idx,
+                                                         int                        num_cols) {
     int nbin = alf.opacities.nbin;
-    int ny   = alf.opacities.ny;
-
-    std::string DBG_OUTPUT_DIR = esp.get_output_dir()
-                                 + "/alfprof/"
-                                   "step_"
-                                 + std::to_string(nstep) + "/column_" + std::to_string(column_idx)
-                                 + "/";
-    create_output_dir(DBG_OUTPUT_DIR);
 
     {
+        std::shared_ptr<double[]> temperature_h = temperature_lay.get_host_data();
+
+        cuda_check_status_or_exit(string(__FILE__ ":"
+                                                  "tpprofile")
+                                      .c_str(),
+                                  __LINE__);
+        for (int c = 0; c < num_cols; c++) {
+            std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                         + "/alfprof/"
+                                           "step_"
+                                         + std::to_string(nstep) + "/column_"
+                                         + std::to_string(column_base_idx + c) + "/";
+            create_output_dir(DBG_OUTPUT_DIR);
 
 
-        double lon = esp.lonlat_h[column_idx * 2 + 0] * 180 / M_PI;
-        double lat = esp.lonlat_h[column_idx * 2 + 1] * 180 / M_PI;
+            double lon = esp.lonlat_h[(column_base_idx + c) * 2 + 0] * 180 / M_PI;
+            double lat = esp.lonlat_h[(column_base_idx + c) * 2 + 1] * 180 / M_PI;
 
 
-        // Print out initial TP profile
-        string output_file_name = DBG_OUTPUT_DIR + "tprofile_interp.dat";
+            // Print out initial TP profile
+            string output_file_name = DBG_OUTPUT_DIR + "tprofile_interp.dat";
 
-        FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
-        string comment = "# Helios TP profile table at lat: [" + std::to_string(lon) + "] lon: ["
-                         + std::to_string(lat) + "] mustar: [" + std::to_string(cmustar) + "]\n";
+            FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
+            string comment        = "# Helios TP profile table at lat: [" + std::to_string(lon)
+                             + "] lon: [" + std::to_string(lat) + "] mustar: ["
+                             + std::to_string(cmustar[c]) + "]\n";
 
-        fprintf(tp_output_file, comment.c_str());
-        fprintf(tp_output_file, "#\tT[K]\n");
+            fprintf(tp_output_file, comment.c_str());
+            fprintf(tp_output_file, "#\tT[K]\n");
 
 
-        std::shared_ptr<double[]> temperature_h = get_cuda_data(*temperature_lay, esp.nv + 1);
+            fprintf(tp_output_file,
+                    "BOA\t%#.6g\n",
+                    temperature_h[esp.nv + (column_base_idx + c) * (esp.nv + 1)]);
+            for (int i = 0; i < esp.nv; i++) {
+                fprintf(tp_output_file,
+                        "%d\t%#.6g\n",
+                        i,
+                        temperature_h[i + (column_base_idx + c) * (esp.nv + 1)]);
+            }
 
-        fprintf(tp_output_file, "BOA\t%#.6g\n", temperature_h[esp.nv]);
-        for (int i = 0; i < esp.nv; i++) {
-            fprintf(tp_output_file, "%d\t%#.6g\n", i, temperature_h[i]);
+            fclose(tp_output_file);
         }
-
-        fclose(tp_output_file);
     }
 
 
     {
+        std::shared_ptr<double[]> planck_h = alf.planckband_lay.get_host_data();
 
-        // Print out planck data
+        cuda_check_status_or_exit(string(__FILE__ ":"
+                                                  "plkprofile")
+                                      .c_str(),
+                                  __LINE__);
 
-        string output_file_name = DBG_OUTPUT_DIR + "plkprofile.dat";
+        for (int c = 0; c < num_cols; c++) {
+            std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                         + "/alfprof/"
+                                           "step_"
+                                         + std::to_string(nstep) + "/column_"
+                                         + std::to_string(column_base_idx + c) + "/";
+            create_output_dir(DBG_OUTPUT_DIR);
 
-        FILE*                     planck_output_file = fopen(output_file_name.c_str(), "w");
-        std::shared_ptr<double[]> planck_h =
-            get_cuda_data(*alf.planckband_lay, (esp.nv + 2) * nbin);
+            // Print out planck data
 
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
+            string output_file_name = DBG_OUTPUT_DIR + "plkprofile.dat";
 
-        fprintf(planck_output_file, "bin\t");
-        fprintf(planck_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nv; i++)
-            fprintf(planck_output_file, "layer[%d]\t", i);
-        fprintf(planck_output_file, "layer[TOA]\t");
-        fprintf(planck_output_file, "layer[BOA]\t");
-        fprintf(planck_output_file, "\n");
+            FILE* planck_output_file = fopen(output_file_name.c_str(), "w");
 
-        for (int b = 0; b < nbin; b++) {
-            fprintf(planck_output_file, "%d\t", b);
-            fprintf(planck_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nv + 2; i++) {
-                fprintf(planck_output_file, "%#.6g\t", planck_h[b * (esp.nv + 2) + i]);
-            }
+
+            std::shared_ptr<double[]> delta_lambda_h =
+                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
+
+            fprintf(planck_output_file, "bin\t");
+            fprintf(planck_output_file, "deltalambda\t");
+            for (int i = 0; i < esp.nv; i++)
+                fprintf(planck_output_file, "layer[%d]\t", i);
+            fprintf(planck_output_file, "layer[TOA]\t");
+            fprintf(planck_output_file, "layer[BOA]\t");
             fprintf(planck_output_file, "\n");
-        }
-        fclose(planck_output_file);
-    }
 
+            for (int b = 0; b < nbin; b++) {
+                fprintf(planck_output_file, "%d\t", b);
+                fprintf(planck_output_file, "%#.6g\t", delta_lambda_h[b]);
+                for (int i = 0; i < esp.nv + 2; i++) {
+                    fprintf(planck_output_file,
+                            "%#.6g\t",
+                            planck_h[b * (esp.nv + 2) + i + c * ((esp.nv + 2) * nbin)]);
+                }
+                fprintf(planck_output_file, "\n");
+            }
+            fclose(planck_output_file);
+        }
+    }
     {
         // Print out mean molecular weight data
-
-        string output_file_name        = DBG_OUTPUT_DIR + "meanmolmassprofile.dat";
-        FILE*  meanmolmass_output_file = fopen(output_file_name.c_str(), "w");
-
-        std::shared_ptr<double[]> meanmolmass_h = get_cuda_data(*alf.meanmolmass_lay, (esp.nv));
-
-        fprintf(meanmolmass_output_file, "layer\t");
-        fprintf(meanmolmass_output_file, "meanmolmass\n");
-
-        for (int i = 0; i < esp.nv; i++) {
-            fprintf(meanmolmass_output_file, "%d\t", i);
-            fprintf(meanmolmass_output_file, "%#.6g\n", meanmolmass_h[i] / AMU);
-        }
-
-        fclose(meanmolmass_output_file);
+        print_data_to_file(esp,
+                           nstep,
+                           column_base_idx,
+                           esp.nv,
+                           num_cols,
+                           "layer",
+                           "meanmolmass",
+                           alf.meanmolmass_lay,
+                           "meanmolmassprofile",
+                           false,
+                           1.0 / AMU);
     }
 
     {
-        // Print out mean molecular weight data
-
-        string output_file_name = DBG_OUTPUT_DIR + "deltacolmassprofile.dat";
-
-        FILE*                     deltacolmass_output_file = fopen(output_file_name.c_str(), "w");
-        std::shared_ptr<double[]> deltacolmass_h = get_cuda_data(*alf.delta_col_mass, (esp.nv));
-
-        fprintf(deltacolmass_output_file, "layer\t");
-        fprintf(deltacolmass_output_file, "delta_col_mass\n");
-
-        for (int i = 0; i < esp.nv; i++) {
-            fprintf(deltacolmass_output_file, "%d\t", i);
-            fprintf(deltacolmass_output_file, "%#.6g\n", deltacolmass_h[i]);
-        }
-
-        fclose(deltacolmass_output_file);
+        print_data_to_file(esp,
+                           nstep,
+                           column_base_idx,
+                           esp.nv,
+                           num_cols,
+                           "layer",
+                           "delta_col_mass",
+                           alf.delta_col_mass,
+                           "deltacolmassprofile",
+                           false);
     }
 
     {
-
         // Print out opacities data
-
-        int                       num_val = alf.opac_wg_lay.get_size() / (nbin * ny);
-        std::shared_ptr<double[]> opac_h =
-            integrate_band(*alf.opac_wg_lay, *alf.gauss_weights, num_val, nbin, ny);
-
-
-        string output_file_name = DBG_OUTPUT_DIR + "opacprofile.dat";
-
-        FILE* opac_output_file = fopen(output_file_name.c_str(), "w");
-
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-        fprintf(opac_output_file, "bin\t");
-        fprintf(opac_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nv; i++)
-            fprintf(opac_output_file, "layer[%d]\t", i);
-        fprintf(opac_output_file, "\n");
-
-        for (int b = 0; b < nbin; b++) {
-            fprintf(opac_output_file, "%d\t", b);
-            fprintf(opac_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nv; i++) {
-                fprintf(opac_output_file, "%#.6g\t", opac_h[b + i * nbin]);
-            }
-            fprintf(opac_output_file, "\n");
-        }
-        fclose(opac_output_file);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.opac_wg_lay,
+                                         "opacprofile",
+                                         false);
     }
 
-    if (iso) {
-        // Print out optical depth data
-        int                       num_val = alf.delta_tau_wg.get_size() / (nbin * ny);
-        std::shared_ptr<double[]> delta_tau_h =
-            integrate_band(*alf.delta_tau_wg, *alf.gauss_weights, num_val, nbin, ny);
 
-
-        string output_file_name = DBG_OUTPUT_DIR + "opt_depthprofile.dat";
-
-        FILE* opt_depth_output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-        fprintf(opt_depth_output_file, "bin\t");
-        fprintf(opt_depth_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nv; i++)
-            fprintf(opt_depth_output_file, "layer[%d]\t", i);
-        fprintf(opt_depth_output_file, "\n");
-
-        for (int b = 0; b < nbin; b++) {
-            fprintf(opt_depth_output_file, "%d\t", b);
-            fprintf(opt_depth_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nv; i++) {
-                fprintf(opt_depth_output_file, "%#.6g\t", delta_tau_h[b + i * nbin]);
-            }
-            fprintf(opt_depth_output_file, "\n");
-        }
-        fclose(opt_depth_output_file);
-    }
-    else {
-        {
-            // Print out optical depth data
-            int                       num_val = alf.delta_tau_wg_upper.get_size() / (nbin * ny);
-            std::shared_ptr<double[]> delta_tau_h =
-                integrate_band(*alf.delta_tau_wg_upper, *alf.gauss_weights, num_val, nbin, ny);
-
-
-            string output_file_name = DBG_OUTPUT_DIR + "opt_depth_upper_profile.dat";
-
-            FILE* opt_depth_output_file = fopen(output_file_name.c_str(), "w");
-            // std::shared_ptr<double[]> opac_wg_lay_h =
-            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-            std::shared_ptr<double[]> delta_lambda_h =
-                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-            fprintf(opt_depth_output_file, "bin\t");
-            fprintf(opt_depth_output_file, "deltalambda\t");
-            for (int i = 0; i < esp.nv; i++)
-                fprintf(opt_depth_output_file, "layer[%d]\t", i);
-            fprintf(opt_depth_output_file, "\n");
-
-            for (int b = 0; b < nbin; b++) {
-                fprintf(opt_depth_output_file, "%d\t", b);
-                fprintf(opt_depth_output_file, "%#.6g\t", delta_lambda_h[b]);
-                for (int i = 0; i < esp.nv; i++) {
-                    fprintf(opt_depth_output_file, "%#.6g\t", delta_tau_h[b + i * nbin]);
-                }
-                fprintf(opt_depth_output_file, "\n");
-            }
-            fclose(opt_depth_output_file);
-        }
-        {
-            // Print out optical depth data
-            int                       num_val = alf.delta_tau_wg_lower.get_size() / (nbin * ny);
-            std::shared_ptr<double[]> delta_tau_h =
-                integrate_band(*alf.delta_tau_wg_lower, *alf.gauss_weights, num_val, nbin, ny);
-
-
-            string output_file_name = DBG_OUTPUT_DIR + "opt_depth_lower_profile.dat";
-
-            FILE* opt_depth_output_file = fopen(output_file_name.c_str(), "w");
-            // std::shared_ptr<double[]> opac_wg_lay_h =
-            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-            std::shared_ptr<double[]> delta_lambda_h =
-                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-            fprintf(opt_depth_output_file, "bin\t");
-            fprintf(opt_depth_output_file, "deltalambda\t");
-            for (int i = 0; i < esp.nv; i++)
-                fprintf(opt_depth_output_file, "layer[%d]\t", i);
-            fprintf(opt_depth_output_file, "\n");
-
-            for (int b = 0; b < nbin; b++) {
-                fprintf(opt_depth_output_file, "%d\t", b);
-                fprintf(opt_depth_output_file, "%#.6g\t", delta_lambda_h[b]);
-                for (int i = 0; i < esp.nv; i++) {
-                    fprintf(opt_depth_output_file, "%#.6g\t", delta_tau_h[b + i * nbin]);
-                }
-                fprintf(opt_depth_output_file, "\n");
-            }
-            fclose(opt_depth_output_file);
-        }
-    }
-
-    if (iso) {
-        // Print out transmission data
-
-        int                       num_val = alf.trans_wg.get_size() / (nbin * ny);
-        std::shared_ptr<double[]> trans_h =
-            integrate_band(*alf.trans_wg, *alf.gauss_weights, num_val, nbin, ny);
-
-
-        string output_file_name = DBG_OUTPUT_DIR + "trans_band_profile.dat";
-
-        FILE* trans_band_output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-        fprintf(trans_band_output_file, "bin\t");
-        fprintf(trans_band_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nv; i++)
-            fprintf(trans_band_output_file, "layer[%d]\t", i);
-        fprintf(trans_band_output_file, "\n");
-
-        for (int b = 0; b < nbin; b++) {
-            fprintf(trans_band_output_file, "%d\t", b);
-            fprintf(trans_band_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nv; i++) {
-                fprintf(trans_band_output_file, "%#.6g\t", trans_h[b + i * nbin]);
-            }
-            fprintf(trans_band_output_file, "\n");
-        }
-        fclose(trans_band_output_file);
-    }
-    else {
-        {
-            // Print out transmission data
-
-            int                       num_val = alf.trans_wg_upper.get_size() / (nbin * ny);
-            std::shared_ptr<double[]> trans_h =
-                integrate_band(*alf.trans_wg_upper, *alf.gauss_weights, num_val, nbin, ny);
-
-
-            string output_file_name = DBG_OUTPUT_DIR + "trans_band_upper_profile.dat";
-
-            FILE* trans_band_output_file = fopen(output_file_name.c_str(), "w");
-            // std::shared_ptr<double[]> opac_wg_lay_h =
-            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-            std::shared_ptr<double[]> delta_lambda_h =
-                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-            fprintf(trans_band_output_file, "bin\t");
-            fprintf(trans_band_output_file, "deltalambda\t");
-            for (int i = 0; i < esp.nv; i++)
-                fprintf(trans_band_output_file, "layer[%d]\t", i);
-            fprintf(trans_band_output_file, "\n");
-
-            for (int b = 0; b < nbin; b++) {
-                fprintf(trans_band_output_file, "%d\t", b);
-                fprintf(trans_band_output_file, "%#.6g\t", delta_lambda_h[b]);
-                for (int i = 0; i < esp.nv; i++) {
-                    fprintf(trans_band_output_file, "%#.6g\t", trans_h[b + i * nbin]);
-                }
-                fprintf(trans_band_output_file, "\n");
-            }
-            fclose(trans_band_output_file);
-        }
-
-        {
-            // Print out transmission data
-
-            int                       num_val = alf.trans_wg_lower.get_size() / (nbin * ny);
-            std::shared_ptr<double[]> trans_h =
-                integrate_band(*alf.trans_wg_lower, *alf.gauss_weights, num_val, nbin, ny);
-
-
-            string output_file_name = DBG_OUTPUT_DIR + "trans_band_lower_profile.dat";
-
-            FILE* trans_band_output_file = fopen(output_file_name.c_str(), "w");
-            // std::shared_ptr<double[]> opac_wg_lay_h =
-            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-            std::shared_ptr<double[]> delta_lambda_h =
-                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-            fprintf(trans_band_output_file, "bin\t");
-            fprintf(trans_band_output_file, "deltalambda\t");
-            for (int i = 0; i < esp.nv; i++)
-                fprintf(trans_band_output_file, "layer[%d]\t", i);
-            fprintf(trans_band_output_file, "\n");
-
-            for (int b = 0; b < nbin; b++) {
-                fprintf(trans_band_output_file, "%d\t", b);
-                fprintf(trans_band_output_file, "%#.6g\t", delta_lambda_h[b]);
-                for (int i = 0; i < esp.nv; i++) {
-                    fprintf(trans_band_output_file, "%#.6g\t", trans_h[b + i * nbin]);
-                }
-                fprintf(trans_band_output_file, "\n");
-            }
-            fclose(trans_band_output_file);
-        }
-    }
-
-    if (iso) {
-        // Print out single scattering albedo data
-
-        int                       num_val = alf.w0_wg.get_size() / (nbin * ny);
-        std::shared_ptr<double[]> w0_h =
-            integrate_band(*alf.w0_wg, *alf.gauss_weights, num_val, nbin, ny);
-
-
-        string output_file_name = DBG_OUTPUT_DIR + "single_scat_band_profile.dat";
-
-        FILE* singscat_output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-        fprintf(singscat_output_file, "bin\t");
-        fprintf(singscat_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nv; i++)
-            fprintf(singscat_output_file, "layer[%d]\t", i);
-        fprintf(singscat_output_file, "\n");
-
-        for (int b = 0; b < nbin; b++) {
-            fprintf(singscat_output_file, "%d\t", b);
-            fprintf(singscat_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nv; i++) {
-                fprintf(singscat_output_file, "%#.6g\t", w0_h[b + i * nbin]);
-            }
-            fprintf(singscat_output_file, "\n");
-        }
-        fclose(singscat_output_file);
-    }
-    else {
-        {
-            // Print out single scattering albedo data
-
-            int                       num_val = alf.w0_wg_upper.get_size() / (nbin * ny);
-            std::shared_ptr<double[]> w0_h =
-                integrate_band(*alf.w0_wg_upper, *alf.gauss_weights, num_val, nbin, ny);
-
-
-            string output_file_name = DBG_OUTPUT_DIR + "single_scat_band_upper_profile.dat";
-
-            FILE* singscat_output_file = fopen(output_file_name.c_str(), "w");
-            // std::shared_ptr<double[]> opac_wg_lay_h =
-            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-            std::shared_ptr<double[]> delta_lambda_h =
-                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-            fprintf(singscat_output_file, "bin\t");
-            fprintf(singscat_output_file, "deltalambda\t");
-            for (int i = 0; i < esp.nv; i++)
-                fprintf(singscat_output_file, "layer[%d]\t", i);
-            fprintf(singscat_output_file, "\n");
-
-            for (int b = 0; b < nbin; b++) {
-                fprintf(singscat_output_file, "%d\t", b);
-                fprintf(singscat_output_file, "%#.6g\t", delta_lambda_h[b]);
-                for (int i = 0; i < esp.nv; i++) {
-                    fprintf(singscat_output_file, "%#.6g\t", w0_h[b + i * nbin]);
-                }
-                fprintf(singscat_output_file, "\n");
-            }
-            fclose(singscat_output_file);
-        }
-
-        {
-            // Print out single scattering albedo data
-
-            int                       num_val = alf.w0_wg_lower.get_size() / (nbin * ny);
-            std::shared_ptr<double[]> w0_h =
-                integrate_band(*alf.w0_wg_lower, *alf.gauss_weights, num_val, nbin, ny);
-
-
-            string output_file_name = DBG_OUTPUT_DIR + "single_scat_band_lower_profile.dat";
-
-            FILE* singscat_output_file = fopen(output_file_name.c_str(), "w");
-            // std::shared_ptr<double[]> opac_wg_lay_h =
-            //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-            std::shared_ptr<double[]> delta_lambda_h =
-                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-            fprintf(singscat_output_file, "bin\t");
-            fprintf(singscat_output_file, "deltalambda\t");
-            for (int i = 0; i < esp.nv; i++)
-                fprintf(singscat_output_file, "layer[%d]\t", i);
-            fprintf(singscat_output_file, "\n");
-
-            for (int b = 0; b < nbin; b++) {
-                fprintf(singscat_output_file, "%d\t", b);
-                fprintf(singscat_output_file, "%#.6g\t", delta_lambda_h[b]);
-                for (int i = 0; i < esp.nv; i++) {
-                    fprintf(singscat_output_file, "%#.6g\t", w0_h[b + i * nbin]);
-                }
-                fprintf(singscat_output_file, "\n");
-            }
-            fclose(singscat_output_file);
-        }
-    }
     //***********************************************************************************************
     if (iso) {
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.M_term, "M_profile");
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.N_term, "N_profile");
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.P_term, "P_profile");
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.G_plus, "G_plus_profile");
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.G_minus, "G_minus_profile");
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.delta_tau_wg,
+                                         "opt_depthprofile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.trans_wg,
+                                         "trans_band_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.w0_wg,
+                                         "single_scat_band_profile",
+                                         false);
+        print_weighted_band_data_to_file(
+            esp, nstep, column_base_idx, esp.nv, num_cols, "layer", alf.M_term, "M_profile", false);
+        print_weighted_band_data_to_file(
+            esp, nstep, column_base_idx, esp.nv, num_cols, "layer", alf.N_term, "N_profile", false);
+        print_weighted_band_data_to_file(
+            esp, nstep, column_base_idx, esp.nv, num_cols, "layer", alf.P_term, "P_profile", false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.G_plus,
+
+                                         "G_plus_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.G_minus,
+                                         "G_minus_profile",
+                                         false);
     }
     else {
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.M_upper, "M_upper_profile");
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.M_lower, "M_lower_profile");
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.delta_tau_wg_upper,
 
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.N_upper, "N_upper_profile");
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.N_lower, "N_lower_profile");
+                                         "opt_depth_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.delta_tau_wg_lower,
 
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.P_upper, "P_upper_profile");
-        print_weighted_band_data_to_file(esp, nstep, column_idx, alf.P_lower, "P_lower_profile");
+                                         "opt_depth_lower_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.trans_wg_upper,
+                                         "trans_band_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.trans_wg_lower,
+                                         "trans_band_lower_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.w0_wg_upper,
+                                         "single_scat_band_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.w0_wg_lower,
+                                         "single_scat_band_lower_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.M_upper,
+                                         "M_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.M_lower,
+                                         "M_lower_profile",
+                                         false);
 
-        print_weighted_band_data_to_file(
-            esp, nstep, column_idx, alf.G_plus_upper, "G_plus_upper_profile");
-        print_weighted_band_data_to_file(
-            esp, nstep, column_idx, alf.G_plus_lower, "G_plus_lower_profile");
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.N_upper,
+                                         "N_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.N_lower,
+                                         "N_lower_profile",
+                                         false);
 
-        print_weighted_band_data_to_file(
-            esp, nstep, column_idx, alf.G_minus_upper, "G_minus_upper_profile");
-        print_weighted_band_data_to_file(
-            esp, nstep, column_idx, alf.G_minus_lower, "G_minus_lower_profile");
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.P_upper,
+                                         "P_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.P_lower,
+                                         "P_lower_profile",
+                                         false);
+
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.G_plus_upper,
+                                         "G_plus_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.G_plus_lower,
+                                         "G_plus_lower_profile",
+                                         false);
+
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.G_minus_upper,
+                                         "G_minus_upper_profile",
+                                         false);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nv,
+                                         num_cols,
+                                         "layer",
+                                         alf.G_minus_lower,
+                                         "G_minus_lower_profile",
+                                         false);
     }
     //***********************************************************************************************
     {
         // Print out downward flux
-
-        int                       num_val = F_down_wg.get_size() / (nbin * ny);
-        std::shared_ptr<double[]> fd_h =
-            integrate_band(*F_down_wg, *alf.gauss_weights, num_val, nbin, ny);
-
-
-        string output_file_name = DBG_OUTPUT_DIR + "F_down_profile.dat";
-
-        FILE* Fd_output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-        fprintf(Fd_output_file, "bin\t");
-        fprintf(Fd_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nvi; i++)
-            fprintf(Fd_output_file, "interface[%d]\t", i);
-        fprintf(Fd_output_file, "\n");
-
-        for (int b = 0; b < nbin; b++) {
-            fprintf(Fd_output_file, "%d\t", b);
-            fprintf(Fd_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nvi; i++) {
-                fprintf(Fd_output_file, "%#.6g\t", fd_h[b + i * nbin]);
-            }
-            fprintf(Fd_output_file, "\n");
-        }
-        fclose(Fd_output_file);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nvi,
+                                         num_cols,
+                                         "interface",
+                                         F_down_wg,
+                                         "F_down_profile",
+                                         false);
     }
 
     {
         // Print out downward flux
-
-        int                       num_val = F_up_wg.get_size() / (nbin * ny);
-        std::shared_ptr<double[]> fu_h =
-            integrate_band(*F_up_wg, *alf.gauss_weights, num_val, nbin, ny);
-
-
-        string output_file_name = DBG_OUTPUT_DIR + "F_up_profile.dat";
-
-        FILE* Fu_output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-        fprintf(Fu_output_file, "bin\t");
-        fprintf(Fu_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nvi; i++)
-            fprintf(Fu_output_file, "interface[%d]\t", i);
-        fprintf(Fu_output_file, "\n");
-
-        for (int b = 0; b < nbin; b++) {
-            fprintf(Fu_output_file, "%d\t", b);
-            fprintf(Fu_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nvi; i++) {
-                fprintf(Fu_output_file, "%#.6g\t", fu_h[b + i * nbin]);
-            }
-            fprintf(Fu_output_file, "\n");
-        }
-        fclose(Fu_output_file);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nvi,
+                                         num_cols,
+                                         "interface",
+                                         F_up_wg,
+                                         "F_up_profile",
+                                         false);
     }
 
     {
         // Print out direct beam flux
-
-        int                       num_val = F_dir_wg.get_size() / (nbin * ny);
-        std::shared_ptr<double[]> fdir_h =
-            integrate_band(*F_dir_wg, *alf.gauss_weights, num_val, nbin, ny);
-
-
-        string output_file_name = DBG_OUTPUT_DIR + "F_dir_profile.dat";
-
-        FILE* Fdir_output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
-
-        std::shared_ptr<double[]> delta_lambda_h =
-            get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
-
-        fprintf(Fdir_output_file, "bin\t");
-        fprintf(Fdir_output_file, "deltalambda\t");
-        for (int i = 0; i < esp.nvi; i++)
-            fprintf(Fdir_output_file, "interface[%d]\t", i);
-        fprintf(Fdir_output_file, "\n");
-
-        for (int b = 0; b < nbin; b++) {
-            fprintf(Fdir_output_file, "%d\t", b);
-            fprintf(Fdir_output_file, "%#.6g\t", delta_lambda_h[b]);
-            for (int i = 0; i < esp.nvi; i++) {
-                fprintf(Fdir_output_file, "%#.6g\t", fdir_h[b + i * nbin]);
-            }
-            fprintf(Fdir_output_file, "\n");
-        }
-        fclose(Fdir_output_file);
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nvi,
+                                         num_cols,
+                                         "interface",
+                                         F_dir_wg,
+                                         "F_dir_profile",
+                                         false);
     }
 
 
     {
         // Print out alf qheat
 
-        int num_val = F_dir_wg.get_size() / (nbin * ny);
+        for (int c = 0; c < num_cols; c++) {
+            int col_offset = (column_base_idx + c) * esp.nv;
 
+            std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                         + "/alfprof/"
+                                           "step_"
+                                         + std::to_string(nstep) + "/column_"
+                                         + std::to_string(column_base_idx + c) + "/";
+            create_output_dir(DBG_OUTPUT_DIR);
 
-        int col_offset = column_idx * esp.nv;
+            string output_file_name = DBG_OUTPUT_DIR + "alf_qheat_profile.dat";
 
-        string output_file_name = DBG_OUTPUT_DIR + "alf_qheat_profile.dat";
+            FILE* output_file = fopen(output_file_name.c_str(), "w");
 
-        FILE* output_file = fopen(output_file_name.c_str(), "w");
+            std::shared_ptr<double[]> qh_h = get_cuda_data(&((Qheat.ptr())[col_offset]), esp.nv);
 
-        std::shared_ptr<double[]> qh_h = get_cuda_data(&((Qheat.ptr())[col_offset]), esp.nv);
+            fprintf(output_file, "level\tqheat\n");
 
-        fprintf(output_file, "level\tqheat\n");
+            for (int i = 0; i < esp.nv; i++) {
+                fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
+            }
 
-        for (int i = 0; i < esp.nv; i++) {
-            fprintf(output_file, "%d\t%#.6g\n", i, qh_h[i]);
+            fclose(output_file);
+            cuda_check_status_or_exit(string(__FILE__ ":"
+                                                      "qheat")
+                                          .c_str(),
+                                      __LINE__);
         }
-
-        fclose(output_file);
     }
 }

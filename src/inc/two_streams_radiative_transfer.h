@@ -100,10 +100,9 @@ public:
     bool   real_star  = false;
     double fake_opac;
     double g_0;
-    double epsi        = 1.0 / 2.0;
-    double epsilon_2   = 2.0 / 3.0;
-    double diffusivity = 2.0;
-    double mu_star; // not a config
+    double epsi                  = 1.0 / 2.0;
+    double epsilon_2             = 2.0 / 3.0;
+    double diffusivity           = 2.0;
     double mu_star_limit_degrees = 2.0;
     bool   scat;
     bool   scat_corr;
@@ -214,10 +213,41 @@ private:
     cuda_device_memory<double> w0_tot;
     cuda_device_memory<double> g0_tot;
     // Debug print out function
-    void debug_print_columns(ESP &esp, double cmustar, int nstep, int column_idx);
+    void debug_print_columns(ESP &                      esp,
+                             std::shared_ptr<double[]> &cmustar,
+                             int                        nstep,
+                             int                        column_idx,
+                             int                        num_cols);
     void print_weighted_band_data_to_file(ESP &                       esp,
                                           int                         nstep,
                                           int                         column_idx,
+                                          int                         num_stack,
+                                          int                         num_cols,
+                                          string                      stackname,
                                           cuda_device_memory<double> &array,
-                                          string                      output_file_base);
+                                          string                      output_file_base,
+                                          bool                        global);
+
+    void print_weighted_band_data_to_file(ESP &   esp,
+                                          int     nstep,
+                                          int     column_idx,
+                                          int     num_stack,
+                                          int     num_cols,
+                                          string  stackname,
+                                          double *array,
+                                          int     array_size,
+                                          string  output_file_base,
+                                          bool    global);
+
+    void print_data_to_file(ESP &                       esp,
+                            int                         nstep,
+                            int                         column_idx,
+                            int                         num_stack,
+                            int                         num_cols,
+                            string                      stackname,
+                            string                      column_name,
+                            cuda_device_memory<double> &array,
+                            string                      output_file_base,
+                            bool                        global,
+                            double                      scaling = 1.0);
 };
