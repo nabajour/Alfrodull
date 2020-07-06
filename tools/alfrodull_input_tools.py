@@ -75,7 +75,7 @@ def convert_helios_opacity_to_SI_units(opacity_samples_in, opacity_samples_out):
             else:
                 opac_cgs_lambda = opac_cgs_h5['wavelengths'][...]
                 
-            lambda_dset = opac_si_h5.create_dataset("wavelength", (opac_cgs_lambda.shape), dtype=np.float64)
+            lambda_dset = opac_si_h5.create_dataset("wavelengths", (opac_cgs_lambda.shape), dtype=np.float64)
             lambda_dset[...] = opac_cgs_lambda * wavelength_unit_conv 
             lambda_dset.attrs['units'] = 'm'
             
