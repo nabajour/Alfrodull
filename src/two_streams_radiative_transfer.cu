@@ -76,9 +76,9 @@ using std::string;
 //#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
-#define DEBUG_PRINTOUT_ARRAYS
+//#define DEBUG_PRINTOUT_ARRAYS
 // dump TP profile to run in HELIOS for profile comparison
-#define DUMP_HELIOS_TP
+//#define DUMP_HELIOS_TP
 // stride for column TP profile dump
 #ifdef DUMP_HELIOS_TP
 const int HELIOS_TP_STRIDE = 1;
