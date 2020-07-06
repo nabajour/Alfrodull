@@ -357,7 +357,7 @@ Alf_store_w0_g0 = false
 
 # G_+/- limits to protect against exploding value
 # Alf_G_pm_max_limiter =
-Alf_G_pm_limit = 200
+Alf_G_pm_limit = 300
 # wiggle increment in degrees to add to zenith angle if G_+/- explodes
 Alf_G_pm_mu_star_increment = 1.0
 
@@ -371,7 +371,7 @@ Alf_compute_every_nstep = 1
 # number of columns to compute in parallel
 # (Adjust this depending on memory usage, more parallel column: faster integration)
 # Total number of points on grid is 4^(glevel - 4)*16^2*10 + 2. 
-Alf_num_parallel_columns = 2562
+Alf_num_parallel_columns = 1284
 
 
 

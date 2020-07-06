@@ -297,8 +297,8 @@ bool two_streams_radiative_transfer::initialise_memory(
             exit(EXIT_FAILURE);
         }
 
-        double lambda_spectrum_scale = 1e-2;
-        double flux_scale            = 1e-1;
+        double lambda_spectrum_scale = 1.0;
+        double flux_scale            = 1.0;
 
         storage s(stellar_spectrum_file, true);
         if (s.has_table("wavelength") && s.has_table("flux")) {
