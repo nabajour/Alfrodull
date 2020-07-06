@@ -124,6 +124,7 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Opacity Cutoff: %g\n", fake_opac);
 
     log::printf("    Opacities File: %s\n", opacities_file.c_str());
+    log::printf("    Opacities File is CGS: %s\n", opacity_file_is_CGS ? "true" : "false");
 
     log::printf("    Scattering: %s\n", scat ? "true" : "false");
     log::printf("    Apply Scattring Correction (or E=1): %s\n", scat_corr ? "true" : "false");
@@ -188,6 +189,8 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_i2s_transition", i2s_transition, i2s_transition);
 
     config_reader.append_config_var("Alf_opacities_file", opacities_file, opacities_file);
+    config_reader.append_config_var(
+        "Alf_opacities_file_in_CGS", opacity_file_is_CGS, opacity_file_is_CGS);
     config_reader.append_config_var(
         "Alf_compute_every_nstep", compute_every_n_iteration, compute_every_n_iteration);
 
@@ -267,7 +270,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     // set opacity offset for test
     alf.set_experimental_opacity_offset(experimental_opacities_offset);
 
-    alf.load_opacities(opacities_file);
+    alf.load_opacities(opacities_file, opacity_file_is_CGS);
 
     cudaDeviceSynchronize();
     log::printf("Loaded opacities, using %d bins with %d weights per bin\n",

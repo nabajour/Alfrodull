@@ -47,16 +47,16 @@ alfrodull_engine::alfrodull_engine() {
     printf("Creating Alfrodull engine\n");
 }
 
-void alfrodull_engine::load_opacities(const string& filename) {
+void alfrodull_engine::load_opacities(const string& filename, bool opacity_file_is_CGS) {
     printf("Loading opacities from %s\n", filename.c_str());
 
-    opacities.load_opacity_table(filename);
+    opacities.load_opacity_table(filename, opacity_file_is_CGS);
 }
 
 void alfrodull_engine::init() {
     printf("Alfrodull Init\n");
 
-    load_opacities("input/opac_sample.h5");
+    load_opacities("input/opac_sample.h5", /* opacity_file_is_CGS */ false);
 }
 
 void alfrodull_engine::set_parameters(const int&    nlayer_,

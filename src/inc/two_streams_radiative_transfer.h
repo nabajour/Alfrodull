@@ -131,6 +131,7 @@ public:
     double i2s_transition;
 
     string opacities_file;
+    bool   opacity_file_is_CGS = false;
 
     string stellar_spectrum_file;
     void   print_config();

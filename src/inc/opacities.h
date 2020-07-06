@@ -20,7 +20,7 @@ class opacity_table
 public:
     opacity_table();
 
-    bool load_opacity_table(const string& filename);
+    bool load_opacity_table(const string& filename, bool is_CGS);
 
     std::unique_ptr<double[]> data_opac_wave = nullptr;
     //private:

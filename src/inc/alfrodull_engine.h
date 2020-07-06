@@ -17,7 +17,7 @@ public:
 
     void reset();
 
-    void load_opacities(const string& filename);
+    void load_opacities(const string& filename, bool opacity_file_is_CGS);
     void prepare_planck_table();
 
     void set_parameters(const int&    nlayer_,

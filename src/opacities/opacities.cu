@@ -10,27 +10,41 @@
 opacity_table::opacity_table() {
 }
 
-bool opacity_table::load_opacity_table(const string& filename) {
+bool opacity_table::load_opacity_table(const string& filename, bool is_CGS) {
 #ifdef CGS_UNITS
-    // #warning "Compiling with CGS units"
+#    warning "Compiling with CGS units"
+    // For usage in Helios without unit conversion
     const double temperatures_unit_conv = 1.0;
     const double pressures_unit_conv    = 1.0;
     const double wavelength_unit_conv   = 1.0;
     const double opacity_unit_conv      = 1.0;
     const double scat_cross_unit_conv   = 1.0;
-#else // SI units
-    // #warning "Compiling with SI units"
-    // for SI units, convert CGS to SI
-    const double temperatures_unit_conv = 1.0;
-    const double pressures_unit_conv    = 1.0e-1;
-    const double wavelength_unit_conv   = 1.0e-2;
-    const double opacity_unit_conv      = 1.0e-1;
-    const double scat_cross_unit_conv   = 1.0e-4;
+#else  // SI units
+    printf("Loading opacity tables from %s as %s units\n", filename.c_str(), is_CGS ? "CGS" : "SI");
+    double temperatures_unit_conv = 1.0;
+    double pressures_unit_conv    = 1.0;
+    double wavelength_unit_conv   = 1.0;
+    double opacity_unit_conv      = 1.0;
+    double scat_cross_unit_conv   = 1.0;
 
+    if (is_CGS) {
+        // for SI units, convert CGS to SI
+        temperatures_unit_conv = 1.0;
+        pressures_unit_conv    = 1.0e-1;
+        wavelength_unit_conv   = 1.0e-2;
+        opacity_unit_conv      = 1.0e-1;
+        scat_cross_unit_conv   = 1.0e-4;
+    }
+    else {
+        // Paththrough
+        temperatures_unit_conv = 1.0;
+        pressures_unit_conv    = 1.0;
+        wavelength_unit_conv   = 1.0;
+        opacity_unit_conv      = 1.0;
+        scat_cross_unit_conv   = 1.0;
+    }
 #endif // CGS_UNIT
 
-
-    printf("Loading tables\n");
     storage s(filename, true);
 
     read_table_to_device<double>(
@@ -78,28 +92,19 @@ bool opacity_table::load_opacity_table(const string& filename) {
             s, "/interface wavelengths", dev_opac_interwave, wavelength_unit_conv);
     }
     else {
-        // TODO : check those interpolated values usage
-        // TODO: dump tables to compare wiwth original
         // quick and dirty way to get the lamda interface values
         data_opac_interwave[0] = data_opac_wave[0] - (data_opac_wave[1] - data_opac_wave[0]) / 2.0;
         for (int i = 0; i < nbin - 1; i++)
             data_opac_interwave[i + 1] = (data_opac_wave[i + 1] + data_opac_wave[i]) / 2.0;
         data_opac_interwave[nbin] =
             data_opac_wave[nbin - 1] + (data_opac_wave[nbin - 1] - data_opac_wave[nbin - 2]) / 2.0;
-
-        // for (int i = 0; i < nbin; i++)
-        //   data_opac_interwave[i] *= wavelength_unit_conv;
         push_table_to_device<double>(data_opac_interwave, nbin + 1, dev_opac_interwave);
     }
-    // for (int i = 0; i < nbin + 1; i++)
-    //   printf("interwave %d %g\n", i, data_opac_interwave[i]);
-
     if (s.has_table("/wavelength width of bins")) {
         read_table_to_device<double>(
             s, "/wavelength width of bins", dev_opac_deltawave, wavelength_unit_conv);
     }
     else {
-        // TODO : check those interpolated values usage
         if (nbin == 1) {
             std::unique_ptr<double[]> data_opac_deltawave(new double[1]);
             data_opac_deltawave[0] = 0.0;
@@ -112,8 +117,6 @@ bool opacity_table::load_opacity_table(const string& filename) {
             for (int i = 0; i < nbin; i++)
                 data_opac_deltawave[i] = data_opac_interwave[i + 1] - data_opac_interwave[i];
             push_table_to_device<double>(data_opac_deltawave, nbin, dev_opac_deltawave);
-            // for (int i = 0; i < nbin; i++)
-            //   printf("deltawave %d %g\n", i, data_opac_deltawave[i]);
         }
     }
 
