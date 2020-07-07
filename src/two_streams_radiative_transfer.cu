@@ -569,6 +569,11 @@ __global__ void initialise_delta_colmass_iso(double* delta_col_mass_cols,
         double* pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
         delta_col_mass[layer_idx] =
             (pressure_int[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
+        // if (delta_col_mass[layer_idx] < 0.0)
+        //     printf("Negative delta_col_mass (%g), layer: %d, col: %d\n",
+        //            delta_col_mass[layer_idx],
+        //            layer_idx,
+        //            col_idx);
     }
 }
 

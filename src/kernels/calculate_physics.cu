@@ -249,24 +249,25 @@ __global__ void trans_iso(double*       trans_wg,             // out
 
             // DBG:
             // if (!isfinite(M_term[y + ny * x + ny * nbin * i]))
-            //     printf("abnormal M_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g, "
-            //            "epsi: %g, w0: %g, delta_tau: %g g0: %g, "
-            //            "delta_colamss: %g, opac_wg_lay: %g, cloud_abs_cross_lay: %g, ray_cross: %g, "
-            //            "cloud_scat_cross: %g, meanmolmass_lay: %g\n",
-            //            M_term[y + ny * x + ny * nbin * i],
-            //            zeta_min,
-            //            trans,
-            //            zeta_pl,
-            //            epsi,
-            //            w0,
-            //            del_tau,
-            //            g0,
-            //            delta_colmass[i],
-            //            opac_wg_lay[y + ny * x + ny * nbin * i],
-            //            cloud_abs_cross_lay[i],
-            //            ray_cross,
-            //            cloud_scat_cross,
-            //            meanmolmass_lay[i]);
+            //     printf(
+            //         "abnormal M_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g, "
+            //         "epsi: %g, w0: %g, delta_tau: %g g0: %g, "
+            //         "delta_colamss: %g, opac_wg_lay: %g, cloud_abs_cross_lay: %g, ray_cross: %g, "
+            //         "cloud_scat_cross: %g, meanmolmass_lay: %g\n",
+            //         M_term[y + ny * x + ny * nbin * i],
+            //         zeta_min,
+            //         trans,
+            //         zeta_pl,
+            //         epsi,
+            //         w0,
+            //         del_tau,
+            //         g0,
+            //         delta_colmass[i],
+            //         opac_wg_lay[y + ny * x + ny * nbin * i],
+            //         cloud_abs_cross_lay[i],
+            //         ray_cross,
+            //         cloud_scat_cross,
+            //         meanmolmass_lay[i]);
             // if (!isfinite(N_term[y + ny * x + ny * nbin * i]))
             //     printf("abnormal N_term: %g, zeta_min: %g, trans: %g, zeta_pl: %g "
             //            "epsi: %g, w0: %g, delta_tau: %g, g0: %g\n",
@@ -327,22 +328,41 @@ __global__ void trans_iso(double*       trans_wg,             // out
                         g_m);
                 }
             }
-            // printf(
-            //     "%d: w0: %g, g0: %g dtau: %g gsc: %g csc: %g gabs: %g, cabs: %g cg0: %g mmm: %g dcm: "
-            //     "%g mu*: %g\n",
-            //     x,
-            //     w0,
-            //     g0,
-            //     del_tau,
-            //     ray_cross,
-            //     cloud_scat_cross,
-            //     opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
-            //     cloud_abs_cross_lay[x],
-            //     g0_cloud,
-            //     meanmolmass_lay[i + c * nlayer],
-            //     delta_colmass[i + c * nlayer],
-            //     mu_star_used);
+            // if (!isfinite(g_p) || !isfinite(g_m)
+            //     || !isfinite(M_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+            //     || !isfinite(N_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+            //     || !isfinite(P_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
 
+            // ) {
+            //     printf("%d, G_p: %g, G_m: %g, M: %g, N: %g, P: %g, trans: %g, z-: %g, z+: %g\n",
+            //            x,
+            //            g_p,
+            //            g_m,
+            //            M_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+            //            N_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+            //            P_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+            //            trans,
+            //            zeta_min,
+            //            zeta_pl);
+
+            //     printf("%d: w0: %g, g0: %g dtau: %g gsc: %g csc: %g gabs: %g, cabs: %g cg0: %g "
+            //            "mmm: %g "
+            //            "dcm: "
+            //            "%g mu*: %g, E: %g\n",
+            //            x,
+            //            w0,
+            //            g0,
+            //            del_tau,
+            //            ray_cross,
+            //            cloud_scat_cross,
+            //            opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+            //            cloud_abs_cross_lay[x],
+            //            g0_cloud,
+            //            meanmolmass_lay[i + c * nlayer],
+            //            delta_colmass[i + c * nlayer],
+            //            mu_star_used,
+            //            E);
+            // }
             mu_star_cols[c] = mu_star_used;
         }
     }

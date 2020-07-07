@@ -1209,8 +1209,9 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
     const int    iteration_max     = 10;
 
     do {
-        bool hit_G_pm_denom_limit_h = false;
+        hit_G_pm_denom_limit_h = false;
         // set global wiggle checker to 0;
+        // printf("calc_transmission: %d iteration\n", iteration_counter);
         cudaMemcpy(
             *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
