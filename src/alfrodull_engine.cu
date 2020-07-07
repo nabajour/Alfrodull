@@ -195,6 +195,7 @@ void alfrodull_engine::allocate_internal_variables() {
 
     //  dev_T_int.allocate(ninterface);
 
+    mu_star_iteration_requested.allocate(num_cols);
     // column mass
     // TODO: computed by grid in helios, should be computed by alfrodull or comes from THOR?
 
@@ -1195,62 +1196,80 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                                   bool    scat,
                                                   bool    clouds,
                                                   int     num_cols) {
+
     bool hit_G_pm_denom_limit_h = false;
-    // set global wiggle checker to 0;
-    cudaMemcpy(
-        *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
+    // set columns wiggle iteration to 0.
+    mu_star_iteration_requested.zero();
+
 
     int nbin = opacities.nbin;
 
-    int ny = opacities.ny;
+    int          ny                = opacities.ny;
+    unsigned int iteration_counter = 0;
+    const int    iteration_max     = 10;
+
+    do {
+        bool hit_G_pm_denom_limit_h = false;
+        // set global wiggle checker to 0;
+        cudaMemcpy(
+            *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
 
-    dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
-    dim3 block(16, 4, 4);
-    trans_iso<<<grid, block>>>(trans_wg,
-                               *delta_tau_wg,
-                               *M_term,
-                               *N_term,
-                               *P_term,
-                               *G_plus,
-                               *G_minus,
-                               delta_colmass,
-                               opac_wg_lay,
-                               cloud_abs_cross_lay_,
-                               meanmolmass_lay,
-                               *scatter_cross_section_lay,
-                               cloud_scat_cross_lay,
-                               *w0_wg,
-                               *g0_wg,
-                               g_0_cloud_lay_,
-                               g_0,
-                               epsi,
-                               epsilon2_,
-                               zenith_angle_cols,
-                               *mu_star_cols,
-                               w_0_limit,
-                               scat,
-                               nbin,
-                               ny,
-                               nlayer,
-                               num_cols,
-                               fcloud,
-                               clouds,
-                               scat_corr,
-                               mu_star_wiggle_increment,
-                               G_pm_limiter,
-                               G_pm_denom_limit,
-                               *hit_G_pm_denom_limit,
-                               debug,
-                               i2s_transition);
+        dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
+        dim3 block(16, 4, 4);
+        trans_iso<<<grid, block>>>(trans_wg,
+                                   *delta_tau_wg,
+                                   *M_term,
+                                   *N_term,
+                                   *P_term,
+                                   *G_plus,
+                                   *G_minus,
+                                   delta_colmass,
+                                   opac_wg_lay,
+                                   cloud_abs_cross_lay_,
+                                   meanmolmass_lay,
+                                   *scatter_cross_section_lay,
+                                   cloud_scat_cross_lay,
+                                   *w0_wg,
+                                   *g0_wg,
+                                   g_0_cloud_lay_,
+                                   g_0,
+                                   epsi,
+                                   epsilon2_,
+                                   zenith_angle_cols,
+                                   *mu_star_cols,
+                                   w_0_limit,
+                                   scat,
+                                   nbin,
+                                   ny,
+                                   nlayer,
+                                   num_cols,
+                                   fcloud,
+                                   clouds,
+                                   scat_corr,
+                                   mu_star_wiggle_increment,
+                                   G_pm_limiter,
+                                   G_pm_denom_limit,
+                                   *hit_G_pm_denom_limit,
+                                   *mu_star_iteration_requested,
+                                   iteration_counter,
+                                   debug,
+                                   i2s_transition);
 
-    cudaDeviceSynchronize();
-    cudaMemcpy(
-        &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+        cudaDeviceSynchronize();
+        cudaMemcpy(
+            &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
-    if (hit_G_pm_denom_limit_h) {
-        printf("Hit G_pm denom limit, wiggled mu_star\n");
-    }
+        iteration_counter += 1;
+
+        if (hit_G_pm_denom_limit_h) {
+            if (iteration_counter == iteration_max) {
+                printf("Hit maximum iteration of mu_star wiggle, bailing out\n");
+                break;
+            }
+            printf("Hit G_pm denom limit, wiggling mu_star, loop counter %d\n", iteration_counter);
+        }
+    } while (hit_G_pm_denom_limit_h);
 }
 
 void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
@@ -1275,78 +1294,95 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                                      bool    clouds,
                                                      int     num_cols) {
 
-    bool hit_G_pm_denom_limit_h = false;
 
-    // set wiggle checker to 0;
-    cudaMemcpy(
-        *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
+    bool hit_G_pm_denom_limit_h = false;
+    // set columns wiggle iteration to 0.
+    mu_star_iteration_requested.zero();
+
 
     int nbin = opacities.nbin;
 
-    int ny = opacities.ny;
+    int          ny                = opacities.ny;
+    unsigned int iteration_counter = 0;
+    const int    iteration_max     = 10;
 
-    dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
-    dim3 block(16, 4, 4);
+    do {
+        bool hit_G_pm_denom_limit_h = false;
+        // set global wiggle checker to 0;
+        cudaMemcpy(
+            *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
-    trans_noniso<<<grid, block>>>(trans_wg_upper,
-                                  trans_wg_lower,
-                                  *delta_tau_wg_upper,
-                                  *delta_tau_wg_lower,
-                                  *M_upper,
-                                  *M_lower,
-                                  *N_upper,
-                                  *N_lower,
-                                  *P_upper,
-                                  *P_lower,
-                                  *G_plus_upper,
-                                  *G_plus_lower,
-                                  *G_minus_upper,
-                                  *G_minus_lower,
-                                  delta_col_upper,
-                                  delta_col_lower,
-                                  opac_wg_lay,
-                                  opac_wg_int,
-                                  cloud_abs_cross_lay_,
-                                  cloud_abs_cross_int_,
-                                  meanmolmass_lay,
-                                  meanmolmass_int,
-                                  *scatter_cross_section_lay,
-                                  *scatter_cross_section_inter,
-                                  cloud_scat_cross_lay,
-                                  cloud_scat_cross_int,
-                                  *w0_wg_upper,
-                                  *w0_wg_lower,
-                                  *g0_wg_upper,
-                                  *g0_wg_lower,
-                                  g_0_cloud_lay_,
-                                  g_0_cloud_int_,
-                                  g_0,
-                                  epsi,
-                                  epsilon2_,
-                                  zenith_angle_cols,
-                                  *mu_star_cols,
-                                  w_0_limit,
-                                  scat,
-                                  nbin,
-                                  ny,
-                                  nlayer,
-                                  num_cols,
-                                  fcloud,
-                                  clouds,
-                                  scat_corr,
-                                  mu_star_wiggle_increment,
-                                  G_pm_limiter,
-                                  G_pm_denom_limit,
-                                  *hit_G_pm_denom_limit,
-                                  debug,
-                                  i2s_transition);
-    cudaDeviceSynchronize();
-    cudaMemcpy(
-        &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+        dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
+        dim3 block(16, 4, 4);
 
-    if (hit_G_pm_denom_limit_h) {
-        printf("Hit G_pm denom limit, wiggled mu_star\n");
-    }
+        trans_noniso<<<grid, block>>>(trans_wg_upper,
+                                      trans_wg_lower,
+                                      *delta_tau_wg_upper,
+                                      *delta_tau_wg_lower,
+                                      *M_upper,
+                                      *M_lower,
+                                      *N_upper,
+                                      *N_lower,
+                                      *P_upper,
+                                      *P_lower,
+                                      *G_plus_upper,
+                                      *G_plus_lower,
+                                      *G_minus_upper,
+                                      *G_minus_lower,
+                                      delta_col_upper,
+                                      delta_col_lower,
+                                      opac_wg_lay,
+                                      opac_wg_int,
+                                      cloud_abs_cross_lay_,
+                                      cloud_abs_cross_int_,
+                                      meanmolmass_lay,
+                                      meanmolmass_int,
+                                      *scatter_cross_section_lay,
+                                      *scatter_cross_section_inter,
+                                      cloud_scat_cross_lay,
+                                      cloud_scat_cross_int,
+                                      *w0_wg_upper,
+                                      *w0_wg_lower,
+                                      *g0_wg_upper,
+                                      *g0_wg_lower,
+                                      g_0_cloud_lay_,
+                                      g_0_cloud_int_,
+                                      g_0,
+                                      epsi,
+                                      epsilon2_,
+                                      zenith_angle_cols,
+                                      *mu_star_cols,
+                                      w_0_limit,
+                                      scat,
+                                      nbin,
+                                      ny,
+                                      nlayer,
+                                      num_cols,
+                                      fcloud,
+                                      clouds,
+                                      scat_corr,
+                                      mu_star_wiggle_increment,
+                                      G_pm_limiter,
+                                      G_pm_denom_limit,
+                                      *hit_G_pm_denom_limit,
+                                      *mu_star_iteration_requested,
+                                      iteration_counter,
+                                      debug,
+                                      i2s_transition);
+        cudaDeviceSynchronize();
+        cudaMemcpy(
+            &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
+
+        iteration_counter += 1;
+
+        if (hit_G_pm_denom_limit_h) {
+            if (iteration_counter == iteration_max) {
+                printf("Hit maximum iteration of mu_star wiggle, bailing out\n");
+                break;
+            }
+            printf("Hit G_pm denom limit, wiggling mu_star, loop counter %d\n", iteration_counter);
+        }
+    } while (hit_G_pm_denom_limit_h);
 }
 
 bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,

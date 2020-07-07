@@ -152,6 +152,8 @@ public:
     // device memory
     // mu_star: computed from zenith_angle and modified by wiggle
     cuda_device_memory<double> mu_star_cols;
+    // iteration counter for mu_star check
+    cuda_device_memory<unsigned int> mu_star_iteration_requested;
     //  scattering
     cuda_device_memory<double> scatter_cross_section_lay;
     cuda_device_memory<double> scatter_cross_section_inter;

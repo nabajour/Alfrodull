@@ -774,6 +774,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
                 int current_num_cols = min(num_cols, esp.point_num - column_idx);
                 alf.debug_col_idx    = column_idx;
+
 #ifdef COLUMN_LOOP_PROGRESS_BAR
                 print_progress((column_idx + 1.0) / double(esp.point_num));
 #endif // COLUMN_LOOP_PROGRESS_BAR
