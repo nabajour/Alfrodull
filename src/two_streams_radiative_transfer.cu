@@ -159,6 +159,8 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Spin up stop step:                       %d\n", spinup_stop_step);
     log::printf("    Spin down start step:                    %d\n", spindown_start_step);
     log::printf("    Spin down stop step:                     %d\n", spindown_stop_step);
+    log::printf("    Debug output:                            %s\n",
+                debug_output ? "true" : "false");
 }
 
 bool two_streams_radiative_transfer::configure(config_file& config_reader) {
@@ -217,6 +219,8 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
 
     config_reader.append_config_var("Alf_store_w0_g0", store_w0_g0, store_w0_g0);
 
+    config_reader.append_config_var("Alf_debug", debug_output, debug_output);
+
     return true;
 }
 
@@ -273,7 +277,7 @@ bool two_streams_radiative_transfer::initialise_memory(
                        mu_star_limit,
                        wiggle_iteration_max,
                        num_parallel_columns,
-                       false); // const bool&   debug_
+                       debug_output); // const bool&   debug_
 
     // initialise opacities table -> gives frequency bins
     // set opacity offset for test
@@ -905,7 +909,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         T_internal,
                         gravit,
                         num_layers,
-                        num_cols);
+                        current_num_cols);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
@@ -969,13 +973,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 // TODO: should this go inside alf?
                 // printf("initialise_delta_colmass\n");
                 if (iso) {
-                    dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, num_cols);
+                    dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
                     dim3 block(num_blocks, 1, 1);
                     initialise_delta_colmass_iso<<<grid, block>>>(
-                        *alf.delta_col_mass, *pressure_int, gravit, num_layers, num_cols);
+                        *alf.delta_col_mass, *pressure_int, gravit, num_layers, current_num_cols);
                 }
                 else {
-                    dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, num_cols);
+                    dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
                     dim3 block(num_blocks, 1, 1);
                     initialise_delta_colmass_noniso<<<grid, block>>>(*alf.delta_col_upper,
                                                                      *alf.delta_col_lower,
@@ -983,7 +987,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                                                      *pressure_int,
                                                                      gravit,
                                                                      num_layers,
-                                                                     num_cols);
+                                                                     current_num_cols);
                 }
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);

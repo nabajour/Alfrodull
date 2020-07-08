@@ -359,7 +359,7 @@ Alf_store_w0_g0 = false
 # Alf_G_pm_max_limiter =
 Alf_G_pm_limit = 300
 # wiggle increment in degrees to add to zenith angle if G_+/- explodes
-Alf_G_pm_mu_star_increment = 0.5
+Alf_G_pm_mu_star_increment = 1.0
 Alf_mu_star_iteration_max = 10
 
 # limit in degree of direct beam, if angle of incoming beam is smaller than that
@@ -374,7 +374,8 @@ Alf_compute_every_nstep = 1
 # Total number of points on grid is 4^(glevel - 4)*16^2*10 + 2. 
 Alf_num_parallel_columns = 1284
 
-
+# debug output
+Alf_debug = false
 
 #########################################################
 # spin up and spin down start and stop. Set to negative value to ignore and run at full power

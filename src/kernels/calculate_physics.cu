@@ -318,9 +318,11 @@ __global__ void trans_iso(double*       trans_wg,             // out
                         "(c: %d, l: %d, b: %d, w: %d) g_p, g_m (%g, %g)\n",
                         mu_star_orig,
                         zenith_angle_loc / M_PI * 180.0,
-                        (mu_star_wiggle_factor + 1.0) * mu_star_wiggle_increment,
+                        (mu_star_wiggle_factor + 1.0)
+                            * mu_star_wiggle_increment, // + 1.0 because it gets applied at next iteration
                         mu_star_used,
-                        zenith_angle_loc + (mu_star_wiggle_factor + 1.0) * mu_star_wiggle_increment,
+                        zenith_angle_loc / M_PI * 180.0
+                            + (mu_star_wiggle_factor + 1.0) * mu_star_wiggle_increment,
                         c,
                         i,
                         x,
@@ -623,9 +625,11 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                         "%g)\n",
                         mu_star_orig,
                         zenith_angle_loc / M_PI * 180.0,
-                        (mu_star_wiggle_factor + 1.0) * mu_star_wiggle_increment,
+                        (mu_star_wiggle_factor + 1.0)
+                            * mu_star_wiggle_increment, // + 1.0 because it gets applied at next iteration
                         mu_star_used,
-                        zenith_angle_loc + (mu_star_wiggle_factor + 1.0) * mu_star_wiggle_increment,
+                        zenith_angle_loc / M_PI * 180.0
+                            + (mu_star_wiggle_factor + 1.0) * mu_star_wiggle_increment,
                         c,
                         i,
                         x,

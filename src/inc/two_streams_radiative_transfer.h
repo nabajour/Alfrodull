@@ -163,6 +163,7 @@ public:
 
     string cloud_filename;
 
+    bool debug_output = false;
 
 private:
     int spinup_start_step = -1;
