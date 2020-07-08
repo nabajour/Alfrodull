@@ -545,11 +545,11 @@ __global__ void initialise_delta_colmass_noniso(double* delta_col_mass_upper_col
                                                 int     num_layers,
                                                 int     num_columns) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
+    //    int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
     // index of column in column batch.
     int col_block_idx = blockIdx.z;
 
-    if (layer_idx < num_layers && col_idx < num_columns) {
+    if (layer_idx < num_layers) {
         // get offset into start of column data
         double* delta_col_mass_upper = &(delta_col_mass_upper_cols[col_block_idx * num_layers]);
         double* delta_col_mass_lower = &(delta_col_mass_lower_cols[col_block_idx * num_layers]);
@@ -560,6 +560,13 @@ __global__ void initialise_delta_colmass_noniso(double* delta_col_mass_upper_col
             (pressure_lay[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
         delta_col_mass_lower[layer_idx] =
             (pressure_int[layer_idx] - pressure_lay[layer_idx]) / gravit;
+
+        if ((delta_col_mass_upper[layer_idx] < 0.0) || (delta_col_mass_lower[layer_idx] < 0.0))
+            printf("Negative delta_col_mass (%g, %g), layer: %d, col: %d\n",
+                   delta_col_mass_upper[layer_idx],
+                   delta_col_mass_lower[layer_idx],
+                   layer_idx,
+                   col_block_idx);
     }
 }
 
@@ -571,12 +578,12 @@ __global__ void initialise_delta_colmass_iso(double* delta_col_mass_cols,
                                              int     num_layers,
                                              int     num_columns) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
+    //int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
     // index of column in column batch.
     int col_block_idx = blockIdx.z;
     int col_size      = num_layers;
 
-    if (layer_idx < num_layers && col_idx < num_columns) {
+    if (layer_idx < num_layers) {
         // get offset into start of column data
         double* delta_col_mass = &(delta_col_mass_cols[col_block_idx * col_size]);
         double* pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
@@ -586,7 +593,7 @@ __global__ void initialise_delta_colmass_iso(double* delta_col_mass_cols,
             printf("Negative delta_col_mass (%g), layer: %d, col: %d\n",
                    delta_col_mass[layer_idx],
                    layer_idx,
-                   col_idx);
+                   col_block_idx);
     }
 }
 

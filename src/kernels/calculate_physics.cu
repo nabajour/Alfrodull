@@ -442,7 +442,7 @@ __global__ void trans_noniso(double*       trans_wg_upper,
 
     if (x < nbin && y < ny && i < nlayer && c < num_cols) {
         // compute at least once
-        if (columns_wiggle[c] != 1) {
+        if (columns_wiggle[c] != 0) {
             int ninterface = nlayer + 1;
 
             double ray_cross_up;
@@ -608,7 +608,6 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                 G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_u;
                 G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_l;
             }
-
             // Check G_pm criteria
             if ((fabs(g_p_u) > G_pm_denom_limit_for_mu_star_wiggler)
                 || (fabs(g_p_l) > G_pm_denom_limit_for_mu_star_wiggler)
@@ -640,6 +639,66 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                         g_m_l);
                 }
             }
+
+            // printf("%d: w0: %g, g0: %g dtau: %g gsc: %g csc: %g gabs: %g, cabs: %g cg0: %g "
+            //        "mmm: %g "
+            //        "dcm: "
+            //        "%g mu*: %g, E: %g\n",
+            //        x,
+            //        w0,
+            //        g0,
+            //        del_tau,
+            //        ray_cross,
+            //        cloud_scat_cross,
+            //        opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+            //        cloud_abs_cross_lay[x],
+            //        g0_cloud,
+            //        meanmolmass_lay[i + c * nlayer],
+            //        delta_colmass[i + c * nlayer],
+            //        mu_star_used,
+            //        E);
+            if (!isfinite(g_p_u) || !isfinite(g_m_u) || !isfinite(g_p_l) || !isfinite(g_m_l)
+                || !isfinite(M_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+                || !isfinite(M_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+                || !isfinite(N_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+                || !isfinite(N_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+                || !isfinite(P_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+                || !isfinite(P_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
+
+            )
+                printf("(c: %d, l: %d, b: %d, w: %d) g_pm_u (%g, %g) g_pm_l (%g, "
+                       "%g) E: (%g, %g), w0: (%g, %g), g0: (%g, %g) mu*: %g "
+                       "M: (%g, %g)"
+                       "N: (%g, %g)"
+                       "P: (%g, %g)"
+                       "tr: (%g, %g)"
+                       "dt: (%g, %g)"
+                       "\n",
+                       c,
+                       i,
+                       x,
+                       y,
+                       g_p_u,
+                       g_m_u,
+                       g_p_l,
+                       g_m_l,
+                       E_up,
+                       E_low,
+                       w_0_up,
+                       w_0_low,
+                       g0_up,
+                       g0_low,
+                       mu_star_used,
+                       M_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       M_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       N_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       N_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       P_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       P_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       trans_wg_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       trans_wg_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin],
+                       del_tau_up,
+                       del_tau_low);
 
             mu_star_cols[c] = mu_star_used;
         }

@@ -1329,7 +1329,7 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
     int iteration_counter = 0;
 
     do {
-        bool hit_G_pm_denom_limit_h = false;
+        hit_G_pm_denom_limit_h = false;
         // set global wiggle checker to 0;
         cudaMemcpy(
             *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);

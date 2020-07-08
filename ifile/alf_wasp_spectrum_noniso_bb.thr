@@ -359,8 +359,8 @@ Alf_store_w0_g0 = false
 # Alf_G_pm_max_limiter =
 Alf_G_pm_limit = 300
 # wiggle increment in degrees to add to zenith angle if G_+/- explodes
-Alf_G_pm_mu_star_increment = 1.0
-Alf_mu_star_iteration_max = 10
+Alf_G_pm_mu_star_increment = 0.25
+Alf_mu_star_iteration_max = 20
 
 # limit in degree of direct beam, if angle of incoming beam is smaller than that
 # to horizontal, set direct beam to 0.0.
