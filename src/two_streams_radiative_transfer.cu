@@ -1129,6 +1129,7 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
     s.append_value(iso ? 1.0 : 0.0, "/alf_isothermal", "-", "Isothermal layers");
     s.append_value(
         real_star ? 1.0 : 0.0, "/alf_real_star", "-", "Alfrodull use real star spectrum or Planck");
+
     s.append_value(
         fake_opac ? 1.0 : 0.0, "/alf_fake_opac", "-", "Alfrodull use artificial opacity");
     s.append_value(scat ? 1.0 : 0.0, "/alf_scat", "-", "Scattering");
@@ -1199,6 +1200,16 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
         s.append_table(g0_tot_h.get(), g0_tot.get_size(), "/g0_band", " ", "asymmetry per band");
     }
 
+    {
+        int                       nbin             = alf.opacities.nbin;
+        int                       numinterfaces    = esp.nvi;
+        std::shared_ptr<double[]> planckband_lay_h = alf.planckband_lay.get_host_data();
+        std::shared_ptr<double[]> spectrum         = std::shared_ptr<double[]>(new double[nbin]);
+        for (int i = 0; i < nbin; i++)
+            spectrum[i] = planckband_lay_h[(numinterfaces - 1) + i * (numinterfaces - 1 + 2)];
+
+        s.append_table(spectrum.get(), nbin, "/alf_spectrum", "-", "Alfrodull stellar spectrum");
+    }
 
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();
     s.append_table(F_up_TOA_spectrum_h.get(),
