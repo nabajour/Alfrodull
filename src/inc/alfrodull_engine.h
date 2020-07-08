@@ -39,6 +39,7 @@ public:
                         const double& w_0_limit,
                         const double& i2s_transition,
                         const double& mu_star_limit,
+                        const int&    wiggle_iteration_max_,
                         const int&    num_parallel_columns,
                         const bool&   debug);
 
@@ -72,8 +73,9 @@ public:
 
     bool G_pm_limiter = true;
 
-    double G_pm_denom_limit         = 1e-5;
-    double mu_star_wiggle_increment = 0.001;
+    double G_pm_denom_limit         = 300.0;
+    double mu_star_wiggle_increment = 0.5;
+    int    wiggle_iteration_max     = 10;
 
     int max_num_parallel_columns = 1;
 
@@ -152,8 +154,10 @@ public:
     // device memory
     // mu_star: computed from zenith_angle and modified by wiggle
     cuda_device_memory<double> mu_star_cols;
-    // iteration counter for mu_star check
-    cuda_device_memory<unsigned int> mu_star_iteration_requested;
+    // iteration checcker for mu_star check
+    // used as ping pong buffer
+    cuda_device_memory<unsigned int> mu_star_iteration_buffer1;
+    cuda_device_memory<unsigned int> mu_star_iteration_buffer2;
     //  scattering
     cuda_device_memory<double> scatter_cross_section_lay;
     cuda_device_memory<double> scatter_cross_section_inter;

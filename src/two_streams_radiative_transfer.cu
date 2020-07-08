@@ -105,54 +105,60 @@ two_streams_radiative_transfer::~two_streams_radiative_transfer() {
 }
 
 void two_streams_radiative_transfer::print_config() {
-    log::printf("    Stellar Template Temperature: %g\n", T_star);
-    log::printf("    Internal Temperature: %g\n", T_internal);
-    log::printf("    Stellar Radius: %g [R_SUN]\n", R_star_config);
-    log::printf("    Planet-Star Distance [au]\n", planet_star_dist_config);
+    log::printf("    Stellar Template Temperature:            %g\n", T_star);
+    log::printf("    Internal Temperature:                    %g\n", T_internal);
+    log::printf("    Stellar Radius:                          %g [R_SUN]\n", R_star_config);
+    log::printf("    Planet-Star Distance:                    %g [au]\n", planet_star_dist_config);
 
-    log::printf("    Real Stellar Spectrum: %s\n", real_star ? "true" : "false");
-    log::printf("    Stellar Spectrum File: %s\n", stellar_spectrum_file.c_str());
+    log::printf("    Real Stellar Spectrum:                   %s\n", real_star ? "true" : "false");
+    log::printf("    Stellar Spectrum File:                   %s\n", stellar_spectrum_file.c_str());
 
-    log::printf("    Isotermal Single Layers: %s\n", iso ? "true" : "false");
+    log::printf("    Isotermal Single Layers:                 %s\n", iso ? "true" : "false");
 
-    log::printf("    Thomas Solver: %s\n", thomas ? "true" : "false");
-    log::printf("    Iterative Solver use high def: %s\n", scat_single_walk ? "true" : "false");
-    log::printf("    Experimental Constant Opacity Offsets: %g\n", experimental_opacities_offset);
+    log::printf("    Thomas Solver:                           %s\n", thomas ? "true" : "false");
+    log::printf("    Iterative Solver use high def:           %s\n",
+                scat_single_walk ? "true" : "false");
+    log::printf("    Experimental Constant Opacity Offsets:   %g\n", experimental_opacities_offset);
 
-    log::printf("    Constant g0 (without clouds): %g\n", g_0);
-    log::printf("    epsilon_2: %g\n", epsilon_2);
-    log::printf("    Opacity Cutoff: %g\n", fake_opac);
+    log::printf("    Constant g0 (without clouds):            %g\n", g_0);
+    log::printf("    epsilon_2:                               %g\n", epsilon_2);
+    log::printf("    Opacity Cutoff:                          %g\n", fake_opac);
 
-    log::printf("    Opacities File: %s\n", opacities_file.c_str());
-    log::printf("    Opacities File is CGS: %s\n", opacity_file_is_CGS ? "true" : "false");
+    log::printf("    Opacities File:                          %s\n", opacities_file.c_str());
+    log::printf("    Opacities File is CGS:                   %s\n",
+                opacity_file_is_CGS ? "true" : "false");
 
-    log::printf("    Scattering: %s\n", scat ? "true" : "false");
-    log::printf("    Apply Scattring Correction (or E=1): %s\n", scat_corr ? "true" : "false");
+    log::printf("    Scattering:                              %s\n", scat ? "true" : "false");
+    log::printf("    Apply Scattering Correction (else E=1):  %s\n", scat_corr ? "true" : "false");
 
-    log::printf("    Clouds: %s\n", clouds ? "true" : "false");
-    log::printf("    fcloud: %g\n", fcloud);
-    log::printf("    Cloud Properties File: %s\n", cloud_filename.c_str());
-    log::printf("    Store w0 g0 (per band): %s\n", store_w0_g0 ? "true" : "false");
+    log::printf("    Clouds:                                  %s\n", clouds ? "true" : "false");
+    log::printf("    fcloud:                                  %g\n", fcloud);
+    log::printf("    Cloud Properties File:                   %s\n", cloud_filename.c_str());
+    log::printf("    Store w0 g0 (per band):                  %s\n",
+                store_w0_g0 ? "true" : "false");
 
-    log::printf("    Direct Beam: %s\n", dir_beam ? "true" : "false");
-    log::printf("    Geometrical Zenith Correction: %s\n", geom_zenith_corr ? "true" : "false");
-    log::printf("    Direct Beam Tangent Angle Limit: %g°\n", mu_star_limit_degrees);
+    log::printf("    Direct Beam:                             %s\n", dir_beam ? "true" : "false");
+    log::printf("    Geometrical Zenith Correction:           %s\n",
+                geom_zenith_corr ? "true" : "false");
+    log::printf("    Direct Beam Tangent Angle Limit:         %g°\n", mu_star_limit_degrees);
 
-    log::printf("    w0 limit: %g\n", w_0_limit);
-    log::printf("    i2s transition: %g\n", i2s_transition);
+    log::printf("    w0 limit:                                %g\n", w_0_limit);
+    log::printf("    i2s transition:                          %g\n", i2s_transition);
 
-    log::printf("    Compute Every N step: %d\n", compute_every_n_iteration);
-    log::printf("    Number of Parallel Columns to run at a time: %d\n", num_parallel_columns);
+    log::printf("    Compute Every N step:                    %d\n", compute_every_n_iteration);
+    log::printf("    Number of Parallel Columns:              %d\n", num_parallel_columns);
 
-    log::printf("    Apply G_pm limiter: %s\n", G_pm_limiter ? "true" : "false");
-    log::printf("    G_pm limit: %g\n", G_pm_denom_limit);
-    log::printf("    G_pm angle increment: %g\n", mu_star_wiggle_increment);
+    log::printf("    Apply G_pm limiter:                      %s\n",
+                G_pm_limiter ? "true" : "false");
+    log::printf("    G_pm limit:                              %g\n", G_pm_denom_limit);
+    log::printf("    G_pm angle increment:                    %g\n", mu_star_wiggle_increment);
+    log::printf("    mu_star wiggle max iterations:           %d\n", wiggle_iteration_max);
 
     // spinup-spindown parameters
-    log::printf("    Spin up start step          = %d.\n", spinup_start_step);
-    log::printf("    Spin up stop step           = %d.\n", spinup_stop_step);
-    log::printf("    Spin down start step        = %d.\n", spindown_start_step);
-    log::printf("    Spin down stop step         = %d.\n", spindown_stop_step);
+    log::printf("    Spin up start step:                      %d\n", spinup_start_step);
+    log::printf("    Spin up stop step:                       %d\n", spinup_stop_step);
+    log::printf("    Spin down start step:                    %d\n", spindown_start_step);
+    log::printf("    Spin down stop step:                     %d\n", spindown_stop_step);
 }
 
 bool two_streams_radiative_transfer::configure(config_file& config_reader) {
@@ -179,6 +185,8 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_G_pm_limit", G_pm_denom_limit, G_pm_denom_limit);
     config_reader.append_config_var(
         "Alf_G_pm_mu_star_increment", mu_star_wiggle_increment, mu_star_wiggle_increment);
+    config_reader.append_config_var(
+        "Alf_mu_star_iteration_max", wiggle_iteration_max, wiggle_iteration_max);
     config_reader.append_config_var(
         "Alf_direct_beam_angle_limit", mu_star_limit_degrees, mu_star_limit_degrees);
     config_reader.append_config_var("Alf_scat", scat, scat);
@@ -263,6 +271,7 @@ bool two_streams_radiative_transfer::initialise_memory(
                        w_0_limit,           // const double& w_0_limit_,
                        i2s_transition,      // const double& i2s_transition_,
                        mu_star_limit,
+                       wiggle_iteration_max,
                        num_parallel_columns,
                        false); // const bool&   debug_
 
@@ -569,11 +578,11 @@ __global__ void initialise_delta_colmass_iso(double* delta_col_mass_cols,
         double* pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
         delta_col_mass[layer_idx] =
             (pressure_int[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
-        // if (delta_col_mass[layer_idx] < 0.0)
-        //     printf("Negative delta_col_mass (%g), layer: %d, col: %d\n",
-        //            delta_col_mass[layer_idx],
-        //            layer_idx,
-        //            col_idx);
+        if (delta_col_mass[layer_idx] < 0.0)
+            printf("Negative delta_col_mass (%g), layer: %d, col: %d\n",
+                   delta_col_mass[layer_idx],
+                   layer_idx,
+                   col_idx);
     }
 }
 

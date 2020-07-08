@@ -78,6 +78,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const double& w_0_limit_,
                                       const double& i2s_transition_,
                                       const double& mu_star_limit_,
+                                      const int&    wiggle_iteration_max_,
                                       const int&    max_num_parallel_columns_,
                                       const bool&   debug_) {
     nlayer     = nlayer_;
@@ -100,10 +101,10 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     f_factor         = f_factor_;
     w_0_limit        = w_0_limit_;
 
-    i2s_transition = i2s_transition;
-    debug          = debug_;
-    mu_star_limit  = mu_star_limit_;
-
+    i2s_transition           = i2s_transition;
+    debug                    = debug_;
+    mu_star_limit            = mu_star_limit_;
+    wiggle_iteration_max     = wiggle_iteration_max_;
     max_num_parallel_columns = max_num_parallel_columns_;
     // TODO: maybe should stay in opacities object
     //    nbin = opacities.nbin;
@@ -195,7 +196,8 @@ void alfrodull_engine::allocate_internal_variables() {
 
     //  dev_T_int.allocate(ninterface);
 
-    mu_star_iteration_requested.allocate(num_cols);
+    mu_star_iteration_buffer1.allocate(num_cols);
+    mu_star_iteration_buffer2.allocate(num_cols);
     // column mass
     // TODO: computed by grid in helios, should be computed by alfrodull or comes from THOR?
 
@@ -1198,15 +1200,21 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                                   int     num_cols) {
 
     bool hit_G_pm_denom_limit_h = false;
-    // set columns wiggle iteration to 0.
-    mu_star_iteration_requested.zero();
+    // set columns wiggle iteration pingpong buffers.
+    // get pointers
+    // array that tells kernel to run iteration
+    unsigned int* mu_star_iterate = *mu_star_iteration_buffer1;
+    // array used by kernel to ask for one more iteration
+    unsigned int* mu_star_iteration_request = *mu_star_iteration_buffer2;
+
+    cudaMemset(mu_star_iterate, 1, num_cols * sizeof(unsigned int));
 
 
     int nbin = opacities.nbin;
 
     int          ny                = opacities.ny;
     unsigned int iteration_counter = 0;
-    const int    iteration_max     = 10;
+
 
     do {
         hit_G_pm_denom_limit_h = false;
@@ -1215,6 +1223,8 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
         cudaMemcpy(
             *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
+        // zero out iteration request array.
+        cudaMemset(mu_star_iteration_request, 0, num_cols * sizeof(unsigned int));
 
         dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
         dim3 block(16, 4, 4);
@@ -1252,7 +1262,8 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                    G_pm_limiter,
                                    G_pm_denom_limit,
                                    *hit_G_pm_denom_limit,
-                                   *mu_star_iteration_requested,
+                                   mu_star_iterate,
+                                   mu_star_iteration_request,
                                    iteration_counter,
                                    debug,
                                    i2s_transition);
@@ -1261,10 +1272,16 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
         cudaMemcpy(
             &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
+        // swap iteration buffer pointers
+        {
+            unsigned int* tmp         = mu_star_iterate;
+            mu_star_iterate           = mu_star_iteration_request;
+            mu_star_iteration_request = tmp;
+        }
         iteration_counter += 1;
 
         if (hit_G_pm_denom_limit_h) {
-            if (iteration_counter == iteration_max) {
+            if (iteration_counter == wiggle_iteration_max) {
                 printf("Hit maximum iteration of mu_star wiggle, bailing out\n");
                 break;
             }
@@ -1297,21 +1314,29 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
 
 
     bool hit_G_pm_denom_limit_h = false;
-    // set columns wiggle iteration to 0.
-    mu_star_iteration_requested.zero();
+    // set columns wiggle iteration pingpong buffers.
+    // get pointers
+    // array that tells kernel to run iteration
+    unsigned int* mu_star_iterate = *mu_star_iteration_buffer1;
+    // array used by kernel to ask for one more iteration
+    unsigned int* mu_star_iteration_request = *mu_star_iteration_buffer2;
 
+    cudaMemset(mu_star_iterate, 1, num_cols * sizeof(unsigned int));
 
     int nbin = opacities.nbin;
 
     int          ny                = opacities.ny;
     unsigned int iteration_counter = 0;
-    const int    iteration_max     = 10;
 
     do {
         bool hit_G_pm_denom_limit_h = false;
         // set global wiggle checker to 0;
         cudaMemcpy(
             *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
+
+        // zero out iteration request array.
+        cudaMemset(mu_star_iteration_request, 0, num_cols * sizeof(unsigned int));
+
 
         dim3 grid((nbin + 15) / 16, (num_cols * ny + 3) / 4, (nlayer + 3) / 4);
         dim3 block(16, 4, 4);
@@ -1366,7 +1391,8 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       G_pm_limiter,
                                       G_pm_denom_limit,
                                       *hit_G_pm_denom_limit,
-                                      *mu_star_iteration_requested,
+                                      mu_star_iterate,
+                                      mu_star_iteration_request,
                                       iteration_counter,
                                       debug,
                                       i2s_transition);
@@ -1374,10 +1400,17 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
         cudaMemcpy(
             &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
 
+        // swap iteration buffer pointers
+        {
+            unsigned int* tmp         = mu_star_iterate;
+            mu_star_iterate           = mu_star_iteration_request;
+            mu_star_iteration_request = tmp;
+        }
         iteration_counter += 1;
 
+
         if (hit_G_pm_denom_limit_h) {
-            if (iteration_counter == iteration_max) {
+            if (iteration_counter == wiggle_iteration_max) {
                 printf("Hit maximum iteration of mu_star wiggle, bailing out\n");
                 break;
             }

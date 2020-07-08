@@ -157,6 +157,7 @@ __global__ void trans_iso(double*       trans_wg,             // out
                           bool          G_pm_limiter,
                           double        G_pm_denom_limit_for_mu_star_wiggler,
                           bool*         hit_G_pm_limit_global,
+                          unsigned int* columns_wiggle,
                           unsigned int* columns_wiggle_request,
                           unsigned int  wiggle_request_iterator,
                           bool          debug,
@@ -177,8 +178,8 @@ __global__ void trans_iso(double*       trans_wg,             // out
 
 
     if (x < nbin && y < ny && i < nlayer && c < num_cols) {
-        // compute at least once
-        if (wiggle_request_iterator == 0 || wiggle_request_iterator == columns_wiggle_request[c]) {
+
+        if (columns_wiggle[c] != 0) {
             double ray_cross;
             double cloud_scat_cross;
             double g0       = g_0_gas;
@@ -309,7 +310,7 @@ __global__ void trans_iso(double*       trans_wg,             // out
                 // mark global iterator
                 hit_G_pm_limit_global[0] = true;
                 // we request that this column is recomputed at next iteration
-                columns_wiggle_request[c] = wiggle_request_iterator + 1;
+                columns_wiggle_request[c] = 1;
                 if (debug) {
                     printf(
                         "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "
@@ -419,6 +420,7 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                              bool          G_pm_limiter,
                              double        G_pm_denom_limit_for_mu_star_wiggler,
                              bool*         hit_G_pm_limit_global,
+                             unsigned int* columns_wiggle,
                              unsigned int* columns_wiggle_request,
                              unsigned int  wiggle_request_iterator,
                              bool          debug,
@@ -438,7 +440,7 @@ __global__ void trans_noniso(double*       trans_wg_upper,
 
     if (x < nbin && y < ny && i < nlayer && c < num_cols) {
         // compute at least once
-        if (wiggle_request_iterator == 0 || wiggle_request_iterator == columns_wiggle_request[c]) {
+        if (columns_wiggle[c] != 1) {
             int ninterface = nlayer + 1;
 
             double ray_cross_up;
@@ -612,7 +614,7 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                 || (fabs(g_m_l) > G_pm_denom_limit_for_mu_star_wiggler)) {
                 hit_G_pm_limit_global[0] = true;
                 // we request that this column is recomputed at next iteration
-                columns_wiggle_request[c] = wiggle_request_iterator + 1;
+                columns_wiggle_request[c] = 1;
                 if (debug) {
                     printf(
                         "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "

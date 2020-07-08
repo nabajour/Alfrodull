@@ -145,8 +145,8 @@ public:
     bool   G_pm_limiter             = true;
     double G_pm_denom_limit         = 100.0;
     double mu_star_wiggle_increment = 0.001;
-
-    int num_parallel_columns = 1;
+    int    wiggle_iteration_max     = 10;
+    int    num_parallel_columns     = 1;
     // TODO: check this. if we are starting up and not at iteration 0,
     // we need either to reload the Qheat or something to compute it (net flux) or recompute it.
     // or we'll have discrepancies between loading initial conditions and running cases
