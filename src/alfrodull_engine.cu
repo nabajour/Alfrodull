@@ -1212,8 +1212,8 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
 
     int nbin = opacities.nbin;
 
-    int          ny                = opacities.ny;
-    unsigned int iteration_counter = 0;
+    int ny                = opacities.ny;
+    int iteration_counter = 0;
 
 
     do {
@@ -1325,8 +1325,8 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
 
     int nbin = opacities.nbin;
 
-    int          ny                = opacities.ny;
-    unsigned int iteration_counter = 0;
+    int ny                = opacities.ny;
+    int iteration_counter = 0;
 
     do {
         bool hit_G_pm_denom_limit_h = false;
