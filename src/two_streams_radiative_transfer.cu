@@ -150,6 +150,7 @@ void two_streams_radiative_transfer::print_config() {
 
     log::printf("    Apply G_pm limiter:                      %s\n",
                 G_pm_limiter ? "true" : "false");
+    log::printf("    G_pm limit on full G_pm:                 %g\n", G_pm_limit_on_full_G_pm);
     log::printf("    G_pm limit:                              %g\n", G_pm_denom_limit);
     log::printf("    G_pm angle increment:                    %g\n", mu_star_wiggle_increment);
     log::printf("    mu_star wiggle max iterations:           %d\n", wiggle_iteration_max);
@@ -185,6 +186,8 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     config_reader.append_config_var("Alf_diffusivity", diffusivity, diffusivity);
     config_reader.append_config_var("Alf_G_pm_max_limiter", G_pm_limiter, G_pm_limiter);
     config_reader.append_config_var("Alf_G_pm_limit", G_pm_denom_limit, G_pm_denom_limit);
+    config_reader.append_config_var(
+        "Alf_G_pm_limit_on_G_pm", G_pm_limit_on_full_G_pm, G_pm_limit_on_full_G_pm);
     config_reader.append_config_var(
         "Alf_G_pm_mu_star_increment", mu_star_wiggle_increment, mu_star_wiggle_increment);
     config_reader.append_config_var(
@@ -276,6 +279,7 @@ bool two_streams_radiative_transfer::initialise_memory(
                        i2s_transition,      // const double& i2s_transition_,
                        mu_star_limit,
                        wiggle_iteration_max,
+                       G_pm_limit_on_full_G_pm,
                        num_parallel_columns,
                        debug_output); // const bool&   debug_
 

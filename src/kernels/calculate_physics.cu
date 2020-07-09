@@ -156,6 +156,7 @@ __global__ void trans_iso(double*       trans_wg,             // out
                           double        mu_star_wiggle_increment,
                           bool          G_pm_limiter,
                           double        G_pm_denom_limit_for_mu_star_wiggler,
+                          bool          G_pm_limit_on_full_G_pm,
                           bool*         hit_G_pm_limit_global,
                           unsigned int* columns_wiggle,
                           unsigned int* columns_wiggle_request,
@@ -303,17 +304,23 @@ __global__ void trans_iso(double*       trans_wg,             // out
                 G_minus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m;
             }
 
-
+            bool hit_limit = false;
+            if (G_pm_limit_on_full_G_pm)
+                hit_limit = (fabs(g_p) > G_pm_denom_limit_for_mu_star_wiggler)
+                            || (fabs(g_m) > G_pm_denom_limit_for_mu_star_wiggler);
+            else
+                hit_limit = fabs(G_pm_denom(w0, g0, epsi, mu_star_used, E))
+                            < G_pm_denom_limit_for_mu_star_wiggler;
             // Check G_pm criteria
-            if ((fabs(g_p) > G_pm_denom_limit_for_mu_star_wiggler)
-                || (fabs(g_m) > G_pm_denom_limit_for_mu_star_wiggler)) {
+            if (hit_limit) {
                 // mark global iterator
                 hit_G_pm_limit_global[0] = true;
                 // we request that this column is recomputed at next iteration
                 columns_wiggle_request[c] = 1;
                 if (debug) {
                     printf(
-                        "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "
+                        "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to "
+                        "(%g) "
                         "angle (%g) "
                         "(c: %d, l: %d, b: %d, w: %d) g_p, g_m (%g, %g)\n",
                         mu_star_orig,
@@ -421,6 +428,7 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                              double        mu_star_wiggle_increment,
                              bool          G_pm_limiter,
                              double        G_pm_denom_limit_for_mu_star_wiggler,
+                             bool          G_pm_limit_on_full_G_pm,
                              bool*         hit_G_pm_limit_global,
                              unsigned int* columns_wiggle,
                              unsigned int* columns_wiggle_request,
@@ -608,17 +616,27 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                 G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_u;
                 G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_l;
             }
+
+            bool hit_limit = false;
+            if (G_pm_limit_on_full_G_pm)
+                hit_limit = (fabs(g_p_u) > G_pm_denom_limit_for_mu_star_wiggler)
+                            || (fabs(g_p_l) > G_pm_denom_limit_for_mu_star_wiggler)
+                            || (fabs(g_m_u) > G_pm_denom_limit_for_mu_star_wiggler)
+                            || (fabs(g_m_l) > G_pm_denom_limit_for_mu_star_wiggler);
+            else
+                hit_limit = (fabs(G_pm_denom(w_0_up, g0_up, epsi, mu_star_used, E_up))
+                             < G_pm_denom_limit_for_mu_star_wiggler)
+                            || (fabs(G_pm_denom(w_0_low, g0_low, epsi, mu_star_used, E_low))
+                                < G_pm_denom_limit_for_mu_star_wiggler);
             // Check G_pm criteria
-            if ((fabs(g_p_u) > G_pm_denom_limit_for_mu_star_wiggler)
-                || (fabs(g_p_l) > G_pm_denom_limit_for_mu_star_wiggler)
-                || (fabs(g_m_u) > G_pm_denom_limit_for_mu_star_wiggler)
-                || (fabs(g_m_l) > G_pm_denom_limit_for_mu_star_wiggler)) {
+            if (hit_limit) {
                 hit_G_pm_limit_global[0] = true;
                 // we request that this column is recomputed at next iteration
                 columns_wiggle_request[c] = 1;
                 if (debug) {
                     printf(
-                        "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to (%g) "
+                        "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to "
+                        "(%g) "
                         "angle (%g) "
                         "(c: %d, l: %d, b: %d, w: %d) g_p_u, g_m_u (%g, %g) g_p_l, g_m_l (%g, "
                         "%g)\n",

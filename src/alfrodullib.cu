@@ -78,7 +78,8 @@ void init_parameters(const int&    nlayer_,
                             w_0_limit,
                             i2s_transition,
                             mu_star_limit,
-                            1, // wiggle iteration max
+                            1,    // wiggle iteration max
+                            true, // G_pm limit on full G_pm
                             num_cols,
                             debug);
 }

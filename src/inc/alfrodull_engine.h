@@ -40,6 +40,7 @@ public:
                         const double& i2s_transition,
                         const double& mu_star_limit,
                         const int&    wiggle_iteration_max_,
+                        const bool&   G_pm_limit_on_full_G_pm_,
                         const int&    num_parallel_columns,
                         const bool&   debug);
 
@@ -73,6 +74,7 @@ public:
 
     bool G_pm_limiter = true;
 
+    bool   G_pm_limit_on_full_G_pm  = true;
     double G_pm_denom_limit         = 300.0;
     double mu_star_wiggle_increment = 0.5;
     int    wiggle_iteration_max     = 10;

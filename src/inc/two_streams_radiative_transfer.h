@@ -143,6 +143,7 @@ public:
     int compute_every_n_iteration = 1;
 
     bool   G_pm_limiter             = true;
+    bool   G_pm_limit_on_full_G_pm  = true;
     double G_pm_denom_limit         = 100.0;
     double mu_star_wiggle_increment = 0.001;
     int    wiggle_iteration_max     = 10;

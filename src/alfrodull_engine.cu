@@ -79,6 +79,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const double& i2s_transition_,
                                       const double& mu_star_limit_,
                                       const int&    wiggle_iteration_max_,
+                                      const bool&   G_pm_limit_on_full_G_pm_,
                                       const int&    max_num_parallel_columns_,
                                       const bool&   debug_) {
     nlayer     = nlayer_;
@@ -105,6 +106,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     debug                    = debug_;
     mu_star_limit            = mu_star_limit_;
     wiggle_iteration_max     = wiggle_iteration_max_;
+    G_pm_limit_on_full_G_pm  = G_pm_limit_on_full_G_pm_;
     max_num_parallel_columns = max_num_parallel_columns_;
     // TODO: maybe should stay in opacities object
     //    nbin = opacities.nbin;
@@ -1261,6 +1263,7 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
                                    mu_star_wiggle_increment,
                                    G_pm_limiter,
                                    G_pm_denom_limit,
+                                   G_pm_limit_on_full_G_pm,
                                    *hit_G_pm_denom_limit,
                                    mu_star_iterate,
                                    mu_star_iteration_request,
@@ -1390,6 +1393,7 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       mu_star_wiggle_increment,
                                       G_pm_limiter,
                                       G_pm_denom_limit,
+                                      G_pm_limit_on_full_G_pm,
                                       *hit_G_pm_denom_limit,
                                       mu_star_iterate,
                                       mu_star_iteration_request,
