@@ -105,8 +105,8 @@ two_streams_radiative_transfer::~two_streams_radiative_transfer() {
 }
 
 void two_streams_radiative_transfer::print_config() {
-    log::printf("    Stellar Template Temperature:            %g\n", T_star);
-    log::printf("    Internal Temperature:                    %g\n", T_internal);
+    log::printf("    Stellar Temperature:                     %g K\n", T_star);
+    log::printf("    Internal Temperature:                    %g K\n", T_internal);
     log::printf("    Stellar Radius:                          %g [R_SUN]\n", R_star_config);
     log::printf("    Planet-Star Distance:                    %g [au]\n", planet_star_dist_config);
 
@@ -120,7 +120,7 @@ void two_streams_radiative_transfer::print_config() {
                 scat_single_walk ? "true" : "false");
     log::printf("    Experimental Constant Opacity Offsets:   %g\n", experimental_opacities_offset);
 
-    log::printf("    Constant g0 (without clouds):            %g\n", g_0);
+    log::printf("    Gas constant g0 (without clouds):        %g\n", g_0);
     log::printf("    epsilon_2:                               %g\n", epsilon_2);
     log::printf("    Opacity Cutoff:                          %g\n", fake_opac);
 
