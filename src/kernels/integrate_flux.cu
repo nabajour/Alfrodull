@@ -228,7 +228,7 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
         double f_out = 0.0;
         // initialize each flux value
         if (dir_beam) {
-            if (fabs(mu_star) < mu_star_limit)
+            if (mu_star > mu_star_limit)
                 f_out = 0.0;
             else
                 f_out = -mu_star * I_dir;
@@ -965,7 +965,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                 min(0.0,
                     -F_dir_wg[y + ny * x + ny * nbin * 0] * (G_min_0 * M_0 + G_pl_0 * N_0)
                         + F_dir_wg[y + ny * x + ny * nbin * (0 + 1)] * P_0 * G_min_0);
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_down = 0.0;
 
             // double psi = P;
@@ -1027,7 +1027,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                 -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min_down * M_down + G_pl_down * N_down)
                     + F_dir_wg[y + ny * x + ny * nbin * (i + 1)] * P_down * G_min_down);
 
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_down = 0.0;
 
 
@@ -1036,7 +1036,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                     -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min_up * N_up + G_pl_up * M_up)
                         + F_dir_wg[y + ny * x + ny * nbin * (i - 1)] * P_up * G_pl_up);
 
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_up = 0.0;
 
             // double psi = P;
@@ -1086,7 +1086,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                     -F_dir_wg[y + ny * x + ny * nbin * (N - 1)] * (G_min_N * N_N + G_pl_N * M_N)
                         + F_dir_wg[y + ny * x + ny * nbin * (N - 2)] * P_N * G_pl_N);
 
-            if (mu_star == 0.0)
+            if (mu_star >= 0.0)
                 I_up = 0.0;
 
             // double psi = P;
