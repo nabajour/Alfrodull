@@ -317,7 +317,7 @@ Alf_scat_single_walk = true
 # use real star spectrum or planck spectrum
 Alf_real_star = true
 # if using real star, give stellar spectrum here
-Alf_stellar_spectrum = ./Alfrodull/input/stellar_spectrum_wasp43.h5
+Alf_stellar_spectrum = ./Alfrodull/input/stellar_spectrum_wasp43_r50.h5
 
 # fake opacity when hitting opacity limit. 
 Alf_fake_opac = 0.0
@@ -350,7 +350,7 @@ Alf_opacities_file_in_CGS = false
 # clouds
 Alf_clouds = false
 Alf_fcloud = 1.0
-Alf_cloudfile = ./Alfrodull/input/cloud_sample_r5.h5
+Alf_cloudfile = ./Alfrodull/input/cloud_sample_r50.h5
 
 # store w0 and g0 per wavelength (optional, to avoid storing a giant amount of data
 Alf_store_w0_g0 = false
