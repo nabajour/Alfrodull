@@ -3,8 +3,8 @@
 
 #include "cuda_device_memory.h"
 
-
-//#define THOMAS_CHECK
+//#define MATH_HELPER_THOMAS_DD_CHECK
+//#define MATH_HELPER_THOMAS_SOL_CHECK
 
 // calculates analytically the integral of the planck function
 __device__ double analyt_planck(int n, double y1, double y2) {
@@ -58,6 +58,29 @@ __host__ __device__ void thomas_solve(double4* A,
     D_prime[0] = invB0 * D[0];
     // forward compute coefficients for matrix and RHS vector
     for (int i = 1; i < N; i++) {
+#ifdef MATH_HELPER_THOMAS_DD_CHECK
+        if (fabs(B[i].x) <= fabs(A[i].x + A[i].y + B[i].y + C[i].x + C[i].y))
+            printf("Matrix non diagonally dominant for layer %d, "
+                   "B.x(%g)) <= fabs( A.x(%g) + A.y(%g) + B.y(%g) + C.x(%g) + C.y(%g)\n",
+                   i,
+                   B[i].x,
+                   A[i].x,
+                   A[i].y,
+                   B[i].y,
+                   C[i].x,
+                   C[i].y);
+        if (fabs(B[i].w) <= fabs(A[i].z + A[i].w + B[i].z + C[i].z + C[i].w))
+            printf("Matrix non diagonally dominant for layer %d, "
+                   "B.w(%g)) <= fabs( A.z(%g) + A.w(%g) + B.z(%g) + C.z(%g) + C.w(%g)\n",
+                   i,
+                   B[i].w,
+                   A[i].z,
+                   A[i].w,
+                   B[i].z,
+                   C[i].z,
+                   C[i].w);
+#endif // MATH_HELPER_THOMAS_DD_CHECK
+
         double4 BmACp = B[i] - (A[i] * C_prime[i - 1]);
         // printf("B[ %d ]: [[ %g, %g ], [ %g, %g ]] \nA[ %d ]: [[ %g, %g ], [ %g, %g ]] \nCp[ %d ]: "
         //        "[[ %g, %g ], [ %g, %g ]] \nBmACp[ %d ]: [[ %g, %g ], [ %g, %g ]] \n",
@@ -103,7 +126,7 @@ __host__ __device__ void thomas_solve(double4* A,
     for (int i = N - 2; i >= 0; i--) {
         X[i] = D_prime[i] - C_prime[i] * X[i + 1];
     }
-#ifdef THOMAS_CHECK
+#ifdef MATH_HELPER_THOMAS_SOL_CHECK
     double epsilon = 1e-10;
     //bool   matches = true;
 
@@ -165,7 +188,7 @@ __host__ __device__ void thomas_solve(double4* A,
     // if (!matches)
     //     printf("Thomas failed\n");
 
-#endif // THOMAS_CHECK
+#endif // MATH_HELPER_THOMAS_SOL_CHECK
 }
 
 

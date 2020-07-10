@@ -1,26 +1,22 @@
 
-#include "definitions.h"
-
-
 // physical constants
-const double PI         = 3.141592653589793;
-const double HCONST     = 6.62607015e-34; // J s
-const double CSPEED     = 299792458.0; // m / s
-const double KBOLTZMANN = 1.38064852e-23; // J / K
-const double STEFANBOLTZMANN =
-  5.6703744191844314e-08; // W / (K^4 m^2)
+const double PI              = 3.141592653589793;
+const double HCONST          = 6.62607015e-34;         // J s
+const double CSPEED          = 299792458.0;            // m / s
+const double KBOLTZMANN      = 1.38064852e-23;         // J / K
+const double STEFANBOLTZMANN = 5.6703744191844314e-08; // W / (K^4 m^2)
 
 
 // constants in CGS
-const double C        = 299792458.0;          // speed of light in m / s
-const double K_B      = 1.38064852e-23;           // Boltzmann constant in J / K
+const double C        = 299792458.0;            // speed of light in m / s
+const double K_B      = 1.38064852e-23;         // Boltzmann constant in J / K
 const double H        = 6.62607015e-34;         // Planck constant in J s
 const double R_UNIV   = 8.31446261815324;       // universal gas constant in J / ( K mol )
 const double SIGMA_SB = 5.6703744191844314e-08; // Stefan-Boltzmann constant in W / (K^4 m^2)
-const double AU       = 149597870700.0;       // astronomical unit in m
+const double AU       = 149597870700.0;         // astronomical unit in m
 const double AMU      = 1.6605390666e-27;       // atomic mass unit in kg
 
-const double Mass_E = 9.1093837015e-31;        // mass of electron in kg
+const double Mass_E = 9.1093837015e-31; // mass of electron in kg
 
 const double Q_E     = 1.602176634e-19;        // charge of electron in Coulomb
 const double R_SUN   = 695700000.0;            // solar radius in m

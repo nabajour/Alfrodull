@@ -1,5 +1,4 @@
 
-#include "definitions.h"
 
 #ifdef CGS_UNITS
 // To check what units are used. Is pretty noisy
@@ -35,5 +34,5 @@ const double GAMMA   = 0.5772156649;           // Euler-Mascheroni constant
 #else
 // To check what units are used. Is pretty noisy
 // #warning "Compiling with SI units"
-#include "physics_constants_si.h"
+#    include "physics_constants_si.h"
 #endif // CGS_constants
