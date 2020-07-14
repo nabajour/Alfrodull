@@ -305,7 +305,7 @@ dgrt_spindown_stop = 172800
 two_streams_radiative_transfer = true
 
 # Isothermal or non-isothermal treatment of layers for two stream RT
-Alf_iso = true
+Alf_iso = false
 
 # use Thomas algorithm for solver instead of iterative solver.
 Alf_thomas = true

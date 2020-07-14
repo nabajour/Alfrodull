@@ -68,10 +68,10 @@ P_ref = 10000000.0
 Top_altitude = 1.4e6
 
 # Horizontal resolution level.
-glevel = 5
+glevel = 4
 
 # Number of vertical layers
-vlevel = 40
+vlevel = 80
 
 # Spring dynamics
 spring_dynamics = true
@@ -237,7 +237,7 @@ sync_rot = true
 
 #-- Radiative transfer (gray) options (core_benchmark = NoBenchmark) -------------------#
 ## RT parameters #######################################
-radiative_transfer = true
+radiative_transfer = false
 
 # bond albedo of planet
 albedo = 0.18
@@ -287,10 +287,10 @@ rt1Dmode = false
 # spin up and spin down start and stop. Set to negative value to ignore and run at full power
 # spins up/down with a multiplication factor following a sine from 0 to 1 from
 # start to stop of spin up time
-dgrt_spinup_start = 0
-dgrt_spinup_stop = 143999
-dgrt_spindown_start = 144000
-dgrt_spindown_stop = 172800
+dgrt_spinup_start = -1
+dgrt_spinup_stop = -1
+dgrt_spindown_start = -1
+dgrt_spindown_stop = -1
 
 
 #-- Alfrodull options --------------------------------------------------------#
@@ -305,7 +305,7 @@ dgrt_spindown_stop = 172800
 two_streams_radiative_transfer = true
 
 # Isothermal or non-isothermal treatment of layers for two stream RT
-Alf_iso = true
+Alf_iso = false
 
 # use Thomas algorithm for solver instead of iterative solver.
 Alf_thomas = true
@@ -375,7 +375,7 @@ Alf_compute_every_nstep = 1
 # number of columns to compute in parallel
 # (Adjust this depending on memory usage, more parallel column: faster integration)
 # Total number of points on grid is 4^(glevel - 4)*16^2*10 + 2. 
-Alf_num_parallel_columns = 1284
+Alf_num_parallel_columns = 2562
 
 # debug output
 Alf_debug = false
@@ -385,8 +385,8 @@ Alf_debug = false
 # spins up/down with a multiplication factor following a sine from 0 to 1 from
 # start to stop of spin up time and a sine from 1 to 0 for spin down
 # can be used in parallel with double grey radiative transfer above for faster spinup
-Alf_spinup_start = 144000
-Alf_spinup_stop = 172800
+Alf_spinup_start = 0
+Alf_spinup_stop = 144000
 Alf_spindown_start = -1
 Alf_spindown_stop = -1
 

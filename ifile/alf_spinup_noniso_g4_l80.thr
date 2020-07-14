@@ -68,10 +68,10 @@ P_ref = 10000000.0
 Top_altitude = 1.4e6
 
 # Horizontal resolution level.
-glevel = 5
+glevel = 4
 
 # Number of vertical layers
-vlevel = 40
+vlevel = 80
 
 # Spring dynamics
 spring_dynamics = true
@@ -305,7 +305,7 @@ dgrt_spindown_stop = 172800
 two_streams_radiative_transfer = true
 
 # Isothermal or non-isothermal treatment of layers for two stream RT
-Alf_iso = true
+Alf_iso = false
 
 # use Thomas algorithm for solver instead of iterative solver.
 Alf_thomas = true
@@ -375,7 +375,7 @@ Alf_compute_every_nstep = 1
 # number of columns to compute in parallel
 # (Adjust this depending on memory usage, more parallel column: faster integration)
 # Total number of points on grid is 4^(glevel - 4)*16^2*10 + 2. 
-Alf_num_parallel_columns = 1284
+Alf_num_parallel_columns = 2562
 
 # debug output
 Alf_debug = false
