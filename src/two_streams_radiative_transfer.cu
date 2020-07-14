@@ -1131,7 +1131,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 bool two_streams_radiative_transfer::store_init(storage& s) {
     if (!s.has_table("/Tstar"))
         s.append_value(T_star, "/Tstar", "K", "Temperature of host star");
-    // s.append_value(Tint, "/Tint", "K", "Temperature of interior heat flux");
+    // s.append_value(Tint, "/alf_Tint", "K", "Temperature of interior heat flux");
     if (!s.has_table("/planet_star_dist"))
         s.append_value(planet_star_dist_config,
                        "/planet_star_dist",
@@ -1141,24 +1141,90 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
     if (!s.has_table("/radius_star"))
         s.append_value(R_star_config, "/radius_star", "R_sun", "radius of host star");
 
+    s.append_value(thomas ? 1 : 0, "/alf_thomas", "-", "Alfrodull use Thomas Solver");
     s.append_value(iso ? 1.0 : 0.0, "/alf_isothermal", "-", "Isothermal layers");
     s.append_value(
         real_star ? 1.0 : 0.0, "/alf_real_star", "-", "Alfrodull use real star spectrum or Planck");
 
     s.append_value(
         fake_opac ? 1.0 : 0.0, "/alf_fake_opac", "-", "Alfrodull use artificial opacity");
-    s.append_value(scat ? 1.0 : 0.0, "/alf_scat", "-", "Scattering");
-    s.append_value(
-        scat_corr ? 1.0 : 0.0, "/alf_scat_corr", "-", "Improved two-stream scattering correction");
+    s.append_value(scat ? 1.0 : 0.0, "/alf_scat", "-", "Alfrodull scattering");
 
+    s.append_value(scat_corr ? 1.0 : 0.0,
+                   "/alf_scat_corr",
+                   "-",
+                   "Alfrodull Improved two-stream scattering correction");
+
+    s.append_value(scat_single_walk ? 1 : 0,
+                   "/alf_scat_single_walk",
+                   "-",
+                   "Iterative solver single walk mode");
     s.append_value(g_0, "/alf_g_0", "-", "asymmetry factor");
     s.append_value(diffusivity, "/alf_diffusivity", "-", "Diffusivity factor");
     s.append_value(epsi, "/alf_epsi", "-", "One over Diffusivity factor");
 
-    s.append_value(alf.opacities.ny, "/alf_ny", "-", "number of weights in bins");
+    s.append_value(experimental_opacities_offset,
+                   "/Alf_experimental_opacities_offset",
+                   "-",
+                   "Alfrodull Experimental opacity offset for debugging");
 
-    s.append_value(i2s_transition, "/alf_i2s_transition", "-", "i2s transition");
+    s.append_value(alf.opacities.ny, "/alf_ny", "-", "Alfrodull number of weights in bins");
 
+    s.append_value(i2s_transition, "/alf_i2s_transition", "-", "Alfrodull i2s transition");
+
+    s.append_value(G_pm_limiter ? 1 : 0,
+                   "/G_pm_max_limiter",
+                   "-",
+                   "Alfrodull limiter on abs(G_pm) at 1e8 (HELIOS compatible)");
+    s.append_value(G_pm_denom_limit,
+                   "/G_pm_factor_limit",
+                   "-",
+                   "Alfrodull limiter on abs(G_pm) or G_pm_denominator");
+
+    s.append_value(G_pm_limit_on_full_G_pm ? 1 : 0,
+                   "/G_pm_limit_on_full_G_pm",
+                   "-",
+                   "Alf G_pm limit applies to full G_pm term or only to G_pm denominator");
+
+    s.append_value(mu_star_wiggle_increment,
+                   "/Alf_G_pm_mu_star_increment",
+                   "-",
+                   "Alf increment in degrees applied to incomming angle when hit G_pm limit");
+    s.append_value(wiggle_iteration_max,
+                   "/Alf_mu_star_iteration_max",
+                   "-",
+                   "Alf max number of incoming angle increases on G_pm limit");
+    s.append_value(mu_star_limit_degrees,
+                   "/Alf_direct_beam_angle_limit",
+                   "-",
+                   "Alf limit on incoming angle to tangent to set direct beam to 0.0");
+    // commented out, no easy way to store strings in the table in the same way.
+    // if (real_star) {
+    //     std::string str[] = {stellar_spectrum_file};
+    //     s.append_value(str, "/Alf_stellar_spectrum", "-", "spectrum file name");
+    // }
+    // {
+    //     std::string str[] = {opacities_file};
+    //     s.append_value(str, "/Alf_opacities_file", "-", "Opacities file name");
+    // }
+    s.append_value(
+        opacity_file_is_CGS ? 1 : 0, "/Alf_opacities_file_in_CGS", "-", "Opacities input in CGS");
+    s.append_value(spinup_start_step, "/Alf_spinup_start", "-", "Alf spinup start step");
+    s.append_value(spinup_stop_step, "/Alf_spinup_stop", "-", "Alf spinup stop step");
+    s.append_value(spindown_start_step, "/Alf_spindown_start", "-", "Alf spindown start step");
+    s.append_value(spindown_stop_step, "/Alf_spindown_stop", "-", "Alf spindown stop step");
+
+
+    s.append_value(num_parallel_columns,
+                   "/Alf_num_parallel_columns",
+                   "-",
+                   " Alf number of columns to compute in parallel");
+    s.append_value(debug_output ? 1 : 0, "/Alf_debug", "-", "Alf Debug output");
+    s.append_value(store_w0_g0 ? 1 : 0, "/Alf_store_w0_g0", "-", "Alf store w0 g0 per band");
+    // {
+    //     std::string str[] = {cloud_filename};
+    //     s.append_value(str, "/Alf_cloudfile", "-", "Alf cloud opacity file");
+    // }
     s.append_value(compute_every_n_iteration,
                    "/alf_compute_periodicity",
                    "n",
@@ -1174,11 +1240,12 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
 
     s.append_value(alf.opacities.nbin, "/alf_num_bands", "-", "Number of wavelength_bands for Alf");
     s.append_value(
-        store_w0_g0 ? 1.0 : 0.0, "/alf_w0_g0_per_band", "-", "Stored w0 and g0 per band for Alf");
+        store_w0_g0 ? 1 : 0, "/alf_w0_g0_per_band", "-", "Stored w0 and g0 per band for Alf");
 
 
-    s.append_value(clouds ? 1.0 : 0.0, "/alf_cloud", "-", "Simulate clouds");
+    s.append_value(clouds ? 1 : 0, "/alf_cloud", "-", "Simulate clouds");
     s.append_value(fcloud, "/alf_fcloud", "-", "f_cloud");
+
 
     return true;
 }
