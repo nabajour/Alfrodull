@@ -38,7 +38,6 @@
 ////////////////////////////////////////////////////////////////////////
 
 
-#include "atomic_add.h"
 #include "calculate_physics.h"
 #include "physics_constants.h"
 
