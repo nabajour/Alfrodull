@@ -1,3 +1,42 @@
+// ==============================================================================
+// This file is part of Alfrodull.
+//
+//     Alfrodull is free software : you can redistribute it and / or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+//
+//     Alfrodull is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//     GNU General Public License for more details.
+//
+//     You find a copy of the GNU General Public License in the main
+//     Alfrodull directory under <license.txt>.If not, see
+//     <http://www.gnu.org/licenses/>.
+// ==============================================================================
+//
+// kernels doing the flux integration, beam computation, iterative and thomas solver
+//
+//
+// Method: Helios Two Stream algorithm
+//
+//
+// Known limitations: - Runs in a single GPU.
+//
+// Known issues: None
+//
+//
+// Code contributors: Urs Schroffenegger, Matej Malik
+//
+// History:
+// Version Date       Comment
+// ======= ====       =======
+// 1.0     2020-07-15 First version
+//
+//
+////////////////////////////////////////////////////////////////////////
+
 
 #include "atomic_add.h"
 #include "calculate_physics.h"
@@ -355,6 +394,7 @@ __global__ void fdir_noniso(double* F_dir_wg,
 
 
 // calculation of the spectral fluxes, isothermal case with emphasis on on-the-fly calculations
+// HELIOS iterative solver version
 __global__ void fband_iso_notabu(double* F_down_wg_,      // out
                                  double* F_up_wg_,        // out
                                  double* F_dir_wg_,       // in
@@ -421,7 +461,6 @@ __global__ void fband_iso_notabu(double* F_down_wg_,      // out
         for (int i = numinterfaces - 1; i >= 0; i--) {
 
             // TOA boundary -- incoming stellar flux
-            // TODO: move if switch outside of loop to make it unnecessary
             if (i == numinterfaces - 1) {
                 if (dir_beam)
                     F_down_wg[y + ny * x + ny * nbin * i] = 0.0;
@@ -501,7 +540,6 @@ __global__ void fband_iso_notabu(double* F_down_wg_,      // out
         for (int i = 0; i < numinterfaces; i++) {
 
             // BOA boundary -- surface emission and reflection
-            // TODO: move if switch outside of loop to make it unnecessary
             if (i == 0) {
                 double BOA_part = 0.0;
                 // PI
@@ -560,6 +598,7 @@ __global__ void fband_iso_notabu(double* F_down_wg_,      // out
 }
 
 // calculation of the spectral fluxes, non-isothermal case with emphasis on on-the-fly calculations
+// HELIOS iterative solver version
 __global__ void fband_noniso_notabu(double* F_down_wg_,
                                     double* F_up_wg_,
                                     double* Fc_down_wg_,
@@ -1016,8 +1055,6 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
 
         double mu_star = mu_star_cols[c];
 
-        // TODO: how do we treat boundary ?
-
         double F_BOA_up   = 0.0;
         double F_TOA_down = 0.0;
 
@@ -1027,26 +1064,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
 
         {
 
-            //   // BOA boundary -- surface emission and reflection
-            // // TODO: move if switch outside of loop to make it unnecessary
-            //   if (i == 0) {
-
-            //       double reflected_part = albedo
-            //                               * (F_dir_wg[y + ny * x + ny * nbin * i]
-            //                                  + F_down_wg[y + ny * x + ny * nbin * i]);
-
-            //       // this is the surface/BOA emission. it correctly considers the emissivity e = (1 - albedo)
-            //       double BOA_part =
-            //           (1.0 - albedo) * PI * (1.0 - w0) / (E - w0)
-            //           * planckband_lay[numinterfaces
-            //                            + x
-            //                                  * (numinterfaces - 1
-            //                                     + 2)]; // remember: numinterfaces = numlayers + 1
-
-            //       F_up_wg[y + ny * x + ny * nbin * i] =
-            //           reflected_part
-            //           + BOA_part; // internal_part consists of the internal heat flux plus the surface/BOA emission
-            //   }
+            // BOA boundary -- surface emission and reflection
 
             // double w0_N = w_0[y + ny * x + ny * nbin * 0];
             // double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
@@ -1059,6 +1077,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
 
             // F_BOA_up = PI * (1.0 - w0_N) / (E_N - w0_N)
             //            * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+            // No upward flux from ghost layer, use stephan boltzman law in net flux computation
             F_BOA_up = 0.0;
         }
 
@@ -1238,6 +1257,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
         // Fill output data
 
         for (int i = 0; i < N; i++) {
+            // debugging:
             // if (isnan(X[i].x))
             //     printf("F_up[i: % 3d, nbin: % 3d, ny: % 3d] == NaN\n", i, x, y);
             // if (isnan(X[i].y))
@@ -1362,8 +1382,6 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
         // vectors:
         // upward component: x component of double2
         // downward component: y component of double2
-
-        // TODO: how do we treat boundary ?
 
         double w0_up;
         double del_tau_up;
@@ -1537,8 +1555,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
 
             // BOA boundary -- surface emission and reflection
             if (i == 0) {
-                // this is the surface/BOA emission. it correctly includes the emissivity e = (1 - albedo)
-                // double F_BOA = PI * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+                // No upward flux from ghost layer, use stephan boltzman law in net flux computation
                 double F_BOA = 0.0;
 
 

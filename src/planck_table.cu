@@ -1,3 +1,44 @@
+// ==============================================================================
+// This file is part of Alfrodull.
+//
+//     Alfrodull is free software : you can redistribute it and / or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+//
+//     Alfrodull is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//     GNU General Public License for more details.
+//
+//     You find a copy of the GNU General Public License in the main
+//     Alfrodull directory under <license.txt>.If not, see
+//     <http://www.gnu.org/licenses/>.
+// ==============================================================================
+//
+// Planck table computation and interpolation
+//
+//
+//
+// Method: Helios Two Stream algorithm
+//
+//
+// Known limitations: - Runs in a single GPU.
+//
+// Known issues: None
+//
+//
+// Code contributors: Urs Schroffenegger, Matej Malik
+//
+// History:
+// Version Date       Comment
+// ======= ====       =======
+// 1.0     2020-07-15 First version
+//
+//
+////////////////////////////////////////////////////////////////////////
+
+
 #include "planck_table.h"
 
 #include "physics_constants.h"
@@ -58,7 +99,6 @@ __global__ void plancktable(double* planck_grid,
             }
         }
         planck_grid[x + (t + p_iter * (dim / 10)) * nwave] /= deltalambda[x];
-        //printf("planck_grid: %g \n",planck_grid[x + (t + p_iter * (dim/10)) * nwave] );
     }
 }
 
@@ -78,7 +118,6 @@ __global__ void corr_inc_energy(double* planck_grid,
         double num_flux = 0;
 
         if (realstar) {
-
             for (int xl = 0; xl < nwave; xl++) {
 
                 num_flux += deltalambda[xl] * starflux[xl];
@@ -142,23 +181,4 @@ void planck_table::construct_planck_table(
             *planck_grid, lambda_edge, deltalambda, nwave, Tstar, p_iter, dim, step);
         cudaDeviceSynchronize();
     }
-/*
-    double lambda_edge_h[nwave + 1];
-    double delta_lambda_h[nwave];
-    cudaMemcpy(lambda_edge_h, lambda_edge, (nwave + 1)*sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(delta_lambda_h, deltalambda, (nwave)*sizeof(double), cudaMemcpyDeviceToHost);
-
-    // print out planck grid for debug
-    std::shared_ptr<double[]> plgrd = planck_grid.get_host_data();
-    FILE*                     pFile;
-    pFile = fopen("planckgrid.txt", "w");
-
-    for (int d = 0; d < dim + 1; d++) {
-        for (int n = 0; n < nwave; n++) {
-            int idx = d * nwave + n;
-            fprintf(pFile, "%d\t%d\t%g\t%g\t%g\n", d, n, plgrd[idx], lambda_edge_h[n], delta_lambda_h[n]);
-        }
-    }
-    fclose(pFile);
-*/
 }

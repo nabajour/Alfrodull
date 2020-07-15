@@ -1,3 +1,41 @@
+// ==============================================================================
+// This file is part of Alfrodull.
+//
+//     Alfrodull is free software : you can redistribute it and / or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+//
+//     Alfrodull is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//     GNU General Public License for more details.
+//
+//     You find a copy of the GNU General Public License in the main
+//     Alfrodull directory under <license.txt>.If not, see
+//     <http://www.gnu.org/licenses/>.
+// ==============================================================================
+//
+// Kernels for value interpolation from lookup tables
+//
+// Method: Helios Two Stream algorithm
+//
+//
+// Known limitations: - Runs in a single GPU.
+//
+// Known issues: None
+//
+//
+// Code contributors: Urs Schroffenegger, Matej Malik
+//
+// History:
+// Version Date       Comment
+// ======= ====       =======
+// 1.0     2020-07-15 First version
+//
+//
+////////////////////////////////////////////////////////////////////////
+
 #include "interpolate_values.h"
 
 #include "physics_constants.h"
@@ -90,7 +128,6 @@ __global__ void planck_interpol_layer(double* temp,           // in
     }
 }
 
-// TODO: note can we merge those two plank interpolation function and split out the stellar function computation?
 // interpolates the Planck function for the interface temperatures from the pre-tabulated values
 __global__ void planck_interpol_interface(double* temp,           // in
                                           double* planckband_int, // out
@@ -130,7 +167,6 @@ __global__ void planck_interpol_interface(double* temp,           // in
 
 
 // interpolate layer and interface opacities from opacity table
-// Note - US: this doesn't care about geometry, only pressure and temperature. works on a list of T and P for each wavelength bin - can be abstracted.
 __global__ void interpolate_opacities(
     double* temp,       // in, layer temperature
     double* opactemp,   // in, opac reference table temperatures
@@ -156,9 +192,8 @@ __global__ void interpolate_opacities(
 
     if (x < nbin && i < nlay_or_nint) {
 
-        // TODO: check what this is supposed to do, does this actually depend on the wavelength resolution ?
-        // looks like it's used to clip the bottom of interpolated opacity to opac_limit when bellow a certain
-        // wavelength threshold ? (in the example, at 133um ? not at 1um...)
+        // looks like it's used to clip the bottom of interpolated opacity to opac_limit when below a certain
+        // wavelength threshold
         // see comment above in parameters. "opacity limit for max cutoff for low wavelength bin idx"
         int x_1micron = lrint(nbin * 2.0 / 3.0);
 
@@ -174,7 +209,9 @@ __global__ void interpolate_opacities(
 
         double p = (log10(press[i + c * press_num_per_col]) - log10(opacpress[0])) / deltaopacpress;
 
+
         // do the cloud deck
+        // This comes from helios, not used in alfrodull, clouds are handled later
         double k_cloud = 0.0; //1e-1 * norm_pdf(log10(press[i]),0,1);
 
         p = min(npress - 1.001, max(0.001, p));

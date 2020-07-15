@@ -1,9 +1,49 @@
+// ==============================================================================
+// This file is part of Alfrodull.
+//
+//     Alfrodull is free software : you can redistribute it and / or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+//
+//     Alfrodull is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//     GNU General Public License for more details.
+//
+//     You find a copy of the GNU General Public License in the main
+//     Alfrodull directory under <license.txt>.If not, see
+//     <http://www.gnu.org/licenses/>.
+// ==============================================================================
+//
+// Kernels computing the physical quantities for each layers, used in the
+// flux propagation matrix.
+//
+//
+// Method: Helios Two Stream algorithm
+//
+//
+// Known limitations: - Runs in a single GPU.
+//
+// Known issues: None
+//
+//
+// Code contributors: Urs Schroffenegger, Matej Malik
+//
+// History:
+// Version Date       Comment
+// ======= ====       =======
+// 1.0     2020-07-15 First version
+//
+//
+////////////////////////////////////////////////////////////////////////
+
 #include "calculate_physics.h"
 #include "debug.h"
 #include "physics_constants.h"
 #include <stdio.h>
 
-// fitting function for the E parameter according to "Heng, Malik & Kitzmann 2018
+// fitting function for the E parameter according to "Heng, Malik & Kitzmann 2018"
 __device__ double E_parameter(double w0, double g0, double i2s_transition) {
     double E;
 
@@ -45,7 +85,6 @@ G_plus_func(double w0, double g0, double epsilon, double epsilon2, double mu_sta
 }
 
 // calculates the G- function
-// TODO: can improve by computing E outside and pass as param ?
 __device__ double
 G_minus_func(double w0, double g0, double epsilon, double epsilon2, double mu_star, double E) {
     double num = w0 * (E * (1.0 - w0 * g0) + g0 * epsilon / epsilon2);
@@ -72,6 +111,7 @@ __device__ double G_pm_denom(double w0, double g0, double epsi, double mu_star, 
 
 // limiting the values of the G_plus and G_minus coefficients to 1e8.
 // This value is somewhat ad hoc from visual analysis. To justify, results are quite insensitive to this value.
+// this is the originnal HELIOS limiter on G_pm, replaced by other limiters
 __device__ double G_limiter(double G, bool debug) {
 
     if (abs(G) < 1e8) {
@@ -229,10 +269,7 @@ __global__ void trans_iso(double*       trans_wg,             // out
                 * (opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]
                    + (ray_cross + fcloud * (cloud_abs_cross_lay[x] + cloud_scat_cross))
                          / meanmolmass_lay[i + c * nlayer]);
-            // delta_tau_wg[y + ny * x + ny * nbin * i] =
-            //     delta_colmass[i]
-            //     * (opac_wg_lay[y + ny * x + ny * nbin * i] + fcloud * (cloud_abs_cross_lay[x] + cloud_scat_cross)
-            //        + (ray_cross) / meanmolmass_lay[i]);
+
             double del_tau = delta_tau_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
             trans_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                 trans_func(epsi, del_tau, w0, g0, E);
@@ -338,6 +375,7 @@ __global__ void trans_iso(double*       trans_wg,             // out
                         g_m);
                 }
             }
+            // debug printout when exploring NaN errors
             // if (!isfinite(g_p) || !isfinite(g_m)
             //     || !isfinite(M_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
             //     || !isfinite(N_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])

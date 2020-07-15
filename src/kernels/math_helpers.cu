@@ -1,3 +1,43 @@
+// ==============================================================================
+// This file is part of Alfrodull.
+//
+//     Alfrodull is free software : you can redistribute it and / or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+//
+//     Alfrodull is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//     GNU General Public License for more details.
+//
+//     You find a copy of the GNU General Public License in the main
+//     Alfrodull directory under <license.txt>.If not, see
+//     <http://www.gnu.org/licenses/>.
+// ==============================================================================
+//
+// Various math tools
+//
+//
+//
+// Method: Helios Two Stream algorithm
+//
+//
+// Known limitations: - Runs in a single GPU.
+//
+// Known issues: None
+//
+//
+// Code contributors: Urs Schroffenegger, Matej Malik
+//
+// History:
+// Version Date       Comment
+// ======= ====       =======
+// 1.0     2020-07-15 First version
+//
+//
+////////////////////////////////////////////////////////////////////////
+
 #include "math_helpers.h"
 #include "vector_operations.h"
 
@@ -128,7 +168,6 @@ __host__ __device__ void thomas_solve(double4* A,
     }
 #ifdef MATH_HELPER_THOMAS_SOL_CHECK
     double epsilon = 1e-10;
-    //bool   matches = true;
 
     double2 dp;
     {
@@ -184,10 +223,6 @@ __host__ __device__ void thomas_solve(double4* A,
                    D[N - 1].x,
                    D[N - 1].y);
     }
-
-    // if (!matches)
-    //     printf("Thomas failed\n");
-
 #endif // MATH_HELPER_THOMAS_SOL_CHECK
 }
 
@@ -308,6 +343,7 @@ std::shared_ptr<double[]> integrate_wg_band(double* val,
     return val_tot.get_host_data();
 }
 
+// Compute simple mean of two arrays, used to compute layer value from upper/lower values
 __global__ void arrays_mean(double* array1, double* array2, double* array_out, int array_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 

@@ -1,3 +1,46 @@
+// ==============================================================================
+// This file is part of Alfrodull.
+//
+//     Alfrodull is free software : you can redistribute it and / or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+//
+//     Alfrodull is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//     GNU General Public License for more details.
+//
+//     You find a copy of the GNU General Public License in the main
+//     Alfrodull directory under <license.txt>.If not, see
+//     <http://www.gnu.org/licenses/>.
+// ==============================================================================
+//
+// Master engine to compute physical quantities through interpolation, integrate flux
+// Works on batches of comlumns
+//
+//
+//
+// Method: Helios Two Stream algorithm
+//
+//
+// Known limitations: - Runs in a single GPU.
+//
+// Known issues: None
+//
+//
+// Code contributors: Urs Schroffenegger, Matej Malik
+//
+// History:
+// Version Date       Comment
+// ======= ====       =======
+// 1.0     2020-07-15 First version
+//
+//
+//
+////////////////////////////////////////////////////////////////////////
+
+
 #include "alfrodull_engine.h"
 #include "gauss_legendre_weights.h"
 
@@ -108,10 +151,6 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     wiggle_iteration_max     = wiggle_iteration_max_;
     G_pm_limit_on_full_G_pm  = G_pm_limit_on_full_G_pm_;
     max_num_parallel_columns = max_num_parallel_columns_;
-    // TODO: maybe should stay in opacities object
-    //    nbin = opacities.nbin;
-
-    // prepare_planck_table();
 }
 
 void alfrodull_engine::allocate_internal_variables() {
@@ -196,13 +235,9 @@ void alfrodull_engine::allocate_internal_variables() {
         delta_col_lower.allocate(num_cols * nlayer);
     }
 
-    //  dev_T_int.allocate(ninterface);
 
     mu_star_iteration_buffer1.allocate(num_cols);
     mu_star_iteration_buffer2.allocate(num_cols);
-    // column mass
-    // TODO: computed by grid in helios, should be computed by alfrodull or comes from THOR?
-
 
     meanmolmass_lay.allocate(num_cols * nlayer);
     // scatter cross section layer and interface
@@ -231,8 +266,6 @@ void alfrodull_engine::allocate_internal_variables() {
     mu_star_cols.allocate(num_cols);
     hit_G_pm_denom_limit.allocate(1);
 
-    // TODO: abstract this away into an interpolation class
-
     std::unique_ptr<double[]> weights = std::make_unique<double[]>(100);
     for (int i = 0; i < opacities.ny; i++)
         weights[i] = gauss_legendre_weights[opacities.ny - 1][i];
@@ -243,7 +276,6 @@ void alfrodull_engine::allocate_internal_variables() {
     USE_BENCHMARK();
 
 #ifdef PER_BLOCK_COLUMN_BENCHMARK
-
     if (iso) {
         std::map<string, output_def> debug_arrays = {
             {"meanmolmass_lay",
@@ -306,17 +338,6 @@ void alfrodull_engine::allocate_internal_variables() {
             {"g_0", {g0_wg.ptr_ref(), (int)g0_wg.get_size(), "g_0", "g0", true, dummy}},
 
         };
-        // TODO: add thomas algorithm variables - if needed
-
-        /*
-        A_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        B_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        C_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        D_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-        C_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-        D_prime_buff.allocate(ninterface_wg_nbin * 4); // thomas worker
-        X_buff.allocate(ninterface_wg_nbin * 4);       // thomas worker
-	*/
 
         BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
     }
@@ -532,7 +553,6 @@ void alfrodull_engine::reset() {
 }
 
 // return device pointers for helios data save
-// TODO: how ugly can it get, really?
 std::tuple<long,
            long,
            long,
@@ -583,7 +603,6 @@ std::tuple<long, long, long, long, int, int> alfrodull_engine::get_opac_data_for
 }
 
 
-// TODO: check how to enforce this: must be called after loading opacities and setting parameters
 void alfrodull_engine::prepare_planck_table() {
     plancktable.construct_planck_table(
         *opacities.dev_opac_interwave, *opacities.dev_opac_deltawave, opacities.nbin, T_star);
@@ -609,14 +628,6 @@ void alfrodull_engine::correct_incident_energy(double* starflux_array_ptr,
 
         cudaDeviceSynchronize();
     }
-
-    // //nplanck_grid = (plancktable.dim+1)*opacities.nbin;
-    // // print out planck grid for debug
-    // std::unique_ptr<double[]> plgrd = std::make_unique<double[]>(plancktable.nplanck_grid);
-
-    // plancktable.planck_grid.fetch(plgrd);
-    // for (int i = 0; i < plancktable.nplanck_grid; i++)
-    //   printf("array[%d] : %g\n", i, plgrd[i]);
 }
 
 
@@ -658,12 +669,7 @@ void alfrodull_engine::set_clouds_data(const bool& clouds_,
 // var already present:
 // bool iso
 void alfrodull_engine::compute_radiative_transfer(
-    // prepare_compute_flux
-
-    // TODO: planck value tabulated and then interpolated
     double* dev_starflux, // in: pil
-    // state variables
-    // TODO: check which ones can be internal only
     double*
                 dev_T_lay_cols, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
     double*     dev_T_int_cols, // in: it, pii, ioi, mmmi, kii
@@ -960,11 +966,9 @@ void alfrodull_engine::compute_radiative_transfer(
     }
 }
 
+/* Computation of temperatures, pressure and physical quantities before integrating flux */
 bool alfrodull_engine::prepare_compute_flux(
-    // TODO: planck value tabulated and then interpolated
     double* dev_starflux, // in: pil
-    // state variables
-    // TODO: check which ones can be internal only
     double*
                   dev_T_lay_cols, // out: it, pil, io, mmm, kil   (interpolated from T_int and then used as input to other funcs)
     double*       dev_T_int_cols,           // in: it, pii, ioi, mmmi, kii
@@ -982,8 +986,6 @@ bool alfrodull_engine::prepare_compute_flux(
 
     int nbin = opacities.nbin;
 
-    // TODO: check where those planckband values are used, where used here in
-    // calculate_surface_planck and correc_surface_emission that's not used anymore
     // out: csp, cse
     int plancktable_dim  = plancktable.dim;
     int plancktable_step = plancktable.step;
@@ -1032,7 +1034,6 @@ bool alfrodull_engine::prepare_compute_flux(
         // io
         dim3 io_grid(int((nbin + 15) / 16), int((nlayer + 15) / 16), num_cols);
         dim3 io_block(16, 16, 1);
-        // TODO: should move fake_opac (opacity limit somewhere into opacity_table/interpolation component?)
         // out -> opacities (dev_opac_wg_lay)
         // out -> scetter cross section (scatter_cross_section_...)
         interpolate_opacities<<<io_grid, io_block>>>(dev_T_lay_cols,                     // in
@@ -1121,12 +1122,10 @@ bool alfrodull_engine::prepare_compute_flux(
         }
     }
 
-    // TODO: add state check and return value
-
     return true;
 }
 
-
+/* Integrate flux over weights and band */
 void alfrodull_engine::integrate_flux(double* deltalambda,
                                       double* F_down_tot,
                                       double* F_up_tot,
@@ -1151,7 +1150,6 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
         dim3 gridsize(
             ninterface / num_levels_per_block + 1, nbin / num_bins_per_block + 1, num_cols);
         dim3 blocksize(num_levels_per_block, num_bins_per_block, 1);
-        //printf("nbin: %d, ny: %d\n", nbin, ny);
 
         integrate_flux_band<<<gridsize, blocksize>>>(F_down_wg,
                                                      F_up_wg,
@@ -1186,6 +1184,7 @@ void alfrodull_engine::integrate_flux(double* deltalambda,
     }
 }
 
+/* calculate transmission function and quantities for flux computation */
 void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             // out
                                                   double* delta_colmass,        // in
                                                   double* opac_wg_lay,          // in
@@ -1221,7 +1220,6 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
     do {
         hit_G_pm_denom_limit_h = false;
         // set global wiggle checker to 0;
-        // printf("calc_transmission: %d iteration\n", iteration_counter);
         cudaMemcpy(
             *hit_G_pm_denom_limit, &hit_G_pm_denom_limit_h, sizeof(bool), cudaMemcpyHostToDevice);
 
@@ -1293,6 +1291,7 @@ void alfrodull_engine::calculate_transmission_iso(double* trans_wg,             
     } while (hit_G_pm_denom_limit_h);
 }
 
+/* calculate transmission function and quantities for flux computation */
 void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                                      double* trans_wg_lower,
                                                      double* delta_col_upper,
@@ -1423,6 +1422,7 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
     } while (hit_G_pm_denom_limit_h);
 }
 
+/* Compute direct beam from TOA spectrum, mu-star, geometry */
 bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
                                         double* Fc_dir_wg,
                                         double* z_lay,
@@ -1437,8 +1437,6 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
 
     int ny = opacities.ny;
 
-    //printf("R_star: %g, R_planet: %g, a: %g\n", R_star, R_planet, a);
-    //printf("dir beam: %d, geom_z_corr: %d, mu_star: %g\n", dir_beam, geom_zenith_corr, mu_star);
     if (iso) {
         dim3 grid((ninterface + 3) / 4, (nbin + 31) / 32, (num_cols * ny + 3) / 4);
         dim3 block(4, 32, 4);
@@ -1487,6 +1485,7 @@ bool alfrodull_engine::direct_beam_flux(double* F_dir_wg,
     return true;
 }
 
+/* Solve flux transmission matrix */
 bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // out
                                                          double* F_up_wg,   // out
                                                          double* F_dir_wg,  // in
@@ -1748,6 +1747,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
     return true;
 }
 
+/* Compute g0 and w0 values for output */
 bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_, const int& num_cols) {
 
     int nbin = opacities.nbin;
@@ -1776,7 +1776,7 @@ bool alfrodull_engine::get_column_integrated_g0_w0(double* g0_, double* w0_, con
         cudaDeviceSynchronize();
     }
 
-    // This would integratee over bands
+    // This would integrate over bands
     // {
     //     int  num_levels_per_block = 256;
     //     dim3 gridsize(ninterface / num_levels_per_block + 1);
