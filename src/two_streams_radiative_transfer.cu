@@ -231,9 +231,6 @@ bool two_streams_radiative_transfer::initialise_memory(
     bool out = true;
     nlayer   = esp.nv;
 
-    // TODO: understand what needs to be stored per column. and what can be global for internal conputation
-    // what needs to be passed outside or stored should be global, others can be per column
-
     R_star_SI = R_star_config * R_SUN;
 
     planet_star_dist_SI = planet_star_dist_config * AU;
@@ -391,7 +388,6 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_down_band.allocate(ncol * ninterface_nbin);
     F_up_band.allocate(ncol * ninterface_nbin);
     F_dir_band.allocate(ncol * ninterface_nbin);
-    // TODO: check, ninterface or nlayers ?
     F_net.allocate(esp.point_num * ninterface);
 
     F_up_TOA_spectrum.allocate(esp.point_num * nbin);
@@ -520,10 +516,6 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
     log::printf("Built Planck Table for %d bins, Star temp %g K\n", alf.opacities.nbin, alf.T_star);
     // initialise alf
 
-    // TODO: where to do this, check
-    // TODO where does starflux come from?
-    // correct_incident_energy
-
     alf.correct_incident_energy(*star_flux, real_star, true);
 
     // internal flux from internal temperature
@@ -630,15 +622,10 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay_col
 
 
         // Prepare temperature array with T_intern
-        // TODO: check this, HELIOS uses temperature_lay[nlayer] as BOA value (also indexed as temperture_lay[numinterfaces - 1])
-        // try helios style
-        // printf("-intidx: %d/%d\n", int_idx, num_layers);
         if (int_idx < num_layers) {
-            // printf("intidx: %d/%d\n", int_idx, num_layers);
             temperature_lay[int_idx] = temperature_lay_thor[int_idx];
         }
         else if (int_idx == num_layers) {
-            //printf("intidx: %d/%d %g *\n", int_idx, num_layers, T_intern);
             temperature_lay[num_layers] = T_intern;
         }
 
@@ -825,12 +812,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 temperature_int.zero();
                 temperature_lay.zero();
 
-                // g_0_tot_lay.zero();
-                // g_0_tot_int.zero();
-                // cloud_abs_cross_lay.zero();
-                // cloud_abs_cross_int.zero();
-                // cloud_scat_cross_lay.zero();
-                // cloud_scat_cross_int.zero();
                 int num_layers = esp.nv;
 
 
@@ -866,7 +847,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                                          + std::to_string(nstep) + "/column_"
                                                          + std::to_string(column_idx + c) + "/";
                             create_output_dir(DBG_OUTPUT_DIR);
-                            // TODO: handle multiple columns
                             double lon = esp.lonlat_h[(column_idx + c) * 2 + 0] * 180 / M_PI;
                             double lat = esp.lonlat_h[(column_idx + c) * 2 + 1] * 180 / M_PI;
 
@@ -978,8 +958,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 #endif // DUMP_HELIOS_TP
 
                 // initialise delta_col_mass
-                // TODO: should this go inside alf?
-                // printf("initialise_delta_colmass\n");
                 if (iso) {
                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
                     dim3 block(num_blocks, 1, 1);
@@ -999,12 +977,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 }
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
-                // printf("initialise_delta_colmass done\n");
 
-                // get z_lay
-                // TODO: z_lay for beam computation
-                // TODO: check how it is used and check that it doesn't interpolate to interface
-                //        in which case we need to pass z_int
                 double* z_lay = esp.Altitude_d;
                 double* z_int = esp.Altitudeh_d;
                 // internal to alfrodull_engine
@@ -1016,11 +989,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
                 // compute fluxes
 
-                // Check in here, some values from initial setup might change per column: e.g. mu_star;
-                //printf("compute_radiative_transfer\n");
-
-
-                // singlewalk
+                // singlewalk (for iterative solver)
                 //  true -> 201 iterations,
                 //  false -> 4 iterations,
 
@@ -1028,7 +997,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 int  ninterface     = nlayer + 1;
 
                 {
-                    //printf("column_idx: %d, current numcols: %d\n", column_idx, current_num_cols);
                     double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx]);
                     int     column_offset_int     = column_idx * ninterface;
 
@@ -1036,9 +1004,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     double* F_col_up_tot   = &((*F_up_tot)[column_offset_int]);
                     double* F_col_dir_tot  = &((*F_dir_tot)[column_offset_int]);
                     double* F_col_net      = &((*F_net)[column_offset_int]);
-
-                    //            double* F_dir_band_col    = &((*F_dir_band)[ninterface * nbin]);
-                    //double* F_dir_band_col = &((*F_dir_band)[0]);
 
                     double* F_up_TOA_spectrum_col = &((*F_up_TOA_spectrum)[column_idx * nbin]);
 
@@ -1098,10 +1063,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
 #ifdef DEBUG_PRINTOUT_ARRAYS
-                //printf("printcol1\n");
                 debug_print_columns(
                     esp, col_cos_zenith_angle_h, nstep, column_idx, current_num_cols);
-                //printf("printcol2\n");
 #endif // DEBUG_PRINTOUT_ARRAYS
             }
             start_up = false;
@@ -1367,7 +1330,6 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    es
     int nbin = alf.opacities.nbin;
     int ny   = alf.opacities.ny;
 
-    // printf("printweight(%s) - 1\n", output_file_base.c_str());
     // Print out single scattering albedo data
 
     int num_val = array_size / (nbin * ny);
@@ -1390,8 +1352,6 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    es
         string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
 
         FILE* output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
 
         std::shared_ptr<double[]> delta_lambda_h =
             get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
@@ -1407,7 +1367,6 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    es
             fprintf(output_file, "%d\t", b);
             fprintf(output_file, "%#.6g\t", delta_lambda_h[b]);
             for (int i = 0; i < num_stack; i++) {
-                //printf("bin: %d, layer: %d, col: %d numval: %d\n", b, i, access_idx, num_val);
                 fprintf(
                     output_file, "%#.6g\t", array_h[b + i * nbin + access_idx * nbin * num_stack]);
             }
@@ -1415,8 +1374,6 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    es
         }
         fclose(output_file);
     }
-
-    // printf("printweight(%s) - 2\n", output_file_base.c_str());
 }
 
 void two_streams_radiative_transfer::print_data_to_file(ESP&                        esp,
@@ -1431,7 +1388,6 @@ void two_streams_radiative_transfer::print_data_to_file(ESP&                    
                                                         bool   global,
                                                         double scaling) {
     // Print out single scattering albedo data
-    //    printf("printdata(%s) - 1\n", output_file_base.c_str());
     int                       num_val = array.get_size();
     std::shared_ptr<double[]> array_h = array.get_host_data();
 
@@ -1448,8 +1404,6 @@ void two_streams_radiative_transfer::print_data_to_file(ESP&                    
         string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
 
         FILE* output_file = fopen(output_file_name.c_str(), "w");
-        // std::shared_ptr<double[]> opac_wg_lay_h =
-        //     get_cuda_data(*alf.opac_wg_lay, esp.nv * nbin);
 
         fprintf(output_file, "%s\t", stackname.c_str());
         fprintf(output_file, "%s\n", column_name.c_str());
@@ -1461,7 +1415,6 @@ void two_streams_radiative_transfer::print_data_to_file(ESP&                    
         fclose(output_file);
     }
     cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
-    // printf("printdata(%s) - 2\n", output_file_base.c_str());
 }
 
 

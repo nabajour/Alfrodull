@@ -58,6 +58,7 @@ public:
     bool initialise_memory(const ESP &esp, device_RK_array_manager &phy_modules_core_arrays);
     bool initial_conditions(const ESP &esp, const SimulationSetup &sim, storage *s);
 
+    // those are not used for alf
     // virtual bool dyn_core_loop_init(const ESP& esp) {
     //     return true;
     // };
@@ -148,9 +149,6 @@ public:
     double mu_star_wiggle_increment = 0.001;
     int    wiggle_iteration_max     = 10;
     int    num_parallel_columns     = 1;
-    // TODO: check this. if we are starting up and not at iteration 0,
-    // we need either to reload the Qheat or something to compute it (net flux) or recompute it.
-    // or we'll have discrepancies between loading initial conditions and running cases
 
     bool start_up = true;
 

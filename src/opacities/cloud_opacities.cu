@@ -56,9 +56,6 @@ bool cloud_opacity_table::load(const string& filename) {
     printf("Loading tables\n");
     storage s(filename, true);
 
-    // TODO add loading of wavelength and ypoints
-    // TODO outside of here, check that it matches opacities bins
-
     read_table_to_device<double>(s, "/asymmetry", dev_asymmetry);
 
     read_table_to_device<double>(s, "/scattering", dev_scat_cross_sections);
