@@ -251,4 +251,13 @@ private:
                             string                      output_file_base,
                             bool                        global,
                             double                      scaling = 1.0);
+
+    void print_X_buff_thomas_data_to_file(ESP &                       esp,
+                                          int                         nstep,
+                                          int                         column_idx,
+                                          int                         num_stack,
+                                          int                         num_cols,
+                                          string                      stackname,
+                                          cuda_device_memory<double> &array_,
+                                          string                      output_file_base);
 };

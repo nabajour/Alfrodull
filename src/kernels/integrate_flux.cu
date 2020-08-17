@@ -1621,10 +1621,9 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                               * (M_low - P_low - N_low);
                 }
 
-                direct_terms =
-                    Fc_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star)
-                        * (G_min_low * N_low + G_pl_low * M_low)
-                    - F_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star) * P_low * G_pl_low;
+                direct_terms = -Fc_dir_wg[y + ny * x + ny * nbin * (i - 1)]
+                                   * (G_min_low * N_low + G_pl_low * M_low)
+                               + F_dir_wg[y + ny * x + ny * nbin * (i - 1)] * P_low * G_pl_low;
 
                 direct_terms = min(0.0, direct_terms);
 
@@ -1662,9 +1661,8 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                 }
 
                 direct_terms =
-                    F_dir_wg[y + ny * x + ny * nbin * i] / (-mu_star)
-                        * (G_min_up * N_up + G_pl_up * M_up)
-                    - Fc_dir_wg[y + ny * x + ny * nbin * (i - 1)] / (-mu_star) * P_up * G_pl_up;
+                    -F_dir_wg[y + ny * x + ny * nbin * i] * (G_min_up * N_up + G_pl_up * M_up)
+                    + Fc_dir_wg[y + ny * x + ny * nbin * (i - 1)] * P_up * G_pl_up;
 
                 direct_terms = min(0.0, direct_terms);
 

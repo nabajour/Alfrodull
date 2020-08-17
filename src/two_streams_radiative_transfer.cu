@@ -639,7 +639,8 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay_col
             double ps = 0.5 * (pressure_lay[0] + psm);
 
             pressure_int[0]    = ps;
-            temperature_int[0] = T_intern;
+            temperature_int[0] = temperature_lay
+                [0]; // T_intern; TEST: try with isothermal lower layer // fixes weird shifted bottom point, doesn't change upward flux being different
         }
         else if (int_idx == num_layers) {
             // extrapolate to top boundary
@@ -1293,7 +1294,77 @@ bool two_streams_radiative_transfer::free_memory() {
 }
 
 // ***************************************************************************************************************
+// ***************************************************************************************************************
+// special version for Thomas algorithm X_buff that has special indexing
+// works only for ny = 1
+void two_streams_radiative_transfer::print_X_buff_thomas_data_to_file(
+    ESP&                        esp,
+    int                         nstep,
+    int                         column_idx,
+    int                         num_stack,
+    int                         num_cols,
+    string                      stackname,
+    cuda_device_memory<double>& array_,
+    string                      output_file_base) {
 
+    double* array = *array_;
+
+
+    int array_size = array_.get_size();
+    int nbin       = alf.opacities.nbin;
+    int ny         = alf.opacities.ny;
+
+
+    // Print out single scattering albedo data
+
+    if (ny != 1)
+        printf("Debug print of X_thomas error, ny != 1\n");
+
+    // std::shared_ptr<double[]> array_h =
+    //     integrate_band(array, *alf.gauss_weights, num_val, nbin, ny);
+    std::shared_ptr<double[]> array_h = get_cuda_data(array, array_size);
+
+    cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
+
+    std::shared_ptr<double[]> delta_lambda_h =
+        get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
+
+    cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
+
+
+    for (int c = 0; c < num_cols; c++) {
+        // offset of column
+        int col_offset = c * (2 * nlayer + 1) * nbin * 2;
+
+        // loop on columns
+        // printf("/alfprof/step_%d/column_%d/\n", nstep, column_idx + c);
+        std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                     + "/alfprof/"
+                                       "step_"
+                                     + std::to_string(nstep) + "/column_"
+                                     + std::to_string(column_idx + c) + "/";
+        create_output_dir(DBG_OUTPUT_DIR);
+
+        string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
+
+        FILE* output_file = fopen(output_file_name.c_str(), "w");
+        fprintf(output_file, "bin\t");
+        fprintf(output_file, "deltalambda\t");
+        for (int i = 0; i < num_stack; i++)
+            fprintf(output_file, "%s[%d]\t", stackname.c_str(), i);
+        fprintf(output_file, "\n");
+
+        for (int b = 0; b < nbin; b++) {
+            fprintf(output_file, "%d\t", b);
+            fprintf(output_file, "%#.6g\t", delta_lambda_h[b]);
+            for (int i = 0; i < num_stack; i++) {
+                fprintf(output_file, "%#.6g\t", array_h[i + col_offset + (2 * nlayer + 1) * b * 2]);
+            }
+            fprintf(output_file, "\n");
+        }
+        fclose(output_file);
+    }
+}
 // ***************************************************************************************************************
 void two_streams_radiative_transfer::print_weighted_band_data_to_file(
     ESP&                        esp,
@@ -1521,6 +1592,52 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
             fclose(planck_output_file);
         }
     }
+    if (!iso) {
+        std::shared_ptr<double[]> planck_h = alf.planckband_int.get_host_data();
+
+        cuda_check_status_or_exit(string(__FILE__ ":"
+                                                  "plkintprofile")
+                                      .c_str(),
+                                  __LINE__);
+
+        for (int c = 0; c < num_cols; c++) {
+            std::string DBG_OUTPUT_DIR = esp.get_output_dir()
+                                         + "/alfprof/"
+                                           "step_"
+                                         + std::to_string(nstep) + "/column_"
+                                         + std::to_string(column_base_idx + c) + "/";
+            create_output_dir(DBG_OUTPUT_DIR);
+
+            // Print out planck data
+
+            string output_file_name = DBG_OUTPUT_DIR + "plkintprofile.dat";
+
+            FILE* planck_output_file = fopen(output_file_name.c_str(), "w");
+
+
+            std::shared_ptr<double[]> delta_lambda_h =
+                get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
+
+            fprintf(planck_output_file, "bin\t");
+            fprintf(planck_output_file, "deltalambda\t");
+            for (int i = 0; i < esp.nvi; i++)
+                fprintf(planck_output_file, "int[%d]\t", i);
+            fprintf(planck_output_file, "\n");
+
+            for (int b = 0; b < nbin; b++) {
+                fprintf(planck_output_file, "%d\t", b);
+                fprintf(planck_output_file, "%#.6g\t", delta_lambda_h[b]);
+                for (int i = 0; i < esp.nvi; i++) {
+                    fprintf(planck_output_file,
+                            "%#.6g\t",
+                            planck_h[b * (esp.nvi) + i + c * ((esp.nvi) * nbin)]);
+                }
+                fprintf(planck_output_file, "\n");
+            }
+            fclose(planck_output_file);
+        }
+    }
+
     {
         // Print out mean molecular weight data
         print_data_to_file(esp,
@@ -1535,8 +1652,22 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
                            false,
                            1.0 / AMU);
     }
+    if (!iso) {
+        // Print out mean molecular weight data
+        print_data_to_file(esp,
+                           nstep,
+                           column_base_idx,
+                           esp.nvi,
+                           num_cols,
+                           "interface",
+                           "meanmolmassint",
+                           alf.meanmolmass_int,
+                           "meanmolmassintprofile",
+                           false,
+                           1.0 / AMU);
+    }
 
-    {
+    if (iso) {
         print_data_to_file(esp,
                            nstep,
                            column_base_idx,
@@ -1546,6 +1677,29 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
                            "delta_col_mass",
                            alf.delta_col_mass,
                            "deltacolmassprofile",
+                           false);
+    }
+    else {
+        print_data_to_file(esp,
+                           nstep,
+                           column_base_idx,
+                           esp.nv,
+                           num_cols,
+                           "layer",
+                           "delta_col_upper",
+                           alf.delta_col_upper,
+                           "deltacolupperprofile",
+                           false);
+
+        print_data_to_file(esp,
+                           nstep,
+                           column_base_idx,
+                           esp.nv,
+                           num_cols,
+                           "layer",
+                           "delta_col_lower",
+                           alf.delta_col_lower,
+                           "deltacollowerprofile",
                            false);
     }
 
@@ -1559,6 +1713,19 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
                                          "layer",
                                          alf.opac_wg_lay,
                                          "opacprofile",
+                                         false);
+    }
+
+    if (!iso) {
+        // Print out opacities data
+        print_weighted_band_data_to_file(esp,
+                                         nstep,
+                                         column_base_idx,
+                                         esp.nvi,
+                                         num_cols,
+                                         "interface",
+                                         alf.opac_wg_int,
+                                         "opacintprofile",
                                          false);
     }
 
@@ -1808,6 +1975,33 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
                                          F_dir_wg,
                                          "F_dir_profile",
                                          false);
+    }
+
+    if (!iso) {
+        if (thomas) {
+            // Print out thomas sol (gives interface sol
+            print_X_buff_thomas_data_to_file(esp,
+                                             nstep,
+                                             column_base_idx,
+                                             2 * (esp.nv * 2 + 1),
+                                             num_cols,
+                                             "int",
+                                             alf.X_buff,
+                                             "X_thomas_profile");
+        }
+
+        {
+            // Print out direct beam flux
+            print_weighted_band_data_to_file(esp,
+                                             nstep,
+                                             column_base_idx,
+                                             esp.nv,
+                                             num_cols,
+                                             "layer",
+                                             Fc_dir_wg,
+                                             "Fc_dir_profile",
+                                             false);
+        }
     }
 
 
