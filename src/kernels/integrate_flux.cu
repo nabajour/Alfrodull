@@ -1357,8 +1357,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
         // make contiguous address space for worker memory, fastest idx is interface
         // two equations per interface, one matrix block per interface
         // Num input layers
-        double mu_star    = mu_star_cols[c];
-        int    num_layers = numinterfaces - 1;
+        int num_layers = numinterfaces - 1;
 
         // num interfaces with duplication
         int num_th_layers     = 2 * num_layers;
