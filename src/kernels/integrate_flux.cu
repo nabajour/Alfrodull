@@ -1460,7 +1460,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                 }
 
                 // upper part of layer calculations
-                if (del_tau_up < delta_tau_limit) {
+                if (del_tau_up < delta_tau_limit || P_up == 0.0) {
                     // the isothermal solution -- taken if optical depth so small that numerical instabilities may occur
                     planck_terms = (planckband_int[(i + 1) + x * numinterfaces]
                                     + planckband_lay[i + x * (numinterfaces - 1 + 2)])
@@ -1505,7 +1505,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                 }
                 else {
                     {
-                        if (del_tau_low < delta_tau_limit) {
+                        if (del_tau_low < delta_tau_limit || P_low == 0.0) {
                             // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
                             planck_terms = (planckband_int[i + x * numinterfaces]
                                             + planckband_lay[i + x * (numinterfaces - 1 + 2)])
@@ -1601,7 +1601,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                 }
 
                 // lower part of layer calculations
-                if (del_tau_low < delta_tau_limit) {
+                if (del_tau_low < delta_tau_limit || P_low == 0.0) {
                     // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
                     planck_terms = ((planckband_int[(i - 1) + x * numinterfaces]
                                      + planckband_lay[(i - 1) + x * (numinterfaces - 1 + 2)])
@@ -1641,7 +1641,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                     + direct_terms;
 
                 // upper part of layer calculations
-                if (del_tau_up < delta_tau_limit) {
+                if (del_tau_up < delta_tau_limit || P_up == 0.0) {
                     // isothermal solution -- taken if optical depth so small that numerical instabilities may occur
                     planck_terms = (planckband_int[i + x * numinterfaces]
                                     + planckband_lay[(i - 1) + x * (numinterfaces - 1 + 2)])
