@@ -114,6 +114,7 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Experimental Constant Opacity Offsets:   %g\n", experimental_opacities_offset);
 
     log::printf("    Gas constant g0 (without clouds):        %g\n", g_0);
+    log::printf("    epsilon:                                 %g\n", epsi);
     log::printf("    epsilon_2:                               %g\n", epsilon_2);
     log::printf("    Opacity Cutoff:                          %g\n", fake_opac);
 
@@ -176,7 +177,7 @@ bool two_streams_radiative_transfer::configure(config_file &config_reader) {
     config_reader.append_config_var("Alf_fake_opac", fake_opac, fake_opac);
 
     config_reader.append_config_var("Alf_g_0", g_0, g_0);
-    config_reader.append_config_var("Alf_diffusivity", diffusivity, diffusivity);
+    config_reader.append_config_var("Alf_espilon_2", epsilon_2, epsilon_2);
     config_reader.append_config_var("Alf_G_pm_max_limiter", G_pm_limiter, G_pm_limiter);
     config_reader.append_config_var("Alf_G_pm_limit", G_pm_denom_limit, G_pm_denom_limit);
     config_reader.append_config_var(
@@ -1206,7 +1207,7 @@ bool two_streams_radiative_transfer::store_init(storage &s) {
                    "Iterative solver single walk mode");
     s.append_value(g_0, "/alf_g_0", "-", "asymmetry factor");
     s.append_value(diffusivity, "/alf_diffusivity", "-", "Diffusivity factor");
-    s.append_value(epsi, "/alf_epsi", "-", "One over Diffusivity factor");
+    s.append_value(epsi, "/alf_epsilon", "-", "One over Diffusivity factor");
     s.append_value(epsilon_2, "/alf_epsilon_2", "-", "Epsilon 2 factor");
 
     s.append_value(experimental_opacities_offset,
