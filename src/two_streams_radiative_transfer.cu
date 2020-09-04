@@ -70,9 +70,9 @@ using std::string;
 //#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
-// #define DEBUG_PRINTOUT_ARRAYS
+//#define DEBUG_PRINTOUT_ARRAYS
 // dump TP profile to run in HELIOS for profile comparison
-// #define DUMP_HELIOS_TP
+//#define DUMP_HELIOS_TP
 // stride for column TP profile dump
 #ifdef DUMP_HELIOS_TP
 const int HELIOS_TP_STRIDE = 1;
@@ -590,8 +590,8 @@ __global__ void initialise_delta_colmass_pressure_iso(double *delta_col_mass_col
 // same as helios.source.host_functions.construct_grid
 __global__ void initialise_delta_colmass_density_noniso(double *delta_col_mass_upper_cols,
                                                         double *delta_col_mass_lower_cols,
-                                                        double *altitude_lay_cols,
-                                                        double *altitude_int_cols,
+                                                        double *altitude_lay,
+                                                        double *altitude_int,
                                                         double *density_lay_cols,
                                                         double *density_int_cols,
                                                         int     num_layers,
@@ -608,8 +608,6 @@ __global__ void initialise_delta_colmass_density_noniso(double *delta_col_mass_u
 
         double *density_int  = &(density_int_cols[col_block_idx * (num_layers + 1)]);
         double *density_lay  = &(density_lay_cols[col_block_idx * num_layers]);
-        double *altitude_int = &(altitude_int_cols[col_block_idx * (num_layers + 1)]);
-        double *altitude_lay = &(altitude_lay_cols[col_block_idx * num_layers]);
 
         delta_col_mass_upper[layer_idx] = 0.5
                                           * (density_int[layer_idx + 1] + density_lay[layer_idx])
@@ -623,7 +621,7 @@ __global__ void initialise_delta_colmass_density_noniso(double *delta_col_mass_u
 // initialise delta_colmass arrays from pressure
 // same as helios.source.host_functions.construct_grid
 __global__ void initialise_delta_colmass_density_iso(double *delta_col_mass_cols,
-                                                     double *altitude_int_cols,
+                                                     double *altitude_int,
                                                      double *density_lay_cols,
                                                      int     num_layers,
                                                      int     num_columns) {
@@ -637,7 +635,6 @@ __global__ void initialise_delta_colmass_density_iso(double *delta_col_mass_cols
         // get offset into start of column data
         double *delta_col_mass = &(delta_col_mass_cols[col_block_idx * col_size]);
 
-        double *altitude_int = &(altitude_int_cols[col_block_idx * (num_layers + 1)]);
         double *density_lay  = &(density_lay_cols[col_block_idx * num_layers]);
         delta_col_mass[layer_idx] =
             density_lay[layer_idx] * (altitude_int[layer_idx + 1] - altitude_int[layer_idx]);
@@ -1040,7 +1037,30 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
 #endif // DUMP_HELIOS_TP
 
                 // initialise delta_col_mass
-                if (iso) {
+		if (false)
+		  {
+                 // initialise delta_col_mass
+                 if (iso) {
+                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
+                     dim3 block(num_blocks, 1, 1);
+                    initialise_delta_colmass_pressure_iso<<<grid, block>>>(
+                        *alf.delta_col_mass, *pressure_int, gravit, num_layers, current_num_cols);
+
+                 }
+                 else {
+                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
+                     dim3 block(num_blocks, 1, 1);
+                    initialise_delta_colmass_pressure_noniso<<<grid, block>>>(*alf.delta_col_upper,
+                                                                     *alf.delta_col_lower,
+                                                                     column_layer_pressure,
+                                                                     *pressure_int,
+                                                                     gravit,
+                                                                     num_layers,
+                                                                     current_num_cols);
+                 }
+		  }
+		else {
+		  if (iso) {
                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
                     dim3 block(num_blocks, 1, 1);
                     initialise_delta_colmass_density_iso<<<grid, block>>>(*alf.delta_col_mass,
@@ -1061,6 +1081,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                                                                              num_layers,
                                                                              current_num_cols);
                 }
+		}
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
 
