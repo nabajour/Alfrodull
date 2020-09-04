@@ -39,7 +39,6 @@
 //
 ////////////////////////////////////////////////////////////////////////
 
-
 #include "two_streams_radiative_transfer.h"
 
 #include "binary_test.h"
@@ -64,23 +63,20 @@
 
 USE_BENCHMARK();
 
-
 using std::string;
-
 
 // show progress bar
 // not really necessary when running on multiple columns at low res
 //#define COLUMN_LOOP_PROGRESS_BAR
 
 // debugging printout
-//#define DEBUG_PRINTOUT_ARRAYS
+// #define DEBUG_PRINTOUT_ARRAYS
 // dump TP profile to run in HELIOS for profile comparison
-//#define DUMP_HELIOS_TP
+// #define DUMP_HELIOS_TP
 // stride for column TP profile dump
 #ifdef DUMP_HELIOS_TP
 const int HELIOS_TP_STRIDE = 1;
 #endif // DUMP_HELIOS_TP
-
 
 //***************************************************************************************************
 
@@ -161,7 +157,7 @@ void two_streams_radiative_transfer::print_config() {
                 debug_output ? "true" : "false");
 }
 
-bool two_streams_radiative_transfer::configure(config_file& config_reader) {
+bool two_streams_radiative_transfer::configure(config_file &config_reader) {
     // variables reused from DG
     config_reader.append_config_var("Tstar", T_star, T_star);
     config_reader.append_config_var("Tint", T_internal, T_internal);
@@ -224,10 +220,9 @@ bool two_streams_radiative_transfer::configure(config_file& config_reader) {
     return true;
 }
 
-
 bool two_streams_radiative_transfer::initialise_memory(
-    const ESP&               esp,
-    device_RK_array_manager& phy_modules_core_arrays) {
+    const ESP &              esp,
+    device_RK_array_manager &phy_modules_core_arrays) {
     bool out = true;
     nlayer   = esp.nv;
 
@@ -341,7 +336,8 @@ bool two_streams_radiative_transfer::initialise_memory(
                     < epsilon;
 
                 if (!check)
-                    printf("Missmatch in wavelength at idx [%d] l_spectrum(%g) != l_opac(%g) \n",
+                    printf("Missmatch in wavelength at idx [%d] l_spectrum(%g) != "
+                           "l_opac(%g) \n",
                            i,
                            lambda_ptr[i] * lambda_spectrum_scale,
                            alf.opacities.data_opac_wave[i]);
@@ -351,7 +347,8 @@ bool two_streams_radiative_transfer::initialise_memory(
             star_flux.put();
 
             if (!lambda_check) {
-                log::printf("wavelength points mismatch between stellar spectrum and opacities\n");
+                log::printf("wavelength points mismatch between stellar spectrum and "
+                            "opacities\n");
                 exit(EXIT_FAILURE);
             }
         }
@@ -364,11 +361,10 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     // allocate interface state variables to be interpolated
 
-
     pressure_int.allocate(ncol * ninterface);
     temperature_int.allocate(ncol * ninterface);
     temperature_lay.allocate(ncol * nlayer_plus1);
-
+    density_int.allocate(ncol * ninterface);
 
     F_down_wg.allocate(ncol * ninterface_wg_nbin);
     F_up_wg.allocate(ncol * ninterface_wg_nbin);
@@ -391,7 +387,6 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_net.allocate(esp.point_num * ninterface);
 
     F_up_TOA_spectrum.allocate(esp.point_num * nbin);
-
 
     Qheat.allocate(esp.point_num * nlayer);
 
@@ -426,7 +421,6 @@ bool two_streams_radiative_transfer::initialise_memory(
         cloud_scat_cross_lay.allocate(nbin);
         cloud_scat_cross_int.allocate(nbin);
 
-
         g_0_tot_lay.zero();
         g_0_tot_int.zero();
         cloud_abs_cross_lay.zero();
@@ -443,7 +437,6 @@ bool two_streams_radiative_transfer::initialise_memory(
                             *g_0_tot_int,
                             fcloud);
     }
-
 
     cudaError_t err = cudaGetLastError();
 
@@ -476,21 +469,21 @@ bool two_streams_radiative_transfer::initialise_memory(
         {"F_dir_band",
          {F_dir_band.ptr_ref(), ncol * ninterface_nbin, "Fdirband", "Fdib", true, dummy}},
 
-
         {"T_lay", {temperature_lay.ptr_ref(), ncol * nlayer_plus1, "T_lay", "Tl", true, dummy}},
         {"T_int", {temperature_int.ptr_ref(), ncol * ninterface, "T_int", "Ti", true, dummy}},
         {"P_int", {pressure_int.ptr_ref(), ncol * ninterface, "P_int", "Pi", true, dummy}},
 
-        //        {"col_mu_star", {col_mu_star.ptr_ref(), esp.point_num, "col_mu_star", "cMu", true, dummy}},
+        //        {"col_mu_star", {col_mu_star.ptr_ref(), esp.point_num,
+        //        "col_mu_star", "cMu", true, dummy}},
         {"AlfQheat", {Qheat.ptr_ref(), esp.point_num * nlayer, "AlfQheat", "aQh", true, dummy}}};
     BENCH_POINT_REGISTER_PHY_VARS(debug_arrays, (), ());
 #endif // BENCHMARKING
     return out;
 }
 
-bool two_streams_radiative_transfer::initial_conditions(const ESP&             esp,
-                                                        const SimulationSetup& sim,
-                                                        storage*               s) {
+bool two_streams_radiative_transfer::initial_conditions(const ESP &            esp,
+                                                        const SimulationSetup &sim,
+                                                        storage *              s) {
     if (spinup_start_step > -1 || spinup_stop_step > -1) {
         if (spinup_stop_step < spinup_start_step)
             printf("Alf: inconsistent spinup_start (%d) and spinup_stop (%d) values\n",
@@ -499,7 +492,8 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
     }
     if (spindown_start_step > -1 || spindown_stop_step > -1) {
         if (spindown_stop_step < spindown_start_step)
-            printf("Alf: inconsistent spindown_start (%d) and spindown_stop (%d) values\n",
+            printf("Alf: inconsistent spindown_start (%d) and spindown_stop (%d) "
+                   "values\n",
                    spindown_start_step,
                    spindown_stop_step);
     }
@@ -528,15 +522,16 @@ bool two_streams_radiative_transfer::initial_conditions(const ESP&             e
     return out;
 }
 
+// ************************************************************************************************
 // initialise delta_colmass arrays from pressure
 // same as helios.source.host_functions.construct_grid
-__global__ void initialise_delta_colmass_noniso(double* delta_col_mass_upper_cols,
-                                                double* delta_col_mass_lower_cols,
-                                                double* pressure_lay_cols,
-                                                double* pressure_int_cols,
-                                                double  gravit,
-                                                int     num_layers,
-                                                int     num_columns) {
+__global__ void initialise_delta_colmass_pressure_noniso(double *delta_col_mass_upper_cols,
+                                                         double *delta_col_mass_lower_cols,
+                                                         double *pressure_lay_cols,
+                                                         double *pressure_int_cols,
+                                                         double  gravit,
+                                                         int     num_layers,
+                                                         int     num_columns) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
     //    int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
     // index of column in column batch.
@@ -544,15 +539,15 @@ __global__ void initialise_delta_colmass_noniso(double* delta_col_mass_upper_col
 
     if (layer_idx < num_layers) {
         // get offset into start of column data
-        double* delta_col_mass_upper = &(delta_col_mass_upper_cols[col_block_idx * num_layers]);
-        double* delta_col_mass_lower = &(delta_col_mass_lower_cols[col_block_idx * num_layers]);
-        double* pressure_int         = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
-        double* pressure_lay         = &(pressure_lay_cols[col_block_idx * num_layers]);
+        double *delta_col_mass_upper = &(delta_col_mass_upper_cols[col_block_idx * num_layers]);
+        double *delta_col_mass_lower = &(delta_col_mass_lower_cols[col_block_idx * num_layers]);
+        double *pressure_int         = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
+        double *pressure_lay         = &(pressure_lay_cols[col_block_idx * num_layers]);
 
         delta_col_mass_upper[layer_idx] =
-            (pressure_lay[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
+            fabs(pressure_lay[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
         delta_col_mass_lower[layer_idx] =
-            (pressure_int[layer_idx] - pressure_lay[layer_idx]) / gravit;
+            fabs(pressure_int[layer_idx] - pressure_lay[layer_idx]) / gravit;
 
         if ((delta_col_mass_upper[layer_idx] < 0.0) || (delta_col_mass_lower[layer_idx] < 0.0))
             printf("Negative delta_col_mass (%g, %g), layer: %d, col: %d\n",
@@ -565,21 +560,21 @@ __global__ void initialise_delta_colmass_noniso(double* delta_col_mass_upper_col
 
 // initialise delta_colmass arrays from pressure
 // same as helios.source.host_functions.construct_grid
-__global__ void initialise_delta_colmass_iso(double* delta_col_mass_cols,
-                                             double* pressure_int_cols,
-                                             double  gravit,
-                                             int     num_layers,
-                                             int     num_columns) {
+__global__ void initialise_delta_colmass_pressure_iso(double *delta_col_mass_cols,
+                                                      double *pressure_int_cols,
+                                                      double  gravit,
+                                                      int     num_layers,
+                                                      int     num_columns) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    //int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
+    // int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
     // index of column in column batch.
     int col_block_idx = blockIdx.z;
     int col_size      = num_layers;
 
     if (layer_idx < num_layers) {
         // get offset into start of column data
-        double* delta_col_mass = &(delta_col_mass_cols[col_block_idx * col_size]);
-        double* pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
+        double *delta_col_mass = &(delta_col_mass_cols[col_block_idx * col_size]);
+        double *pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
         delta_col_mass[layer_idx] =
             (pressure_int[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
         if (delta_col_mass[layer_idx] < 0.0)
@@ -590,18 +585,78 @@ __global__ void initialise_delta_colmass_iso(double* delta_col_mass_cols,
     }
 }
 
+// initialise delta_colmass arrays from pressure
+// same as helios.source.host_functions.construct_grid
+__global__ void initialise_delta_colmass_density_noniso(double *delta_col_mass_upper_cols,
+                                                        double *delta_col_mass_lower_cols,
+                                                        double *altitude_lay_cols,
+                                                        double *altitude_int_cols,
+                                                        double *density_lay_cols,
+                                                        double *density_int_cols,
+                                                        int     num_layers,
+                                                        int     num_columns) {
+    int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    //    int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
+    // index of column in column batch.
+    int col_block_idx = blockIdx.z;
 
-// single column pressure and temperature interpolation from layers to interfaces
-// needs to loop from 0 to number of interfaces (nvi = nv+1)
-// same as profX_RT
-__global__ void interpolate_temperature_and_pressure(double* temperature_lay_cols,      // out
-                                                     double* temperature_lay_thor_cols, // in
-                                                     double* temperature_int_cols,      // out
-                                                     double* pressure_lay_cols,         // in
-                                                     double* pressure_int_cols,         // out
-                                                     double* density_cols,              // in
-                                                     double* altitude_lay,              // in
-                                                     double* altitude_int,              // in
+    if (layer_idx < num_layers) {
+        // get offset into start of column data
+        double *delta_col_mass_upper = &(delta_col_mass_upper_cols[col_block_idx * num_layers]);
+        double *delta_col_mass_lower = &(delta_col_mass_lower_cols[col_block_idx * num_layers]);
+
+        double *density_int  = &(density_int_cols[col_block_idx * (num_layers + 1)]);
+        double *density_lay  = &(density_lay_cols[col_block_idx * num_layers]);
+        double *altitude_int = &(altitude_int_cols[col_block_idx * (num_layers + 1)]);
+        double *altitude_lay = &(altitude_lay_cols[col_block_idx * num_layers]);
+
+        delta_col_mass_upper[layer_idx] = 0.5
+                                          * (density_int[layer_idx + 1] + density_lay[layer_idx])
+                                          * (altitude_int[layer_idx + 1] - altitude_lay[layer_idx]);
+
+        delta_col_mass_lower[layer_idx] = 0.5 * (density_int[layer_idx] + density_lay[layer_idx])
+                                          * (altitude_lay[layer_idx] - altitude_int[layer_idx]);
+    }
+}
+
+// initialise delta_colmass arrays from pressure
+// same as helios.source.host_functions.construct_grid
+__global__ void initialise_delta_colmass_density_iso(double *delta_col_mass_cols,
+                                                     double *altitude_int_cols,
+                                                     double *density_lay_cols,
+                                                     int     num_layers,
+                                                     int     num_columns) {
+    int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    // int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
+    // index of column in column batch.
+    int col_block_idx = blockIdx.z;
+    int col_size      = num_layers;
+
+    if (layer_idx < num_layers) {
+        // get offset into start of column data
+        double *delta_col_mass = &(delta_col_mass_cols[col_block_idx * col_size]);
+
+        double *altitude_int = &(altitude_int_cols[col_block_idx * (num_layers + 1)]);
+        double *density_lay  = &(density_lay_cols[col_block_idx * num_layers]);
+        delta_col_mass[layer_idx] =
+            density_lay[layer_idx] * (altitude_int[layer_idx + 1] - altitude_int[layer_idx]);
+    }
+}
+
+// ************************************************************************************************
+
+// single column pressure and temperature interpolation from layers to
+// interfaces needs to loop from 0 to number of interfaces (nvi = nv+1) same as
+// profX_RT
+__global__ void interpolate_temperature_and_pressure(double *temperature_lay_cols,      // out
+                                                     double *temperature_lay_thor_cols, // in
+                                                     double *temperature_int_cols,      // out
+                                                     double *pressure_lay_cols,         // in
+                                                     double *pressure_int_cols,         // out
+                                                     double *density_lay_cols,          // in
+                                                     double *density_int_cols,          // out
+                                                     double *altitude_lay,              // in
+                                                     double *altitude_int,              // in
                                                      double  T_intern,
                                                      double  gravit,
                                                      int     num_layers,
@@ -613,13 +668,13 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay_col
 
     if (col_idx < num_columns) {
         // Get offset arrays into columns
-        double* temperature_lay      = &(temperature_lay_cols[col_block_idx * (num_layers + 1)]);
-        double* temperature_lay_thor = &(temperature_lay_thor_cols[col_block_idx * num_layers]);
-        double* temperature_int      = &(temperature_int_cols[col_block_idx * (num_layers + 1)]);
-        double* pressure_lay         = &(pressure_lay_cols[col_block_idx * num_layers]);
-        double* pressure_int         = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
-        double* density              = &(density_cols[col_block_idx * num_layers]);
-
+        double *temperature_lay      = &(temperature_lay_cols[col_block_idx * (num_layers + 1)]);
+        double *temperature_lay_thor = &(temperature_lay_thor_cols[col_block_idx * num_layers]);
+        double *temperature_int      = &(temperature_int_cols[col_block_idx * (num_layers + 1)]);
+        double *pressure_lay         = &(pressure_lay_cols[col_block_idx * num_layers]);
+        double *pressure_int         = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
+        double *density_lay          = &(density_lay_cols[col_block_idx * num_layers]);
+        double *density_int          = &(density_int_cols[col_block_idx * (num_layers + 1)]);
 
         // Prepare temperature array with T_intern
         if (int_idx < num_layers) {
@@ -632,15 +687,27 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay_col
         // compute interface values
         if (int_idx == 0) {
             // extrapolate to lower boundary
-            double psm =
-                pressure_lay[1]
-                - density[0] * gravit * (2 * altitude_int[0] - altitude_lay[0] - altitude_lay[1]);
+            double psm = pressure_lay[1]
+                         - density_lay[0] * gravit
+                               * (2 * altitude_int[0] - altitude_lay[0] - altitude_lay[1]);
 
             double ps = 0.5 * (pressure_lay[0] + psm);
 
-            pressure_int[0]    = ps;
-            temperature_int[0] = temperature_lay
-                [0]; // T_intern; TEST: try with isothermal lower layer // fixes weird shifted bottom point, doesn't change upward flux being different
+            double dbottom = density_lay[0]
+                             + (density_lay[1] - density_lay[0])
+                                   / (altitude_lay[1] - altitude_lay[0])
+                                   * (altitude_int[0] - altitude_lay[0]);
+            if (dbottom < 0.0)
+                dbottom = 0.0; // prevents pressure at the top from becoming negative
+
+            density_int[num_layers] = dbottom;
+
+            density_int[0]  = density_lay[0];
+            pressure_int[0] = ps;
+            temperature_int[0] =
+                temperature_lay[0]; // T_intern; TEST: try with isothermal lower layer
+                                    // // fixes weird shifted bottom point, doesn't
+                                    // change upward flux being different
         }
         else if (int_idx == num_layers) {
             // extrapolate to top boundary
@@ -650,10 +717,20 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay_col
                               * (2 * altitude_int[num_layers] - altitude_lay[num_layers - 1]
                                  - altitude_lay[num_layers - 2]);
             if (pp < 0.0)
-                pp = 0.0; //prevents pressure at the top from becoming negative
+                pp = 0.0; // prevents pressure at the top from becoming negative
             double ptop = 0.5 * (pressure_lay[num_layers - 1] + pp);
 
             pressure_int[num_layers] = ptop;
+
+            double dtop = density_lay[num_layers - 1]
+                          + (density_lay[num_layers - 1] - density_lay[num_layers - 2])
+                                / (altitude_lay[num_layers - 1] - altitude_lay[num_layers - 2])
+                                * (altitude_int[num_layers] - altitude_lay[num_layers - 1]);
+            if (dtop < 0.0)
+                dtop = 0.0; // prevents pressure at the top from becoming negative
+
+            density_int[num_layers] = dtop;
+
             // extrapolate to top interface
             temperature_int[num_layers] = temperature_lay_thor[num_layers - 1]
                                           + 0.5
@@ -662,8 +739,8 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay_col
         }
         else if (int_idx < num_layers) {
             // interpolation between layers
-            // Helios computes gy taking the middle between the layers. We can have non uniform Z levels,
-            // so linear interpolation
+            // Helios computes gy taking the middle between the layers. We can have
+            // non uniform Z levels, so linear interpolation
             double xi       = altitude_int[int_idx];
             double xi_minus = altitude_lay[int_idx - 1];
             double xi_plus  = altitude_lay[int_idx];
@@ -674,12 +751,14 @@ __global__ void interpolate_temperature_and_pressure(double* temperature_lay_col
 
             temperature_int[int_idx] =
                 temperature_lay_thor[int_idx - 1] * a + temperature_lay_thor[int_idx] * b;
+
+            density_int[int_idx] = density_lay[int_idx - 1] * a + density_lay[int_idx] * b;
         }
     }
 }
 
 __global__ void
-increment_Qheat(double* Qheat_global, double* Qheat, double scaling, int num_sample) {
+increment_Qheat(double *Qheat_global, double *Qheat, double scaling, int num_sample) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < num_sample) {
@@ -688,9 +767,9 @@ increment_Qheat(double* Qheat_global, double* Qheat, double scaling, int num_sam
     }
 }
 
-__global__ void compute_column_Qheat(double* F_net_cols, // net flux, layer
-                                     double* z_int,
-                                     double* Qheat_cols,
+__global__ void compute_column_Qheat(double *F_net_cols, // net flux, layer
+                                     double *z_int,
+                                     double *Qheat_cols,
                                      double  F_intern,
                                      int     num_layers,
                                      int     tot_num_cols) {
@@ -699,8 +778,8 @@ __global__ void compute_column_Qheat(double* F_net_cols, // net flux, layer
     // index of column in column batch.
     int col_block_idx = blockIdx.z;
     if (col_idx < tot_num_cols) {
-        double* F_net = &(F_net_cols[col_block_idx * (num_layers + 1)]);
-        double* Qheat = &(Qheat_cols[col_idx * num_layers]);
+        double *F_net = &(F_net_cols[col_block_idx * (num_layers + 1)]);
+        double *Qheat = &(Qheat_cols[col_idx * num_layers]);
 
         if (layer_idx == 0) {
             // delta_flux/delta_z
@@ -717,9 +796,8 @@ __global__ void compute_column_Qheat(double* F_net_cols, // net flux, layer
     }
 }
 
-
-bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
-                                              const SimulationSetup& sim,
+bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
+                                              const SimulationSetup &sim,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
@@ -763,7 +841,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
         if (nstep % compute_every_n_iteration == 0 || start_up) {
             std::shared_ptr<double[]> col_cos_zenith_angle_h =
                 esp.insolation.get_host_cos_zenith_angles();
-            double* col_cos_zenith_angle_d = esp.insolation.get_device_cos_zenith_angles();
+            double *col_cos_zenith_angle_d = esp.insolation.get_device_cos_zenith_angles();
             Qheat.zero();
             F_down_tot.zero();
             F_up_tot.zero();
@@ -784,7 +862,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
             // loop on columns
             for (int column_idx = 0; column_idx < esp.point_num;
                  column_idx += num_parallel_columns) {
-                //printf("column_idx_tsrt: %d\n", column_idx);
+                // printf("column_idx_tsrt: %d\n", column_idx);
 
                 int current_num_cols = min(num_cols, esp.point_num - column_idx);
                 alf.debug_col_idx    = column_idx;
@@ -806,25 +884,23 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     Fc_dir_wg.zero();
                 }
 
-
                 alf.reset();
 
                 pressure_int.zero();
                 temperature_int.zero();
                 temperature_lay.zero();
+                density_int.zero();
 
                 int num_layers = esp.nv;
 
-
                 int column_offset = column_idx * num_layers;
-
 
                 double gravit = sim.Gravit;
                 // fetch column values
 
-                double* column_layer_temperature_thor = &(esp.temperature_d[column_offset]);
-                double* column_layer_pressure         = &(esp.pressure_d[column_offset]);
-                double* column_density                = &(esp.Rho_d[column_offset]);
+                double *column_layer_temperature_thor = &(esp.temperature_d[column_offset]);
+                double *column_layer_pressure         = &(esp.pressure_d[column_offset]);
+                double *column_density                = &(esp.Rho_d[column_offset]);
                 // initialise interpolated T and P
                 // use mu_star per column
 
@@ -838,6 +914,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         get_cuda_data(column_layer_pressure, esp.nv * current_num_cols);
                     std::shared_ptr<double[]> temperature_h =
                         get_cuda_data(column_layer_temperature_thor, esp.nv * current_num_cols);
+                    std::shared_ptr<double[]> density_h =
+                        get_cuda_data(column_density, esp.nv * current_num_cols);
 
                     for (int c = 0; c < current_num_cols; c++) {
                         // dump a TP profile for HELIOS input
@@ -851,7 +929,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                             double lon = esp.lonlat_h[(column_idx + c) * 2 + 0] * 180 / M_PI;
                             double lat = esp.lonlat_h[(column_idx + c) * 2 + 1] * 180 / M_PI;
 
-
                             double p_toa   = pressure_h[esp.nv * c + esp.nv - 1];
                             double p_boa   = pressure_h[esp.nv * c];
                             double mu_star = -col_cos_zenith_angle_h[column_idx + c];
@@ -859,7 +936,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                             // Print out initial TP profile
                             string output_file_name = DBG_OUTPUT_DIR + "tpprofile_init.dat";
 
-                            FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
+                            FILE * tp_output_file = fopen(output_file_name.c_str(), "w");
                             string comment =
                                 "# Helios TP profile table at lat: [" + std::to_string(lon)
                                 + "] lon: [" + std::to_string(lat) + "] mustar: ["
@@ -867,13 +944,14 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                 + "] P_TOA: [" + std::to_string(p_toa) + "]\n";
 
                             fprintf(tp_output_file, comment.c_str());
-                            fprintf(tp_output_file, "#\tT[K]\tP[bar]\n");
+                            fprintf(tp_output_file, "#\tT[K]\tP[bar]\trho\n");
 
                             for (int i = 0; i < esp.nv; i++) {
                                 fprintf(tp_output_file,
-                                        "%#.6g\t%#.6g\n",
+                                        "%#.6g\t%#.6g\t%#.6g\n",
                                         temperature_h[i + esp.nv * c],
-                                        pressure_h[i + esp.nv * c] / 1e5);
+                                        pressure_h[i + esp.nv * c] / 1e5,
+                                        density_h[i + esp.nv * c]);
                             }
 
                             fclose(tp_output_file);
@@ -893,6 +971,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                         column_layer_pressure,
                         *pressure_int,
                         column_density,
+                        *density_int,
                         esp.Altitude_d,
                         esp.Altitudeh_d,
                         T_internal,
@@ -910,6 +989,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     // dump a TP profile for HELIOS input
                     std::shared_ptr<double[]> pressure_int_h    = pressure_int.get_host_data();
                     std::shared_ptr<double[]> temperature_int_h = temperature_int.get_host_data();
+                    std::shared_ptr<double[]> density_int_h     = density_int.get_host_data();
+
                     for (int c = 0; c < current_num_cols; c++) {
 
                         if (column_idx % HELIOS_TP_STRIDE == 0) {
@@ -925,7 +1006,6 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
 
                             // get col mu star from zenith angle
 
-
                             double p_toa = pressure_int_h[esp.nvi * c + esp.nvi - 1];
                             double p_boa = pressure_int_h[esp.nvi * c];
 
@@ -933,7 +1013,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                             // Print out initial TP profile
                             string output_file_name = DBG_OUTPUT_DIR + "tpprofile_interface.dat";
 
-                            FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
+                            FILE * tp_output_file = fopen(output_file_name.c_str(), "w");
                             string comment        = "# Helios TP interface profile table at lat: ["
                                              + std::to_string(lon) + "] lon: ["
                                              + std::to_string(lat) + "] mustar: ["
@@ -942,14 +1022,14 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                                              + std::to_string(p_toa) + "]\n";
 
                             fprintf(tp_output_file, comment.c_str());
-                            fprintf(tp_output_file, "#\tT[K]\tP[bar]\n");
-
+                            fprintf(tp_output_file, "#\tT[K]\tP[bar]\trho\n");
 
                             for (int i = 0; i < esp.nvi; i++) {
                                 fprintf(tp_output_file,
-                                        "%#.6g\t%#.6g\n",
+                                        "%#.6g\t%#.6g\t%#.6g\n",
                                         temperature_int_h[i + esp.nvi * c],
-                                        pressure_int_h[i + esp.nvi * c] / 1e5);
+                                        pressure_int_h[i + esp.nvi * c] / 1e5,
+                                        density_int_h[i + esp.nvi * c]);
                             }
 
                             fclose(tp_output_file);
@@ -962,30 +1042,34 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 if (iso) {
                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
                     dim3 block(num_blocks, 1, 1);
-                    initialise_delta_colmass_iso<<<grid, block>>>(
-                        *alf.delta_col_mass, *pressure_int, gravit, num_layers, current_num_cols);
+                    initialise_delta_colmass_density_iso<<<grid, block>>>(*alf.delta_col_mass,
+                                                                          esp.Altitudeh_d,
+                                                                          column_density,
+                                                                          num_layers,
+                                                                          current_num_cols);
                 }
                 else {
                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
                     dim3 block(num_blocks, 1, 1);
-                    initialise_delta_colmass_noniso<<<grid, block>>>(*alf.delta_col_upper,
-                                                                     *alf.delta_col_lower,
-                                                                     column_layer_pressure,
-                                                                     *pressure_int,
-                                                                     gravit,
-                                                                     num_layers,
-                                                                     current_num_cols);
+                    initialise_delta_colmass_density_noniso<<<grid, block>>>(*alf.delta_col_upper,
+                                                                             *alf.delta_col_lower,
+                                                                             esp.Altitude_d,
+                                                                             esp.Altitudeh_d,
+                                                                             column_density,
+                                                                             *density_int,
+                                                                             num_layers,
+                                                                             current_num_cols);
                 }
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
 
-                double* z_lay = esp.Altitude_d;
-                double* z_int = esp.Altitudeh_d;
+                double *z_lay = esp.Altitude_d;
+                double *z_int = esp.Altitudeh_d;
                 // internal to alfrodull_engine
 
-                double* dev_starflux = *star_flux;
-                // limit where to switch from noniso to iso equations to keep model stable
-                // as defined in host_functions.set_up_numerical_parameters
+                double *dev_starflux = *star_flux;
+                // limit where to switch from noniso to iso equations to keep model
+                // stable as defined in host_functions.set_up_numerical_parameters
                 double delta_tau_limit = 1e-4;
 
                 // compute fluxes
@@ -998,15 +1082,15 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 int  ninterface     = nlayer + 1;
 
                 {
-                    double* cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx]);
+                    double *cos_zenith_angle_cols = &(col_cos_zenith_angle_d[column_idx]);
                     int     column_offset_int     = column_idx * ninterface;
 
-                    double* F_col_down_tot = &((*F_down_tot)[column_offset_int]);
-                    double* F_col_up_tot   = &((*F_up_tot)[column_offset_int]);
-                    double* F_col_dir_tot  = &((*F_dir_tot)[column_offset_int]);
-                    double* F_col_net      = &((*F_net)[column_offset_int]);
+                    double *F_col_down_tot = &((*F_down_tot)[column_offset_int]);
+                    double *F_col_up_tot   = &((*F_up_tot)[column_offset_int]);
+                    double *F_col_dir_tot  = &((*F_dir_tot)[column_offset_int]);
+                    double *F_col_net      = &((*F_net)[column_offset_int]);
 
-                    double* F_up_TOA_spectrum_col = &((*F_up_TOA_spectrum)[column_idx * nbin]);
+                    double *F_up_TOA_spectrum_col = &((*F_up_TOA_spectrum)[column_idx * nbin]);
 
                     alf.compute_radiative_transfer(dev_starflux,          // dev_starflux
                                                    *temperature_lay,      // dev_T_lay
@@ -1039,11 +1123,10 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }
 
-
                 // get the g0 and w0 integrated
                 if (store_w0_g0) {
-                    double* g0_tot_col = &((*g0_tot)[column_idx * nlayer * nbin]);
-                    double* w0_tot_col = &((*w0_tot)[column_idx * nlayer * nbin]);
+                    double *g0_tot_col = &((*g0_tot)[column_idx * nlayer * nbin]);
+                    double *w0_tot_col = &((*w0_tot)[column_idx * nlayer * nbin]);
                     alf.get_column_integrated_g0_w0(g0_tot_col, w0_tot_col, current_num_cols);
                 }
 
@@ -1052,8 +1135,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
                 {
                     dim3    grid(int((esp.nv / num_blocks) + 1), 1, current_num_cols);
                     dim3    block(num_blocks, 1, 1);
-                    double* qheat     = &((*Qheat)[column_idx * nlayer]);
-                    double* F_col_net = &((*F_net)[column_idx * ninterface]);
+                    double *qheat     = &((*Qheat)[column_idx * nlayer]);
+                    double *F_col_net = &((*F_net)[column_idx * ninterface]);
                     compute_column_Qheat<<<grid, block>>>(F_col_net, // net flux, layer
                                                           z_int,
                                                           qheat,
@@ -1089,10 +1172,11 @@ bool two_streams_radiative_transfer::phy_loop(ESP&                   esp,
     return true;
 }
 
-bool two_streams_radiative_transfer::store_init(storage& s) {
+bool two_streams_radiative_transfer::store_init(storage &s) {
     if (!s.has_table("/Tstar"))
         s.append_value(T_star, "/Tstar", "K", "Temperature of host star");
-    // s.append_value(Tint, "/alf_Tint", "K", "Temperature of interior heat flux");
+    // s.append_value(Tint, "/alf_Tint", "K", "Temperature of interior heat
+    // flux");
     if (!s.has_table("/planet_star_dist"))
         s.append_value(planet_star_dist_config,
                        "/planet_star_dist",
@@ -1123,6 +1207,7 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
     s.append_value(g_0, "/alf_g_0", "-", "asymmetry factor");
     s.append_value(diffusivity, "/alf_diffusivity", "-", "Diffusivity factor");
     s.append_value(epsi, "/alf_epsi", "-", "One over Diffusivity factor");
+    s.append_value(epsilon_2, "/alf_epsilon_2", "-", "Epsilon 2 factor");
 
     s.append_value(experimental_opacities_offset,
                    "/Alf_experimental_opacities_offset",
@@ -1150,7 +1235,8 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
     s.append_value(mu_star_wiggle_increment,
                    "/Alf_G_pm_mu_star_increment",
                    "-",
-                   "Alf increment in degrees applied to incomming angle when hit G_pm limit");
+                   "Alf increment in degrees applied to incomming angle when hit "
+                   "G_pm limit");
     s.append_value(wiggle_iteration_max,
                    "/Alf_mu_star_iteration_max",
                    "-",
@@ -1162,7 +1248,8 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
     // commented out, no easy way to store strings in the table in the same way.
     // if (real_star) {
     //     std::string str[] = {stellar_spectrum_file};
-    //     s.append_value(str, "/Alf_stellar_spectrum", "-", "spectrum file name");
+    //     s.append_value(str, "/Alf_stellar_spectrum", "-", "spectrum file
+    //     name");
     // }
     // {
     //     std::string str[] = {opacities_file};
@@ -1174,7 +1261,6 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
     s.append_value(spinup_stop_step, "/Alf_spinup_stop", "-", "Alf spinup stop step");
     s.append_value(spindown_start_step, "/Alf_spindown_start", "-", "Alf spindown start step");
     s.append_value(spindown_stop_step, "/Alf_spindown_stop", "-", "Alf spindown stop step");
-
 
     s.append_value(num_parallel_columns,
                    "/Alf_num_parallel_columns",
@@ -1190,8 +1276,8 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
                    "/alf_compute_periodicity",
                    "n",
                    "Alfrodull compute periodicity");
-    //s.append_value(opacities_file, "/alf_opacity_file", "path", "Alfrodull opacitiy file used");
-
+    // s.append_value(opacities_file, "/alf_opacity_file", "path", "Alfrodull
+    // opacitiy file used");
 
     s.append_value(dir_beam ? 1.0 : 0.0, "/alf_dir_beam", "-", "Direct irradiation beam");
     s.append_value(geom_zenith_corr ? 1.0 : 0.0,
@@ -1203,16 +1289,14 @@ bool two_streams_radiative_transfer::store_init(storage& s) {
     s.append_value(
         store_w0_g0 ? 1 : 0, "/alf_w0_g0_per_band", "-", "Stored w0 and g0 per band for Alf");
 
-
     s.append_value(clouds ? 1 : 0, "/alf_cloud", "-", "Simulate clouds");
     s.append_value(fcloud, "/alf_fcloud", "-", "f_cloud");
-
 
     return true;
 }
 //***************************************************************************************************
 
-bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
+bool two_streams_radiative_transfer::store(const ESP &esp, storage &s) {
     std::shared_ptr<double[]> F_net_h = F_net.get_host_data();
     s.append_table(F_net_h.get(), F_net.get_size(), "/F_net", "W m^-2", "Net Flux");
 
@@ -1287,9 +1371,7 @@ bool two_streams_radiative_transfer::store(const ESP& esp, storage& s) {
     return true;
 }
 
-
 bool two_streams_radiative_transfer::free_memory() {
-
     return true;
 }
 
@@ -1298,22 +1380,20 @@ bool two_streams_radiative_transfer::free_memory() {
 // special version for Thomas algorithm X_buff that has special indexing
 // works only for ny = 1
 void two_streams_radiative_transfer::print_X_buff_thomas_data_to_file(
-    ESP&                        esp,
+    ESP &                       esp,
     int                         nstep,
     int                         column_idx,
     int                         num_stack,
     int                         num_cols,
     string                      stackname,
-    cuda_device_memory<double>& array_,
+    cuda_device_memory<double> &array_,
     string                      output_file_base) {
 
-    double* array = *array_;
-
+    double *array = *array_;
 
     int array_size = array_.get_size();
     int nbin       = alf.opacities.nbin;
     int ny         = alf.opacities.ny;
-
 
     // Print out single scattering albedo data
 
@@ -1331,7 +1411,6 @@ void two_streams_radiative_transfer::print_X_buff_thomas_data_to_file(
 
     cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
 
-
     for (int c = 0; c < num_cols; c++) {
         // offset of column
         int col_offset = c * (2 * nlayer + 1) * nbin * 2;
@@ -1347,7 +1426,7 @@ void two_streams_radiative_transfer::print_X_buff_thomas_data_to_file(
 
         string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
 
-        FILE* output_file = fopen(output_file_name.c_str(), "w");
+        FILE *output_file = fopen(output_file_name.c_str(), "w");
         fprintf(output_file, "bin\t");
         fprintf(output_file, "deltalambda\t");
         for (int i = 0; i < num_stack; i++)
@@ -1367,13 +1446,13 @@ void two_streams_radiative_transfer::print_X_buff_thomas_data_to_file(
 }
 // ***************************************************************************************************************
 void two_streams_radiative_transfer::print_weighted_band_data_to_file(
-    ESP&                        esp,
+    ESP &                       esp,
     int                         nstep,
     int                         column_idx,
     int                         num_stack,
     int                         num_cols,
     string                      stackname,
-    cuda_device_memory<double>& array,
+    cuda_device_memory<double> &array,
     string                      output_file_base,
     bool                        global) {
     print_weighted_band_data_to_file(esp,
@@ -1388,13 +1467,13 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(
                                      global);
 }
 
-void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    esp,
+void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP &   esp,
                                                                       int     nstep,
                                                                       int     column_idx,
                                                                       int     num_stack,
                                                                       int     num_cols,
                                                                       string  stackname,
-                                                                      double* array,
+                                                                      double *array,
                                                                       int     array_size,
                                                                       string  output_file_base,
                                                                       bool    global) {
@@ -1422,7 +1501,7 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    es
 
         string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
 
-        FILE* output_file = fopen(output_file_name.c_str(), "w");
+        FILE *output_file = fopen(output_file_name.c_str(), "w");
 
         std::shared_ptr<double[]> delta_lambda_h =
             get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
@@ -1447,14 +1526,14 @@ void two_streams_radiative_transfer::print_weighted_band_data_to_file(ESP&    es
     }
 }
 
-void two_streams_radiative_transfer::print_data_to_file(ESP&                        esp,
+void two_streams_radiative_transfer::print_data_to_file(ESP &                       esp,
                                                         int                         nstep,
                                                         int                         column_idx,
                                                         int                         num_stack,
                                                         int                         num_cols,
                                                         string                      stackname,
                                                         string                      column_name,
-                                                        cuda_device_memory<double>& array,
+                                                        cuda_device_memory<double> &array,
                                                         string output_file_base,
                                                         bool   global,
                                                         double scaling) {
@@ -1474,7 +1553,7 @@ void two_streams_radiative_transfer::print_data_to_file(ESP&                    
 
         string output_file_name = DBG_OUTPUT_DIR + output_file_base + ".dat";
 
-        FILE* output_file = fopen(output_file_name.c_str(), "w");
+        FILE *output_file = fopen(output_file_name.c_str(), "w");
 
         fprintf(output_file, "%s\t", stackname.c_str());
         fprintf(output_file, "%s\n", column_name.c_str());
@@ -1488,11 +1567,11 @@ void two_streams_radiative_transfer::print_data_to_file(ESP&                    
     cuda_check_status_or_exit((string(__FILE__ ":") + string(output_file_base)).c_str(), __LINE__);
 }
 
-
 // ***************************************************************************************************************
-// Helper function to print out all datasets for debugging and comparisong to HELIOS
-void two_streams_radiative_transfer::debug_print_columns(ESP&                       esp,
-                                                         std::shared_ptr<double[]>& cmustar,
+// Helper function to print out all datasets for debugging and comparisong to
+// HELIOS
+void two_streams_radiative_transfer::debug_print_columns(ESP &                      esp,
+                                                         std::shared_ptr<double[]> &cmustar,
                                                          int                        nstep,
                                                          int                        column_base_idx,
                                                          int                        num_cols) {
@@ -1513,22 +1592,19 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
                                          + std::to_string(column_base_idx + c) + "/";
             create_output_dir(DBG_OUTPUT_DIR);
 
-
             double lon = esp.lonlat_h[(column_base_idx + c) * 2 + 0] * 180 / M_PI;
             double lat = esp.lonlat_h[(column_base_idx + c) * 2 + 1] * 180 / M_PI;
-
 
             // Print out initial TP profile
             string output_file_name = DBG_OUTPUT_DIR + "tprofile_interp.dat";
 
-            FILE*  tp_output_file = fopen(output_file_name.c_str(), "w");
+            FILE * tp_output_file = fopen(output_file_name.c_str(), "w");
             string comment        = "# Helios TP profile table at lat: [" + std::to_string(lon)
                              + "] lon: [" + std::to_string(lat) + "] mustar: ["
                              + std::to_string(cmustar[c]) + "]\n";
 
             fprintf(tp_output_file, comment.c_str());
             fprintf(tp_output_file, "#\tT[K]\n");
-
 
             fprintf(tp_output_file,
                     "BOA\t%#.6g\n",
@@ -1543,7 +1619,6 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
             fclose(tp_output_file);
         }
     }
-
 
     {
         std::shared_ptr<double[]> planck_h = alf.planckband_lay.get_host_data();
@@ -1565,8 +1640,7 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
 
             string output_file_name = DBG_OUTPUT_DIR + "plkprofile.dat";
 
-            FILE* planck_output_file = fopen(output_file_name.c_str(), "w");
-
+            FILE *planck_output_file = fopen(output_file_name.c_str(), "w");
 
             std::shared_ptr<double[]> delta_lambda_h =
                 get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
@@ -1612,8 +1686,7 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
 
             string output_file_name = DBG_OUTPUT_DIR + "plkintprofile.dat";
 
-            FILE* planck_output_file = fopen(output_file_name.c_str(), "w");
-
+            FILE *planck_output_file = fopen(output_file_name.c_str(), "w");
 
             std::shared_ptr<double[]> delta_lambda_h =
                 get_cuda_data(*alf.opacities.dev_opac_deltawave, nbin);
@@ -1728,7 +1801,6 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
                                          "opacintprofile",
                                          false);
     }
-
 
     //***********************************************************************************************
     if (iso) {
@@ -2004,7 +2076,6 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
         }
     }
 
-
     {
         // Print out alf qheat
 
@@ -2020,7 +2091,7 @@ void two_streams_radiative_transfer::debug_print_columns(ESP&                   
 
             string output_file_name = DBG_OUTPUT_DIR + "alf_qheat_profile.dat";
 
-            FILE* output_file = fopen(output_file_name.c_str(), "w");
+            FILE *output_file = fopen(output_file_name.c_str(), "w");
 
             std::shared_ptr<double[]> qh_h = get_cuda_data(&((Qheat.ptr())[col_offset]), esp.nv);
 

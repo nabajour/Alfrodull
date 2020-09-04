@@ -177,7 +177,8 @@ private:
     cuda_device_memory<double> pressure_int;
     cuda_device_memory<double> temperature_int;
     cuda_device_memory<double> temperature_lay;
-
+    cuda_device_memory<double> density_int;
+  
     // interfadce fluxes
     cuda_device_memory<double> F_down_wg;
     cuda_device_memory<double> F_up_wg;
