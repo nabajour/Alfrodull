@@ -698,9 +698,7 @@ __global__ void interpolate_temperature_and_pressure(double *temperature_lay_col
             if (dbottom < 0.0)
                 dbottom = 0.0; // prevents pressure at the top from becoming negative
 
-            density_int[num_layers] = dbottom;
-
-            density_int[0]  = density_lay[0];
+            density_int[0]  = dbottom;
             pressure_int[0] = ps;
             temperature_int[0] =
                 temperature_lay[0]; // T_intern; TEST: try with isothermal lower layer
