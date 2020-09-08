@@ -39,3 +39,9 @@ build/*
 
 tests/*
 **/.ipynb_checkpoints/
+
+# r500 files that don't fit on github
+input/opac_sample_SI_r500.h5
+input/opac_sample_r500.h5
+input/wasp43b/mixed_opac_sampling_r500_m-013.h5
+input/wasp43b/opac_sample_SI_r500.h5
