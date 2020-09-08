@@ -794,6 +794,7 @@ __global__ void compute_column_Qheat(double *F_net_cols, // net flux, layer
 
 bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                                               const SimulationSetup &sim,
+					      kernel_diagnostics&    diag,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
