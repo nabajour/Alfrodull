@@ -40,9 +40,6 @@
 
 #include "physics_constants.h"
 
-// uncomment to set planck function to zero
-//#define ZERO_PLANCK_FUNCTION
-
 // temperature interpolation for the non-isothermal layers
 __global__ void interpolate_temperature(double* tlay, double* tint, int numinterfaces) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -70,6 +67,7 @@ __global__ void planck_interpol_layer(double* temp,           // in
                                       double* planckband_lay, // out
                                       double* planck_grid,    // in
                                       double* starflux,       // in
+                                      bool    null_planck_function,
                                       bool    realstar,
                                       int     numlayers,
                                       int     nwave,
@@ -121,9 +119,8 @@ __global__ void planck_interpol_layer(double* temp,           // in
                 planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] =
                     planck_grid[x + tdown * nwave];
             }
-#ifdef ZERO_PLANCK_FUNCTION
-            planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] = 0.0;
-#endif //  ZERO_PLANCK_FUNCTION
+            if (null_planck_function)
+              planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] = 0.0;
         }
     }
 }
@@ -132,6 +129,7 @@ __global__ void planck_interpol_layer(double* temp,           // in
 __global__ void planck_interpol_interface(double* temp,           // in
                                           double* planckband_int, // out
                                           double* planck_grid,    // in
+                                          bool    null_planck_function,
                                           int     numinterfaces,
                                           int     nwave,
                                           int     dim,
@@ -159,9 +157,8 @@ __global__ void planck_interpol_interface(double* temp,           // in
             planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] =
                 planck_grid[x + tdown * nwave];
         }
-#ifdef ZERO_PLANCK_FUNCTION
-        planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] = 0.0;
-#endif //  ZERO_PLANCK_FUNCTION
+        if (null_planck_function)
+          planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] = 0.0;
     }
 }
 

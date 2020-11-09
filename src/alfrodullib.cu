@@ -106,6 +106,7 @@ void init_parameters(const int&    nlayer_,
                             iso_,
                             Tstar_,
                             real_star,
+                            false, // null_planck_function
                             fake_opac,
                             g_0,
                             epsi,

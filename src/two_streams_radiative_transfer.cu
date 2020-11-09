@@ -131,6 +131,12 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Store w0 g0 (per band):                  %s\n",
                 store_w0_g0 ? "true" : "false");
 
+    log::printf("    Store dir flux spectrum (per band):                  %s\n",
+                store_dir_spectrum ? "true" : "false");
+
+    log::printf("    Null Planck Function:                  %s\n",
+                null_planck_function ? "true" : "false");
+
     log::printf("    Direct Beam:                             %s\n", dir_beam ? "true" : "false");
     log::printf("    Geometrical Zenith Correction:           %s\n",
                 geom_zenith_corr ? "true" : "false");
@@ -215,6 +221,11 @@ bool two_streams_radiative_transfer::configure(config_file &config_reader) {
     config_reader.append_config_var("Alf_cloudfile", cloud_filename, cloud_filename);
 
     config_reader.append_config_var("Alf_store_w0_g0", store_w0_g0, store_w0_g0);
+    config_reader.append_config_var(
+        "Alf_store_dir_spectrum", store_dir_spectrum, store_dir_spectrum);
+    config_reader.append_config_var(
+        "Alf_null_planck_function", null_planck_function, null_planck_function);
+
 
     config_reader.append_config_var("Alf_debug", debug_output, debug_output);
 
@@ -249,10 +260,11 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     double mu_star_limit = cos((90.0 + mu_star_limit_degrees) / 180.0 * M_PI);
 
-    alf.set_parameters(nlayer,              // const int&    nlayer_,
-                       iso,                 // const bool&   iso_,
-                       T_star,              // const double& T_star_,
-                       real_star,           // const bool&   real_star_,
+    alf.set_parameters(nlayer,    // const int&    nlayer_,
+                       iso,       // const bool&   iso_,
+                       T_star,    // const double& T_star_,
+                       real_star, // const bool&   real_star_,
+                       null_planck_function,
                        fake_opac,           // const double& fake_opac_,
                        g_0,                 // const double& g_0_,
                        epsi,                // const double& epsi_,
@@ -263,10 +275,10 @@ bool two_streams_radiative_transfer::initialise_memory(
                        R_star_SI,           // const double& R_star_,
                        planet_star_dist_SI, // const double& a_,
                        dir_beam,            // const bool&   dir_beam_,
-                       geom_zenith_corr,    // const bool&   geom_zenith_corr_,
-                       f_factor,            // const double& f_factor_,
-                       w_0_limit,           // const double& w_0_limit_,
-                       i2s_transition,      // const double& i2s_transition_,
+                       geom_zenith_corr, // const bool&   geom_zenith_corr_,
+                       f_factor,         // const double& f_factor_,
+                       w_0_limit,        // const double& w_0_limit_,
+                       i2s_transition,   // const double& i2s_transition_,
                        mu_star_limit,
                        wiggle_iteration_max,
                        G_pm_limit_on_full_G_pm,
@@ -285,7 +297,8 @@ bool two_streams_radiative_transfer::initialise_memory(
                 alf.opacities.ny);
 
     alf.allocate_internal_variables();
-
+    cuda_check_status_or_exit(__FILE__, __LINE__);
+    
     int ninterface         = nlayer + 1;
     int nlayer_plus1       = nlayer + 1;
     int nbin               = alf.opacities.nbin;
@@ -360,6 +373,8 @@ bool two_streams_radiative_transfer::initialise_memory(
         printf("Stellar flux loaded\n");
     }
 
+    cuda_check_status_or_exit(__FILE__, __LINE__);
+    
     // allocate interface state variables to be interpolated
 
     pressure_int.allocate(ncol * ninterface);
@@ -371,6 +386,8 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_up_wg.allocate(ncol * ninterface_wg_nbin);
     F_dir_wg.allocate(ncol * ninterface_wg_nbin);
 
+    cuda_check_status_or_exit(__FILE__, __LINE__);
+    
     if (!iso) {
         if (!thomas) {
             Fc_down_wg.allocate(ncol * ninterface_wg_nbin);
@@ -384,13 +401,18 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_dir_tot.allocate(esp.point_num * ninterface);
     F_down_band.allocate(ncol * ninterface_nbin);
     F_up_band.allocate(ncol * ninterface_nbin);
-    F_dir_band.allocate(ncol * ninterface_nbin);
+    if (store_dir_spectrum)
+      F_dir_band.allocate(esp.point_num * ninterface_nbin);
+    else
+      F_dir_band.allocate(ncol * ninterface_nbin);
     F_net.allocate(esp.point_num * ninterface);
 
     F_up_TOA_spectrum.allocate(esp.point_num * nbin);
 
     Qheat.allocate(esp.point_num * nlayer);
 
+    cuda_check_status_or_exit(__FILE__, __LINE__);
+    
     if (store_w0_g0) {
         // output for storage
         g0_tot.allocate(esp.point_num * nlayer_nbin);
@@ -400,18 +422,49 @@ bool two_streams_radiative_transfer::initialise_memory(
         w0_tot.zero();
     }
 
+    cuda_check_status_or_exit(__FILE__, __LINE__);
+
     if (clouds) {
         // load cloud file
-        alf.cloud_opacities.load(cloud_filename);
 
-        alf.set_clouds_data(clouds,
-                            *alf.cloud_opacities.dev_abs_cross_sections,
-                            *alf.cloud_opacities.dev_abs_cross_sections,
-                            *alf.cloud_opacities.dev_scat_cross_sections,
-                            *alf.cloud_opacities.dev_scat_cross_sections,
-                            *alf.cloud_opacities.dev_asymmetry,
-                            *alf.cloud_opacities.dev_asymmetry,
-                            fcloud);
+      
+      alf.cloud_opacities.load(cloud_filename);
+      
+      int asymmetry_size = alf.cloud_opacities.dev_asymmetry.get_size();
+      int scat_cs_size = alf.cloud_opacities.dev_scat_cross_sections.get_size();
+      int abs_cs_size = alf.cloud_opacities.dev_abs_cross_sections.get_size();
+      bool cloud_load_failure = false;
+      
+      if (asymmetry_size != nbin) {
+        log::printf("Wrong size for cloud assymetry array size\n");
+        log::printf("size: %d, nbin: %d\n", asymmetry_size, nbin);
+        cloud_load_failure = true;
+      }
+
+      if (scat_cs_size != nbin) {
+        log::printf("Wrong size for cloud scattering cross section array size\n");
+        log::printf("size: %d, nbin: %d\n", scat_cs_size, nbin);
+        cloud_load_failure = true;
+      }
+
+      if (abs_cs_size != nbin) {
+        log::printf("Wrong size for cloud absorption cross section array size\n");
+        log::printf("size: %d, nbin: %d\n", abs_cs_size, nbin);
+        cloud_load_failure = true;
+      }
+      
+      if (cloud_load_failure) {
+        exit(EXIT_FAILURE);
+      }
+        
+      alf.set_clouds_data(clouds,
+                          *alf.cloud_opacities.dev_abs_cross_sections,
+                          *alf.cloud_opacities.dev_abs_cross_sections,
+                          *alf.cloud_opacities.dev_scat_cross_sections,
+                          *alf.cloud_opacities.dev_scat_cross_sections,
+                          *alf.cloud_opacities.dev_asymmetry,
+                          *alf.cloud_opacities.dev_asymmetry,
+                          fcloud);
     }
     else {
         // all clouds set to zero. Not used.
@@ -437,6 +490,8 @@ bool two_streams_radiative_transfer::initialise_memory(
                             *g_0_tot_lay,
                             *g_0_tot_int,
                             fcloud);
+
+        cuda_check_status_or_exit(__FILE__, __LINE__);
     }
 
     cudaError_t err = cudaGetLastError();
@@ -606,8 +661,8 @@ __global__ void initialise_delta_colmass_density_noniso(double *delta_col_mass_u
         double *delta_col_mass_upper = &(delta_col_mass_upper_cols[col_block_idx * num_layers]);
         double *delta_col_mass_lower = &(delta_col_mass_lower_cols[col_block_idx * num_layers]);
 
-        double *density_int  = &(density_int_cols[col_block_idx * (num_layers + 1)]);
-        double *density_lay  = &(density_lay_cols[col_block_idx * num_layers]);
+        double *density_int = &(density_int_cols[col_block_idx * (num_layers + 1)]);
+        double *density_lay = &(density_lay_cols[col_block_idx * num_layers]);
 
         delta_col_mass_upper[layer_idx] = 0.5
                                           * (density_int[layer_idx + 1] + density_lay[layer_idx])
@@ -635,7 +690,7 @@ __global__ void initialise_delta_colmass_density_iso(double *delta_col_mass_cols
         // get offset into start of column data
         double *delta_col_mass = &(delta_col_mass_cols[col_block_idx * col_size]);
 
-        double *density_lay  = &(density_lay_cols[col_block_idx * num_layers]);
+        double *density_lay = &(density_lay_cols[col_block_idx * num_layers]);
         delta_col_mass[layer_idx] =
             density_lay[layer_idx] * (altitude_int[layer_idx + 1] - altitude_int[layer_idx]);
     }
@@ -794,7 +849,7 @@ __global__ void compute_column_Qheat(double *F_net_cols, // net flux, layer
 
 bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                                               const SimulationSetup &sim,
-					      kernel_diagnostics&    diag,
+                                              kernel_diagnostics &   diag,
                                               int                    nstep, // Step number
                                               double                 time_step)             // Time-step [s]
 {
@@ -1036,51 +1091,54 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
 #endif // DUMP_HELIOS_TP
 
                 // initialise delta_col_mass
-		if (false)
-		  {
-                 // initialise delta_col_mass
-                 if (iso) {
-                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
-                     dim3 block(num_blocks, 1, 1);
-                    initialise_delta_colmass_pressure_iso<<<grid, block>>>(
-                        *alf.delta_col_mass, *pressure_int, gravit, num_layers, current_num_cols);
-
-                 }
-                 else {
-                     dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
-                     dim3 block(num_blocks, 1, 1);
-                    initialise_delta_colmass_pressure_noniso<<<grid, block>>>(*alf.delta_col_upper,
-                                                                     *alf.delta_col_lower,
-                                                                     column_layer_pressure,
-                                                                     *pressure_int,
-                                                                     gravit,
-                                                                     num_layers,
-                                                                     current_num_cols);
-                 }
-		  }
-		else {
-		  if (iso) {
-                    dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
-                    dim3 block(num_blocks, 1, 1);
-                    initialise_delta_colmass_density_iso<<<grid, block>>>(*alf.delta_col_mass,
-                                                                          esp.Altitudeh_d,
-                                                                          column_density,
-                                                                          num_layers,
-                                                                          current_num_cols);
+                if (false) {
+                    // initialise delta_col_mass
+                    if (iso) {
+                        dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
+                        dim3 block(num_blocks, 1, 1);
+                        initialise_delta_colmass_pressure_iso<<<grid, block>>>(*alf.delta_col_mass,
+                                                                               *pressure_int,
+                                                                               gravit,
+                                                                               num_layers,
+                                                                               current_num_cols);
+                    }
+                    else {
+                        dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
+                        dim3 block(num_blocks, 1, 1);
+                        initialise_delta_colmass_pressure_noniso<<<grid, block>>>(
+                            *alf.delta_col_upper,
+                            *alf.delta_col_lower,
+                            column_layer_pressure,
+                            *pressure_int,
+                            gravit,
+                            num_layers,
+                            current_num_cols);
+                    }
                 }
                 else {
-                    dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
-                    dim3 block(num_blocks, 1, 1);
-                    initialise_delta_colmass_density_noniso<<<grid, block>>>(*alf.delta_col_upper,
-                                                                             *alf.delta_col_lower,
-                                                                             esp.Altitude_d,
-                                                                             esp.Altitudeh_d,
-                                                                             column_density,
-                                                                             *density_int,
-                                                                             num_layers,
-                                                                             current_num_cols);
+                    if (iso) {
+                        dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
+                        dim3 block(num_blocks, 1, 1);
+                        initialise_delta_colmass_density_iso<<<grid, block>>>(*alf.delta_col_mass,
+                                                                              esp.Altitudeh_d,
+                                                                              column_density,
+                                                                              num_layers,
+                                                                              current_num_cols);
+                    }
+                    else {
+                        dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
+                        dim3 block(num_blocks, 1, 1);
+                        initialise_delta_colmass_density_noniso<<<grid, block>>>(
+                            *alf.delta_col_upper,
+                            *alf.delta_col_lower,
+                            esp.Altitude_d,
+                            esp.Altitudeh_d,
+                            column_density,
+                            *density_int,
+                            num_layers,
+                            current_num_cols);
+                    }
                 }
-		}
                 cudaDeviceSynchronize();
                 cuda_check_status_or_exit(__FILE__, __LINE__);
 
@@ -1111,6 +1169,11 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                     double *F_col_dir_tot  = &((*F_dir_tot)[column_offset_int]);
                     double *F_col_net      = &((*F_net)[column_offset_int]);
 
+                    double *F_col_dir_band  = nullptr;
+                    if (store_dir_spectrum)
+                      F_col_dir_band  = &((*F_dir_band)[column_idx * ninterface*nbin]);
+                    else
+                      F_col_dir_band = *F_dir_band;
                     double *F_up_TOA_spectrum_col = &((*F_up_TOA_spectrum)[column_idx * nbin]);
 
                     alf.compute_radiative_transfer(dev_starflux,          // dev_starflux
@@ -1135,7 +1198,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                                                    F_col_net,
                                                    *F_down_band,
                                                    *F_up_band,
-                                                   *F_dir_band,
+                                                   F_col_dir_band,
                                                    F_up_TOA_spectrum_col,
                                                    cos_zenith_angle_cols,
                                                    current_num_cols,
@@ -1289,6 +1352,14 @@ bool two_streams_radiative_transfer::store_init(storage &s) {
                    " Alf number of columns to compute in parallel");
     s.append_value(debug_output ? 1 : 0, "/Alf_debug", "-", "Alf Debug output");
     s.append_value(store_w0_g0 ? 1 : 0, "/Alf_store_w0_g0", "-", "Alf store w0 g0 per band");
+    s.append_value(store_dir_spectrum ? 1 : 0,
+                   "/Alf_store_dir_spectrum",
+                   "-",
+                   "Alf store directional beam per band");
+    s.append_value(null_planck_function ? 1 : 0,
+                   "/Alf_null_planck_function",
+                   "-",
+                   "Alf set Planck function to 0");
     // {
     //     std::string str[] = {cloud_filename};
     //     s.append_value(str, "/Alf_cloudfile", "-", "Alf cloud opacity file");
@@ -1336,6 +1407,15 @@ bool two_streams_radiative_transfer::store(const ESP &esp, storage &s) {
     s.append_table(
         F_dir_tot_h.get(), F_dir_tot.get_size(), "/F_dir_tot", "W m^-2", "Total beam flux");
 
+    if (store_dir_spectrum) {
+      std::shared_ptr<double[]> F_dir_band_h = F_dir_band.get_host_data();
+      s.append_table(F_dir_band_h.get(),
+                       F_dir_band.get_size(),
+                       "/F_dir_band",
+                       "W m^-2 m^-1",
+                       "Directional beam spectrum");      
+    }
+
     if (store_w0_g0) {
         std::shared_ptr<double[]> w0_tot_h = w0_tot.get_host_data();
         s.append_table(w0_tot_h.get(),
@@ -1356,7 +1436,8 @@ bool two_streams_radiative_transfer::store(const ESP &esp, storage &s) {
         for (int i = 0; i < nbin; i++)
             spectrum[i] = planckband_lay_h[(numinterfaces - 1) + i * (numinterfaces - 1 + 2)];
 
-        s.append_table(spectrum.get(), nbin, "/alf_stellar_spectrum", "-", "Alfrodull stellar spectrum");
+        s.append_table(
+            spectrum.get(), nbin, "/alf_stellar_spectrum", "W m^-2 m^-1", "Alfrodull stellar spectrum");
     }
 
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();

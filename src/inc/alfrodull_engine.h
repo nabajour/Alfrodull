@@ -60,6 +60,7 @@ public:
                         const bool&   iso_,
                         const double& T_star_,
                         const bool&   real_star,
+                        const bool&   null_planck_function,
                         const double& fake_opac,
                         const double& g_0,
                         const double& epsi,
@@ -97,7 +98,8 @@ public:
     double a             = 0.0;
     bool   dir_beam      = false;
 
-    bool geom_zenith_corr = false;
+    bool null_planck_function    = false;
+    bool geom_zenith_corr        = false;
 
     double f_factor  = 0.0;
     double w_0_limit = 0.0;

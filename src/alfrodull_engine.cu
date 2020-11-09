@@ -106,6 +106,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const bool&   iso_,
                                       const double& T_star_,
                                       const bool&   real_star_,
+                                      const bool&   null_planck_function_,
                                       const double& fake_opac_,
                                       const double& g_0_,
                                       const double& epsi_,
@@ -144,6 +145,8 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     geom_zenith_corr = geom_zenith_corr_;
     f_factor         = f_factor_;
     w_0_limit        = w_0_limit_;
+
+    null_planck_function = null_planck_function_;
 
     i2s_transition           = i2s_transition;
     debug                    = debug_;
@@ -1010,6 +1013,7 @@ bool alfrodull_engine::prepare_compute_flux(
                                                    *plancktable.planck_grid, // in
                                                    dev_starflux,             // in
                                                    real_star,
+                                                   null_planck_function,
                                                    nlayer,
                                                    nbin,
                                                    plancktable_dim,
@@ -1023,6 +1027,7 @@ bool alfrodull_engine::prepare_compute_flux(
         planck_interpol_interface<<<pii_grid, pii_block>>>(dev_T_int_cols,           // in
                                                            *planckband_int,          // out
                                                            *plancktable.planck_grid, // in
+                                                           null_planck_function,
                                                            ninterface,
                                                            nbin,
                                                            plancktable_dim,

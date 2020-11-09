@@ -49,6 +49,8 @@
 #include "cuda_device_memory.h"
 #include "phy_module_base.h"
 
+using std::string;
+
 class two_streams_radiative_transfer : public phy_module_base
 {
 public:
@@ -110,7 +112,8 @@ public:
     bool   scat_corr;
 
     bool store_w0_g0 = false;
-
+    bool store_dir_spectrum = false;
+    bool null_planck_function = false; 
     // config
     double R_star_config;           // [R_sun]
     double planet_star_dist_config; // [AU]
