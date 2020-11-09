@@ -1356,14 +1356,14 @@ bool two_streams_radiative_transfer::store(const ESP &esp, storage &s) {
         for (int i = 0; i < nbin; i++)
             spectrum[i] = planckband_lay_h[(numinterfaces - 1) + i * (numinterfaces - 1 + 2)];
 
-        s.append_table(spectrum.get(), nbin, "/alf_spectrum", "-", "Alfrodull stellar spectrum");
+        s.append_table(spectrum.get(), nbin, "/alf_stellar_spectrum", "-", "Alfrodull stellar spectrum");
     }
 
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();
     s.append_table(F_up_TOA_spectrum_h.get(),
                    F_up_TOA_spectrum.get_size(),
                    "/F_up_TOA_spectrum",
-                   "W m^-2",
+                   "W m^-2 m^-1",
                    "Upward Flux per bin at TOA");
 
     std::shared_ptr<double[]> lambda_wave_h = alf.opacities.dev_opac_wave.get_host_data();
