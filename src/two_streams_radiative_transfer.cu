@@ -106,6 +106,8 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Real Stellar Spectrum:                   %s\n", real_star ? "true" : "false");
     log::printf("    Stellar Spectrum File:                   %s\n", stellar_spectrum_file.c_str());
 
+    log::printf("    Surface Albedo File:                     %s\n", surface_albedo_file.c_str());
+
     log::printf("    Isotermal Single Layers:                 %s\n", iso ? "true" : "false");
 
     log::printf("    Thomas Solver:                           %s\n", thomas ? "true" : "false");
@@ -180,6 +182,7 @@ bool two_streams_radiative_transfer::configure(config_file &config_reader) {
     config_reader.append_config_var("Alf_real_star", real_star, real_star);
     config_reader.append_config_var(
         "Alf_stellar_spectrum", stellar_spectrum_file, stellar_spectrum_file);
+    config_reader.append_config_var("Alf_surface_albedo", surface_albedo_file, surface_albedo_file);
     config_reader.append_config_var("Alf_fake_opac", fake_opac, fake_opac);
 
     config_reader.append_config_var("Alf_g_0", g_0, g_0);
@@ -275,10 +278,10 @@ bool two_streams_radiative_transfer::initialise_memory(
                        R_star_SI,           // const double& R_star_,
                        planet_star_dist_SI, // const double& a_,
                        dir_beam,            // const bool&   dir_beam_,
-                       geom_zenith_corr, // const bool&   geom_zenith_corr_,
-                       f_factor,         // const double& f_factor_,
-                       w_0_limit,        // const double& w_0_limit_,
-                       i2s_transition,   // const double& i2s_transition_,
+                       geom_zenith_corr,    // const bool&   geom_zenith_corr_,
+                       f_factor,            // const double& f_factor_,
+                       w_0_limit,           // const double& w_0_limit_,
+                       i2s_transition,      // const double& i2s_transition_,
                        mu_star_limit,
                        wiggle_iteration_max,
                        G_pm_limit_on_full_G_pm,
@@ -298,7 +301,7 @@ bool two_streams_radiative_transfer::initialise_memory(
 
     alf.allocate_internal_variables();
     cuda_check_status_or_exit(__FILE__, __LINE__);
-    
+
     int ninterface         = nlayer + 1;
     int nlayer_plus1       = nlayer + 1;
     int nbin               = alf.opacities.nbin;
@@ -374,7 +377,73 @@ bool two_streams_radiative_transfer::initialise_memory(
     }
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
-    
+
+    if (esp.surface) {
+        //read in surface albedo file
+        // load star flux.
+        std::printf("Using surface albedo file %s\n", surface_albedo_file.c_str());
+        surface_albedo.allocate(nbin);
+        if (!path_exists(surface_albedo_file)) {
+            log::printf("Surface albedo file not found: %s\n", surface_albedo_file.c_str());
+            exit(EXIT_FAILURE);
+        }
+
+        double lambda_spectrum_scale = 1.0;
+        //double flux_scale            = 1.0;
+
+        storage s(surface_albedo_file, true);
+        if (s.has_table("wavelength") && s.has_table("albedo")) {
+            std::unique_ptr<double[]> lambda_ptr  = nullptr;
+            int                       lambda_size = 0;
+
+            std::unique_ptr<double[]> albedo_ptr  = nullptr;
+            int                       albedo_size = 0;
+
+            s.read_table("wavelength", lambda_ptr, lambda_size);
+            s.read_table("albedo", albedo_ptr, albedo_size);
+
+            if (lambda_size != nbin || lambda_size != albedo_size) {
+                log::printf("Wrong size for albedo size arrays\n");
+                log::printf("Lambda: %d\n", lambda_size);
+                log::printf("Albedo: %d\n", albedo_size);
+                log::printf("nbin: %d\n", nbin);
+                exit(EXIT_FAILURE);
+            }
+
+            bool                      lambda_check     = true;
+            double                    epsilon          = 1e-4;
+            std::shared_ptr<double[]> surface_albedo_h = surface_albedo.get_host_data_ptr();
+            for (int i = 0; i < nbin; i++) {
+                surface_albedo_h[i] = albedo_ptr[i];
+                bool check =
+                    fabs(lambda_ptr[i] * lambda_spectrum_scale - alf.opacities.data_opac_wave[i])
+                        / alf.opacities.data_opac_wave[i]
+                    < epsilon;
+
+                if (!check)
+                    printf("Missmatch in wavelength at idx [%d] l_albedo(%g) != "
+                           "l_opac(%g) \n",
+                           i,
+                           lambda_ptr[i] * lambda_spectrum_scale,
+                           alf.opacities.data_opac_wave[i]);
+                lambda_check &= check;
+            }
+
+            surface_albedo.put();
+
+            if (!lambda_check) {
+                log::printf("wavelength points mismatch between surface albedo and "
+                            "opacities\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+        else {
+            log::printf("table wavelength or flux not found in surface albedo file\n");
+            exit(EXIT_FAILURE);
+        }
+        printf("Surface albedo loaded\n");
+    }
+
     // allocate interface state variables to be interpolated
 
     pressure_int.allocate(ncol * ninterface);
@@ -387,7 +456,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_dir_wg.allocate(ncol * ninterface_wg_nbin);
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
-    
+
     if (!iso) {
         if (!thomas) {
             Fc_down_wg.allocate(ncol * ninterface_wg_nbin);
@@ -402,9 +471,9 @@ bool two_streams_radiative_transfer::initialise_memory(
     F_down_band.allocate(ncol * ninterface_nbin);
     F_up_band.allocate(ncol * ninterface_nbin);
     if (store_dir_spectrum)
-      F_dir_band.allocate(esp.point_num * ninterface_nbin);
+        F_dir_band.allocate(esp.point_num * ninterface_nbin);
     else
-      F_dir_band.allocate(ncol * ninterface_nbin);
+        F_dir_band.allocate(ncol * ninterface_nbin);
     F_net.allocate(esp.point_num * ninterface);
 
     F_up_TOA_spectrum.allocate(esp.point_num * nbin);
@@ -412,7 +481,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     Qheat.allocate(esp.point_num * nlayer);
 
     cuda_check_status_or_exit(__FILE__, __LINE__);
-    
+
     if (store_w0_g0) {
         // output for storage
         g0_tot.allocate(esp.point_num * nlayer_nbin);
@@ -427,44 +496,44 @@ bool two_streams_radiative_transfer::initialise_memory(
     if (clouds) {
         // load cloud file
 
-      
-      alf.cloud_opacities.load(cloud_filename);
-      
-      int asymmetry_size = alf.cloud_opacities.dev_asymmetry.get_size();
-      int scat_cs_size = alf.cloud_opacities.dev_scat_cross_sections.get_size();
-      int abs_cs_size = alf.cloud_opacities.dev_abs_cross_sections.get_size();
-      bool cloud_load_failure = false;
-      
-      if (asymmetry_size != nbin) {
-        log::printf("Wrong size for cloud assymetry array size\n");
-        log::printf("size: %d, nbin: %d\n", asymmetry_size, nbin);
-        cloud_load_failure = true;
-      }
 
-      if (scat_cs_size != nbin) {
-        log::printf("Wrong size for cloud scattering cross section array size\n");
-        log::printf("size: %d, nbin: %d\n", scat_cs_size, nbin);
-        cloud_load_failure = true;
-      }
+        alf.cloud_opacities.load(cloud_filename);
 
-      if (abs_cs_size != nbin) {
-        log::printf("Wrong size for cloud absorption cross section array size\n");
-        log::printf("size: %d, nbin: %d\n", abs_cs_size, nbin);
-        cloud_load_failure = true;
-      }
-      
-      if (cloud_load_failure) {
-        exit(EXIT_FAILURE);
-      }
-        
-      alf.set_clouds_data(clouds,
-                          *alf.cloud_opacities.dev_abs_cross_sections,
-                          *alf.cloud_opacities.dev_abs_cross_sections,
-                          *alf.cloud_opacities.dev_scat_cross_sections,
-                          *alf.cloud_opacities.dev_scat_cross_sections,
-                          *alf.cloud_opacities.dev_asymmetry,
-                          *alf.cloud_opacities.dev_asymmetry,
-                          fcloud);
+        int  asymmetry_size     = alf.cloud_opacities.dev_asymmetry.get_size();
+        int  scat_cs_size       = alf.cloud_opacities.dev_scat_cross_sections.get_size();
+        int  abs_cs_size        = alf.cloud_opacities.dev_abs_cross_sections.get_size();
+        bool cloud_load_failure = false;
+
+        if (asymmetry_size != nbin) {
+            log::printf("Wrong size for cloud assymetry array size\n");
+            log::printf("size: %d, nbin: %d\n", asymmetry_size, nbin);
+            cloud_load_failure = true;
+        }
+
+        if (scat_cs_size != nbin) {
+            log::printf("Wrong size for cloud scattering cross section array size\n");
+            log::printf("size: %d, nbin: %d\n", scat_cs_size, nbin);
+            cloud_load_failure = true;
+        }
+
+        if (abs_cs_size != nbin) {
+            log::printf("Wrong size for cloud absorption cross section array size\n");
+            log::printf("size: %d, nbin: %d\n", abs_cs_size, nbin);
+            cloud_load_failure = true;
+        }
+
+        if (cloud_load_failure) {
+            exit(EXIT_FAILURE);
+        }
+
+        alf.set_clouds_data(clouds,
+                            *alf.cloud_opacities.dev_abs_cross_sections,
+                            *alf.cloud_opacities.dev_abs_cross_sections,
+                            *alf.cloud_opacities.dev_scat_cross_sections,
+                            *alf.cloud_opacities.dev_scat_cross_sections,
+                            *alf.cloud_opacities.dev_asymmetry,
+                            *alf.cloud_opacities.dev_asymmetry,
+                            fcloud);
     }
     else {
         // all clouds set to zero. Not used.
@@ -1169,11 +1238,11 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                     double *F_col_dir_tot  = &((*F_dir_tot)[column_offset_int]);
                     double *F_col_net      = &((*F_net)[column_offset_int]);
 
-                    double *F_col_dir_band  = nullptr;
+                    double *F_col_dir_band = nullptr;
                     if (store_dir_spectrum)
-                      F_col_dir_band  = &((*F_dir_band)[column_idx * ninterface*nbin]);
+                        F_col_dir_band = &((*F_dir_band)[column_idx * ninterface * nbin]);
                     else
-                      F_col_dir_band = *F_dir_band;
+                        F_col_dir_band = *F_dir_band;
                     double *F_up_TOA_spectrum_col = &((*F_up_TOA_spectrum)[column_idx * nbin]);
 
                     alf.compute_radiative_transfer(dev_starflux,          // dev_starflux
@@ -1408,12 +1477,12 @@ bool two_streams_radiative_transfer::store(const ESP &esp, storage &s) {
         F_dir_tot_h.get(), F_dir_tot.get_size(), "/F_dir_tot", "W m^-2", "Total beam flux");
 
     if (store_dir_spectrum) {
-      std::shared_ptr<double[]> F_dir_band_h = F_dir_band.get_host_data();
-      s.append_table(F_dir_band_h.get(),
+        std::shared_ptr<double[]> F_dir_band_h = F_dir_band.get_host_data();
+        s.append_table(F_dir_band_h.get(),
                        F_dir_band.get_size(),
                        "/F_dir_band",
                        "W m^-2 m^-1",
-                       "Directional beam spectrum");      
+                       "Directional beam spectrum");
     }
 
     if (store_w0_g0) {
@@ -1436,8 +1505,11 @@ bool two_streams_radiative_transfer::store(const ESP &esp, storage &s) {
         for (int i = 0; i < nbin; i++)
             spectrum[i] = planckband_lay_h[(numinterfaces - 1) + i * (numinterfaces - 1 + 2)];
 
-        s.append_table(
-            spectrum.get(), nbin, "/alf_stellar_spectrum", "W m^-2 m^-1", "Alfrodull stellar spectrum");
+        s.append_table(spectrum.get(),
+                       nbin,
+                       "/alf_stellar_spectrum",
+                       "W m^-2 m^-1",
+                       "Alfrodull stellar spectrum");
     }
 
     std::shared_ptr<double[]> F_up_TOA_spectrum_h = F_up_TOA_spectrum.get_host_data();

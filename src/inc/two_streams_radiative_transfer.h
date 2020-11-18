@@ -85,7 +85,7 @@ public:
 
     bool phy_loop(ESP &                  esp,
                   const SimulationSetup &sim,
-		  kernel_diagnostics&    diag,
+                  kernel_diagnostics &   diag,
                   int                    nstep, // Step number
                   double                 time_step);            // Time-step [s]
 
@@ -111,9 +111,9 @@ public:
     bool   scat;
     bool   scat_corr;
 
-    bool store_w0_g0 = false;
-    bool store_dir_spectrum = false;
-    bool null_planck_function = false; 
+    bool store_w0_g0          = false;
+    bool store_dir_spectrum   = false;
+    bool null_planck_function = false;
     // config
     double R_star_config;           // [R_sun]
     double planet_star_dist_config; // [AU]
@@ -140,6 +140,8 @@ public:
 
     string stellar_spectrum_file;
     void   print_config();
+
+    string surface_albedo_file;
 
     double F_intern = 0.0;
 
@@ -182,7 +184,7 @@ private:
     cuda_device_memory<double> temperature_int;
     cuda_device_memory<double> temperature_lay;
     cuda_device_memory<double> density_int;
-  
+
     // interfadce fluxes
     cuda_device_memory<double> F_down_wg;
     cuda_device_memory<double> F_up_wg;
@@ -213,6 +215,9 @@ private:
     cuda_device_memory<double> cloud_abs_cross_int;
     cuda_device_memory<double> cloud_scat_cross_lay;
     cuda_device_memory<double> cloud_scat_cross_int;
+
+    // surface albedo
+    cuda_device_memory<double> surface_albedo;
 
     cuda_device_memory<double> Qheat;
 
