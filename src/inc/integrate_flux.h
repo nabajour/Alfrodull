@@ -202,6 +202,7 @@ __global__ void fband_iso_thomas(double* F_down_wg,      // out
                                  double* D_prime_buff,   // thomas worker
                                  double* X_buff,         // thomas worker
                                  double* g_0_tot,        // in (clouds)
+                                 double* surface_albedo,
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,

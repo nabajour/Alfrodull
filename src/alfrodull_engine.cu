@@ -699,7 +699,8 @@ void alfrodull_engine::compute_radiative_transfer(
     double*     F_up_TOA_spectrum_cols,
     double*     zenith_angle_cols,
     int         num_cols,
-    int         current_col_temp) // number of columns this function works on
+    int         current_col_temp,
+    bool        surface) // number of columns this function works on
 {
     USE_BENCHMARK();
     {
@@ -856,6 +857,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                               w_0_limit,
                                               dir_beam,
                                               clouds,
+                                              surface,
                                               num_cols);
         }
         else {
@@ -874,6 +876,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  delta_tau_limit,
                                                  dir_beam,
                                                  clouds,
+                                                 surface,
                                                  *trans_wg_upper,
                                                  *trans_wg_lower,
                                                  num_cols);
@@ -907,6 +910,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                            w_0_limit,
                                            dir_beam,
                                            clouds,
+                                           surface,
                                            num_cols);
             }
             else {
@@ -927,6 +931,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                               delta_tau_limit,
                                               dir_beam,
                                               clouds,
+                                              surface,
                                               *trans_wg_upper,
                                               *trans_wg_lower,
                                               num_cols);
@@ -1503,6 +1508,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // o
                                                          double  w_0_limit,
                                                          bool    dir_beam,
                                                          bool    clouds,
+                                                         bool    surface,
                                                          int     num_cols) {
 
     int nbin = opacities.nbin;
@@ -1562,6 +1568,7 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg, // out
                                                   double  w_0_limit,
                                                   bool    dir_beam,
                                                   bool    clouds,
+                                                  bool    surface,
                                                   int     num_cols) {
 
     int nbin = opacities.nbin;
@@ -1618,6 +1625,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double  delta_tau_limit,
                                                      bool    dir_beam,
                                                      bool    clouds,
+                                                     bool    surface,
                                                      double* trans_wg_upper,
                                                      double* trans_wg_lower,
                                                      int     num_cols) {
@@ -1690,6 +1698,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                                             double  delta_tau_limit,
                                                             bool    dir_beam,
                                                             bool    clouds,
+                                                            bool    surface,
                                                             double* trans_wg_upper,
                                                             double* trans_wg_lower,
                                                             int     num_cols) {

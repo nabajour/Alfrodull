@@ -103,6 +103,7 @@ __global__ void planck_interpol_layer(double* temp,           // in
             // interpolating for below (surface/BOA) temperature
             if (i == numlayers + 1) {
                 t = (temp[numlayers + c * (numlayers + 1)] - 1.0) / step;
+                t = t + 1 - 1;
             }
 
             t = max(0.001, min(dim - 1.001, t));
@@ -120,7 +121,7 @@ __global__ void planck_interpol_layer(double* temp,           // in
                     planck_grid[x + tdown * nwave];
             }
             if (null_planck_function)
-              planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] = 0.0;
+                planckband_lay[i + x * (numlayers + 2) + c * (numlayers + 2) * nwave] = 0.0;
         }
     }
 }
@@ -158,7 +159,7 @@ __global__ void planck_interpol_interface(double* temp,           // in
                 planck_grid[x + tdown * nwave];
         }
         if (null_planck_function)
-          planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] = 0.0;
+            planckband_int[i + x * numinterfaces + c * numinterfaces * nwave] = 0.0;
     }
 }
 

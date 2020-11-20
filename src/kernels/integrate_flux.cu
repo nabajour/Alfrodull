@@ -60,7 +60,7 @@
 */
 /*
 // Old version, not used, not adapted to multi-column version.
-// is slow due to usage of blocking AtomicAdd which effectively serialises 
+// is slow due to usage of blocking AtomicAdd which effectively serialises
 // additions.
 __global__ void integrate_flux_double(double* deltalambda,  // in
                                       double* F_down_tot,   // out
@@ -156,7 +156,7 @@ __global__ void integrate_flux_double(double* deltalambda,  // in
     }
 }
 */
-/* 
+/*
 numinterfaces: levels
 nbin:          frequency bins
 ny:            weights in frequency bins
@@ -997,6 +997,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
                                  double* D_prime_buff_,   // thomas worker
                                  double* X_buff_,         // thomas worker
                                  double* g_0_tot_,        // in (clouds)
+                                 double* surface_albedo,
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -1065,19 +1066,19 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
 
             // BOA boundary -- surface emission and reflection
 
-            // double w0_N = w_0[y + ny * x + ny * nbin * 0];
-            // double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
+            double w0_N = w_0[y + ny * x + ny * nbin * 0];
+            double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
 
             // improved scattering correction factor E
-            // double E_N = 1.0;
-            // if (scat_corr) {
-            //     E_N = E_parameter(w0_N, g0_N, i2s_transition);
-            // }
+            double E_N = 1.0;
+            if (scat_corr) {
+                E_N = E_parameter(w0_N, g0_N, i2s_transition);
+            }
 
-            // F_BOA_up = PI * (1.0 - w0_N) / (E_N - w0_N)
-            //            * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+            F_BOA_up = (1 - surface_albedo[x]) * PI * (1.0 - w0_N) / (E_N - w0_N)
+                       * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
             // No upward flux from ghost layer, use stephan boltzman law in net flux computation
-            F_BOA_up = 0.0;
+            // F_BOA_up = 0.0;
         }
 
         {
@@ -1124,7 +1125,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
             C[0].z = 0.0;
             C[0].w = -P_0;
 
-            D[0].x = F_BOA_up + F_dir_wg[y + ny * x + ny * nbin * 0];
+            D[0].x = F_BOA_up + surface_albedo[x] * F_dir_wg[y + ny * x + ny * nbin * 0];
             D[0].y = 2 * PI * epsi * (1.0 - w0_0) / (E_0 - w0_0) * B_down + I_down;
         }
 

@@ -98,8 +98,8 @@ public:
     double a             = 0.0;
     bool   dir_beam      = false;
 
-    bool null_planck_function    = false;
-    bool geom_zenith_corr        = false;
+    bool null_planck_function = false;
+    bool geom_zenith_corr     = false;
 
     double f_factor  = 0.0;
     double w_0_limit = 0.0;
@@ -293,7 +293,8 @@ public:
                                     double*     F_up_TOA_spectrum,
                                     double*     zenith_angle,
                                     int         num_cols,
-                                    int         current_col_temp);
+                                    int         current_col_temp,
+                                    bool        surface);
 
     bool prepare_compute_flux(double*       dev_starflux,
                               double*       dev_T_lay,
@@ -384,6 +385,7 @@ public:
                                            double  w_0_limit,
                                            bool    dir_beam,
                                            bool    clouds,
+                                           bool    surface,
                                            int     num_cols);
 
     bool populate_spectral_flux_iso(double* F_down_wg, // out
@@ -398,6 +400,7 @@ public:
                                     double  w_0_limit,
                                     bool    dir_beam,
                                     bool    clouds,
+                                    bool    surface,
                                     int     num_cols);
 
     bool populate_spectral_flux_noniso(double* F_down_wg,
@@ -417,6 +420,7 @@ public:
                                        double  delta_tau_limit,
                                        bool    dir_beam,
                                        bool    clouds,
+                                       bool    surface,
                                        double* trans_wg_upper,
                                        double* trans_wg_lower,
                                        int     num_cols);
@@ -436,6 +440,7 @@ public:
                                               double  delta_tau_limit,
                                               bool    dir_beam,
                                               bool    clouds,
+                                              bool    surface,
                                               double* trans_wg_upper,
                                               double* trans_wg_lower,
                                               int     num_cols);

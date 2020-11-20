@@ -444,6 +444,14 @@ bool two_streams_radiative_transfer::initialise_memory(
         printf("Surface albedo loaded\n");
     }
 
+    else { // surface off, set albedo to 1.0 everywhere
+        std::shared_ptr<double[]> surface_albedo_h = surface_albedo.get_host_data_ptr();
+        for (int i = 0; i < nbin; i++) {
+            surface_albedo_h[i] = 1.0;
+        }
+
+        surface_albedo.put();
+    }
     // allocate interface state variables to be interpolated
 
     pressure_int.allocate(ncol * ninterface);
@@ -803,7 +811,7 @@ __global__ void interpolate_temperature_and_pressure(double *temperature_lay_col
             temperature_lay[int_idx] = temperature_lay_thor[int_idx];
         }
         else if (int_idx == num_layers) {
-            temperature_lay[num_layers] = T_intern;
+            temperature_lay[num_layers] = 1e6;
         }
 
         // compute interface values
@@ -1023,6 +1031,14 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                 double *column_layer_pressure         = &(esp.pressure_d[column_offset]);
                 double *column_density                = &(esp.Rho_d[column_offset]);
                 // initialise interpolated T and P
+                //double T_BOA = 0;
+                // if (esp.surface) { //won't work because column_offset != id
+                //     T_BOA = esp.Tsurface_h[column_offset]; //problem: not current at this point in loop?
+                // }
+                double *T_BOA =
+                    &(esp.Tsurface_d
+                          [column_idx]); //does this work? can i pass to interpolate function?
+
                 // use mu_star per column
 
 #ifdef DUMP_HELIOS_TP
@@ -1271,7 +1287,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                                                    F_up_TOA_spectrum_col,
                                                    cos_zenith_angle_cols,
                                                    current_num_cols,
-                                                   0);
+                                                   0,
+                                                   esp.surface);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }

@@ -234,7 +234,8 @@ void wrap_compute_radiative_transfer(
     long F_up_band,
     long F_dir_band,
     long F_up_TOA_spectrum,
-    long zenith_angle) {
+    long zenith_angle,
+    bool surface) {
     if (Alf_ptr != nullptr) {
         int num_col = 1;
         Alf_ptr->compute_radiative_transfer(
@@ -270,8 +271,8 @@ void wrap_compute_radiative_transfer(
             (double*)F_up_TOA_spectrum,
             (double*)zenith_angle,
             num_col,
-            1 // dummy
-        );
+            1, // dummy
+            surface);
     }
     else
         printf("ERROR: compute_radiative_transfer : no Alf_ptr\n");

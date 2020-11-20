@@ -66,7 +66,8 @@ void wrap_compute_radiative_transfer(
     long   F_down_band,
     long   F_up_band,
     long   F_dir_band,
-    double mu_star);
+    double mu_star,
+    bool   surface);
 
 void init_alfrodull();
 void init_parameters(const int&    nlayer_,
