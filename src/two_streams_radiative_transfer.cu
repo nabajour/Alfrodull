@@ -482,6 +482,8 @@ bool two_streams_radiative_transfer::initialise_memory(
         cloud_scat_cross_lay.zero();
         cloud_scat_cross_int.zero();
 
+        fcloud = 0.0;
+
         alf.set_clouds_data(clouds,
                             *cloud_abs_cross_lay,
                             *cloud_abs_cross_int,
