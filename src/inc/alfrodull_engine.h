@@ -292,8 +292,9 @@ public:
                                     double*     F_dir_band,
                                     double*     F_up_TOA_spectrum,
                                     double*     zenith_angle,
+                                    double*     surface_albedo,
                                     int         num_cols,
-                                    int         current_col_temp,
+                                    int         column_idx,
                                     bool        surface);
 
     bool prepare_compute_flux(double*       dev_starflux,
@@ -361,7 +362,8 @@ public:
                                        double* zenith_angle_cols,
                                        bool    scat,
                                        bool    clouds,
-                                       int     num_cols);
+                                       int     num_cols,
+                                       int     column_idx);
 
     bool direct_beam_flux(double* F_dir_wg,
                           double* Fc_dir_wg,
@@ -377,6 +379,7 @@ public:
                                            double* F_up_wg,   // out
                                            double* F_dir_wg,  // in
                                            double* g_0_tot,   // in
+                                           double* surface_albedo,
                                            bool    singlewalk,
                                            double  Rstar,
                                            double  a,
@@ -392,6 +395,7 @@ public:
                                     double* F_up_wg,   // out
                                     double* F_dir_wg,  // in
                                     double* g_0_tot,   // in
+                                    double* surface_albedo,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -411,6 +415,7 @@ public:
                                        double* Fc_dir_wg,
                                        double* g_0_tot_upper,
                                        double* g_0_tot_lower,
+                                       double* surface_albedo,
                                        bool    singlewalk,
                                        double  Rstar,
                                        double  a,
@@ -431,6 +436,7 @@ public:
                                               double* Fc_dir_wg,
                                               double* g_0_tot_upper,
                                               double* g_0_tot_lower,
+                                              double* surface_albedo,
                                               bool    singlewalk,
                                               double  Rstar,
                                               double  a,

@@ -445,6 +445,7 @@ bool two_streams_radiative_transfer::initialise_memory(
     }
 
     else { // surface off, set albedo to 1.0 everywhere
+        surface_albedo.allocate(nbin);
         std::shared_ptr<double[]> surface_albedo_h = surface_albedo.get_host_data_ptr();
         for (int i = 0; i < nbin; i++) {
             surface_albedo_h[i] = 1.0;
@@ -787,6 +788,7 @@ __global__ void interpolate_temperature_and_pressure(double *temperature_lay_col
                                                      double *density_int_cols,          // out
                                                      double *altitude_lay,              // in
                                                      double *altitude_int,              // in
+                                                     double *Tsurface_cols,
                                                      double  T_intern,
                                                      double  gravit,
                                                      int     num_layers,
@@ -805,13 +807,14 @@ __global__ void interpolate_temperature_and_pressure(double *temperature_lay_col
         double *pressure_int         = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
         double *density_lay          = &(density_lay_cols[col_block_idx * num_layers]);
         double *density_int          = &(density_int_cols[col_block_idx * (num_layers + 1)]);
+        double *Tsurface             = &(Tsurface_cols[col_block_idx]);
 
         // Prepare temperature array with T_intern
         if (int_idx < num_layers) {
             temperature_lay[int_idx] = temperature_lay_thor[int_idx];
         }
         else if (int_idx == num_layers) {
-            temperature_lay[num_layers] = 1e6;
+            temperature_lay[num_layers] = Tsurface[0];
         }
 
         // compute interface values
@@ -898,23 +901,34 @@ increment_Qheat(double *Qheat_global, double *Qheat, double scaling, int num_sam
 __global__ void compute_column_Qheat(double *F_net_cols, // net flux, layer
                                      double *z_int,
                                      double *Qheat_cols,
+                                     double *Tsurface_cols,
                                      double  F_intern,
+                                     double  Csurf,
+                                     double  time_step,
                                      int     num_layers,
-                                     int     tot_num_cols) {
+                                     int     tot_num_cols,
+                                     bool    surface) {
     int layer_idx = blockIdx.x * blockDim.x + threadIdx.x;
     int col_idx   = blockIdx.z * blockDim.z + threadIdx.z;
     // index of column in column batch.
     int col_block_idx = blockIdx.z;
     if (col_idx < tot_num_cols) {
-        double *F_net = &(F_net_cols[col_block_idx * (num_layers + 1)]);
-        double *Qheat = &(Qheat_cols[col_idx * num_layers]);
+        double *F_net    = &(F_net_cols[col_block_idx * (num_layers + 1)]);
+        double *Qheat    = &(Qheat_cols[col_idx * num_layers]);
+        double *Tsurface = &(Tsurface_cols[col_block_idx]);
 
         if (layer_idx == 0) {
             // delta_flux/delta_z
             // F_net positive in upward direction (F_up - F_down)
             // F_intern positive, flux out of bottom surface
             // Qheat negative when net flux differential out of layer is positive
-            Qheat[layer_idx] = -((F_net[1] - (F_net[0] + F_intern))) / (z_int[1] - z_int[0]);
+            if (surface) {
+                Tsurface[0] += (-F_net[0] + F_intern) * time_step / Csurf;
+                Qheat[layer_idx] = -((F_net[1] - (F_net[0]))) / (z_int[1] - z_int[0]);
+            }
+            else {
+                Qheat[layer_idx] = -((F_net[1] - (F_net[0] + F_intern))) / (z_int[1] - z_int[0]);
+            }
         }
         else if (layer_idx < num_layers) {
             // delta_flux/delta_z
@@ -1031,13 +1045,8 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                 double *column_layer_pressure         = &(esp.pressure_d[column_offset]);
                 double *column_density                = &(esp.Rho_d[column_offset]);
                 // initialise interpolated T and P
-                //double T_BOA = 0;
-                // if (esp.surface) { //won't work because column_offset != id
-                //     T_BOA = esp.Tsurface_h[column_offset]; //problem: not current at this point in loop?
-                // }
-                double *T_BOA =
-                    &(esp.Tsurface_d
-                          [column_idx]); //does this work? can i pass to interpolate function?
+                double *Tsurface_col =
+                    &(esp.Tsurface_d[column_idx]); //when !surface, this array is empty
 
                 // use mu_star per column
 
@@ -1111,6 +1120,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                         *density_int,
                         esp.Altitude_d,
                         esp.Altitudeh_d,
+                        Tsurface_col,
                         T_internal,
                         gravit,
                         num_layers,
@@ -1286,8 +1296,9 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                                                    F_col_dir_band,
                                                    F_up_TOA_spectrum_col,
                                                    cos_zenith_angle_cols,
+                                                   *surface_albedo,
                                                    current_num_cols,
-                                                   0,
+                                                   column_idx,
                                                    esp.surface);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
@@ -1310,9 +1321,13 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                     compute_column_Qheat<<<grid, block>>>(F_col_net, // net flux, layer
                                                           z_int,
                                                           qheat,
+                                                          Tsurface_col,
                                                           F_intern,
+                                                          esp.Csurf,
+                                                          time_step,
                                                           num_layers,
-                                                          esp.point_num);
+                                                          esp.point_num,
+                                                          esp.surface);
                     cudaDeviceSynchronize();
                     cuda_check_status_or_exit(__FILE__, __LINE__);
                 }

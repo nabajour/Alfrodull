@@ -60,14 +60,17 @@ void wrap_compute_radiative_transfer(
     long   Fc_dir_wg,
     double delta_tau_limit,
     // integrate_flux
-    long   F_down_tot,
-    long   F_up_tot,
-    long   F_net,
-    long   F_down_band,
-    long   F_up_band,
-    long   F_dir_band,
-    double mu_star,
-    bool   surface);
+    long F_down_tot,
+    long F_up_tot,
+    long F_dir_tot,
+    long F_net,
+    long F_down_band,
+    long F_up_band,
+    long F_dir_band,
+    long F_up_TOA_spectrum,
+    long zenith_angle,
+    long surface_albedo,
+    bool surface);
 
 void init_alfrodull();
 void init_parameters(const int&    nlayer_,

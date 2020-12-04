@@ -405,6 +405,7 @@ __global__ void fband_iso_notabu(double* F_down_wg_,      // out
                                  double* G_plus_,         // in
                                  double* G_minus_,        // in
                                  double* g_0_tot_,        // in (clouds)
+                                 double* surface_albedo,
                                  bool    singlewalk,
                                  double  Rstar,
                                  double  a,
@@ -540,12 +541,22 @@ __global__ void fband_iso_notabu(double* F_down_wg_,      // out
 
             // BOA boundary -- surface emission and reflection
             if (i == 0) {
-                double BOA_part = 0.0;
-                // PI
-                // * planckband_lay[numinterfaces
-                //                  + x * (numinterfaces - 1 + 2)]; // ghost layer plank emission
-                double reflected_part =
-                    (F_dir_wg[y + ny * x + ny * nbin * i] + F_down_wg[y + ny * x + ny * nbin * i]);
+                double w0_N = w_0[y + ny * x + ny * nbin * 0];
+                double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
+
+                // improved scattering correction factor E
+                double E_N = 1.0;
+                if (scat_corr) {
+                    E_N = E_parameter(w0_N, g0_N, i2s_transition);
+                }
+
+                double BOA_part =
+                    (1 - surface_albedo[x]) * PI * (1.0 - w0_N) / (E_N - w0_N)
+                    * planckband_lay[numinterfaces
+                                     + x * (numinterfaces - 1 + 2)]; // ghost layer plank emission
+                double reflected_part = surface_albedo[x]
+                                        * (F_dir_wg[y + ny * x + ny * nbin * i]
+                                           + F_down_wg[y + ny * x + ny * nbin * i]);
 
                 F_up_wg[y + ny * x + ny * nbin * i] = BOA_part + reflected_part;
             }
@@ -622,6 +633,7 @@ __global__ void fband_noniso_notabu(double* F_down_wg_,
                                     double* G_minus_lower_,
                                     double* g_0_tot_upper_,
                                     double* g_0_tot_lower_,
+                                    double* surface_albedo,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -838,12 +850,23 @@ __global__ void fband_noniso_notabu(double* F_down_wg_,
 
             // BOA boundary -- surface emission and reflection
             if (i == 0) {
-                double reflected_part =
-                    (F_dir_wg[y + ny * x + ny * nbin * i] + F_down_wg[y + ny * x + ny * nbin * i]);
+                double reflected_part = surface_albedo[x]
+                                        * (F_dir_wg[y + ny * x + ny * nbin * i]
+                                           + F_down_wg[y + ny * x + ny * nbin * i]);
+
+                double w0_N = w_0_lower[y + ny * x + ny * nbin * 0];
+                double g0_N = g_0_tot_lower[y + ny * x + ny * nbin * 0];
+
+                // improved scattering correction factor E
+                double E_N = 1.0;
+                if (scat_corr) {
+                    E_N = E_parameter(w0_N, g0_N, i2s_transition);
+                }
 
                 // this is the surface/BOA emission. it correctly includes the emissivity e = (1 - albedo)
-                // double BOA_part = PI * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
-                double BOA_part = 0.0;
+                double BOA_part = (1 - surface_albedo[x]) * PI * (1.0 - w0_N) / (E_N - w0_N)
+                                  * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
+                // double BOA_part = 0.0;
 
                 F_up_wg[y + ny * x + ny * nbin * i] =
                     reflected_part
@@ -1064,7 +1087,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
 
         {
 
-            // BOA boundary -- surface emission and reflection
+            // BOA boundary -- surface emission
 
             double w0_N = w_0[y + ny * x + ny * nbin * 0];
             double g0_N = g_0_tot[y + ny * x + ny * nbin * 0];
@@ -1116,7 +1139,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
             A[0].w = 0.0;
 
             B[0].x = 1.0;
-            B[0].y = -1.0;
+            B[0].y = -1.0 * surface_albedo[x]; //reflected downward beam
             B[0].z = N_0;
             B[0].w = M_0;
 
@@ -1125,6 +1148,7 @@ __global__ void fband_iso_thomas(double* F_down_wg_,      // out
             C[0].z = 0.0;
             C[0].w = -P_0;
 
+            // BC: upward flux = BOA emission and reflected direct beam
             D[0].x = F_BOA_up + surface_albedo[x] * F_dir_wg[y + ny * x + ny * nbin * 0];
             D[0].y = 2 * PI * epsi * (1.0 - w0_0) / (E_0 - w0_0) * B_down + I_down;
         }
@@ -1301,6 +1325,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                                     double* X_buff_,       // thomas worker
                                     double* g_0_tot_upper_,
                                     double* g_0_tot_lower_,
+                                    double* surface_albedo,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -1557,18 +1582,29 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                 // No upward flux from ghost layer, use stephan boltzman law in net flux computation
                 double F_BOA = 0.0;
 
+                double w0_N = w_0_lower[y + ny * x + ny * nbin * 0];
+                double g0_N = g_0_tot_lower[y + ny * x + ny * nbin * 0];
+
+                // improved scattering correction factor E
+                double E_N = 1.0;
+                if (scat_corr) {
+                    E_N = E_parameter(w0_N, g0_N, i2s_transition);
+                }
+
+                F_BOA = (1 - surface_albedo[x]) * PI * (1.0 - w0_N) / (E_N - w0_N)
+                        * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
 
                 // Factors for upward equation, top of layer i - bottom of layer i - 1
                 A[2 * i].x = 0.0;
                 A[2 * i].y = 0.0;
 
                 B[2 * i].x = 1.0;
-                B[2 * i].y = -1.0;
+                B[2 * i].y = -1.0 * surface_albedo[x]; //reflected downward beam
 
                 C[2 * i].x = 0.0;
                 C[2 * i].y = 0.0;
 
-                D[2 * i].x = F_BOA + F_dir_wg[y + ny * x + ny * nbin * i];
+                D[2 * i].x = F_BOA + surface_albedo[x] * F_dir_wg[y + ny * x + ny * nbin * i];
             }
             else {
                 // lower part of layer quantities

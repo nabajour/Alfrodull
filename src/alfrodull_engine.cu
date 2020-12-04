@@ -698,8 +698,9 @@ void alfrodull_engine::compute_radiative_transfer(
     double*     F_dir_band_cols,
     double*     F_up_TOA_spectrum_cols,
     double*     zenith_angle_cols,
+    double*     surface_albedo,
     int         num_cols,
-    int         current_col_temp,
+    int         column_idx,
     bool        surface) // number of columns this function works on
 {
     USE_BENCHMARK();
@@ -800,7 +801,8 @@ void alfrodull_engine::compute_radiative_transfer(
                                           zenith_angle_cols,
                                           scat,
                                           clouds,
-                                          num_cols);
+                                          num_cols,
+                                          column_idx);
             BENCH_POINT_I_S(debug_nstep,
                             debug_col_idx,
                             "Alf_comp_trans",
@@ -849,6 +851,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                               F_up_wg_cols,   // out
                                               F_dir_wg_cols,  // in
                                               *g0_wg,         // in
+                                              surface_albedo,
                                               single_walk,
                                               R_star,
                                               a,
@@ -867,6 +870,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                                  Fc_dir_wg_cols,
                                                  *g0_wg_upper,
                                                  *g0_wg_lower,
+                                                 surface_albedo,
                                                  single_walk,
                                                  R_star,
                                                  a,
@@ -902,6 +906,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                            F_up_wg_cols,   // out
                                            F_dir_wg_cols,  // in
                                            *g0_wg,         // in
+                                           surface_albedo,
                                            single_walk,
                                            R_star,
                                            a,
@@ -922,6 +927,7 @@ void alfrodull_engine::compute_radiative_transfer(
                                               Fc_dir_wg_cols,
                                               *g0_wg_upper,
                                               *g0_wg_lower,
+                                              surface_albedo,
                                               single_walk,
                                               R_star,
                                               a,
@@ -1322,7 +1328,8 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                                      double* zenith_angle_cols,
                                                      bool    scat,
                                                      bool    clouds,
-                                                     int     num_cols) {
+                                                     int     num_cols,
+                                                     int     column_idx) {
 
 
     bool hit_G_pm_denom_limit_h = false;
@@ -1408,7 +1415,8 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
                                       mu_star_iteration_request,
                                       iteration_counter,
                                       debug,
-                                      i2s_transition);
+                                      i2s_transition,
+                                      column_idx);
         cudaDeviceSynchronize();
         cudaMemcpy(
             &hit_G_pm_denom_limit_h, *hit_G_pm_denom_limit, sizeof(bool), cudaMemcpyDeviceToHost);
@@ -1500,6 +1508,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // o
                                                          double* F_up_wg,   // out
                                                          double* F_dir_wg,  // in
                                                          double* g_0_tot,   // in
+                                                         double* surface_albedo,
                                                          bool    singlewalk,
                                                          double  Rstar,
                                                          double  a,
@@ -1535,6 +1544,7 @@ bool alfrodull_engine::populate_spectral_flux_iso_thomas(double* F_down_wg, // o
                                       *D_prime_buff, // thomas worker
                                       *X_buff,       // thomas worker
                                       g_0_tot,
+                                      surface_albedo,
                                       singlewalk,
                                       Rstar,
                                       a,
@@ -1560,6 +1570,7 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg, // out
                                                   double* F_up_wg,   // out
                                                   double* F_dir_wg,  // in
                                                   double* g_0_tot,   // in
+                                                  double* surface_albedo,
                                                   bool    singlewalk,
                                                   double  Rstar,
                                                   double  a,
@@ -1587,6 +1598,7 @@ bool alfrodull_engine::populate_spectral_flux_iso(double* F_down_wg, // out
                                       *G_plus,
                                       *G_minus,
                                       g_0_tot,
+                                      surface_albedo,
                                       singlewalk,
                                       Rstar,
                                       a,
@@ -1616,6 +1628,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                                      double* Fc_dir_wg,
                                                      double* g_0_tot_upper,
                                                      double* g_0_tot_lower,
+                                                     double* surface_albedo,
                                                      bool    singlewalk,
                                                      double  Rstar,
                                                      double  a,
@@ -1660,6 +1673,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso(double* F_down_wg,
                                          *G_minus_lower,
                                          g_0_tot_upper,
                                          g_0_tot_lower,
+                                         surface_albedo,
                                          singlewalk,
                                          Rstar,
                                          a,
@@ -1689,6 +1703,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                                             double* Fc_dir_wg,
                                                             double* g_0_tot_upper,
                                                             double* g_0_tot_lower,
+                                                            double* surface_albedo,
                                                             bool    singlewalk,
                                                             double  Rstar,
                                                             double  a,
@@ -1739,6 +1754,7 @@ bool alfrodull_engine::populate_spectral_flux_noniso_thomas(double* F_down_wg,
                                          *X_buff,       // thomas worker
                                          g_0_tot_upper,
                                          g_0_tot_lower,
+                                         surface_albedo,
                                          singlewalk,
                                          Rstar,
                                          a,
