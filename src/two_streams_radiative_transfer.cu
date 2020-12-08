@@ -1186,7 +1186,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
 #endif // DUMP_HELIOS_TP
 
                 // initialise delta_col_mass
-                if (false) {
+                if (false) { //this is not exectuted (old hydrostatic def'n of column mass)
                     // initialise delta_col_mass
                     if (iso) {
                         dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
@@ -1210,7 +1210,7 @@ bool two_streams_radiative_transfer::phy_loop(ESP &                  esp,
                             current_num_cols);
                     }
                 }
-                else {
+                else { //non-hydrostatic definition of column mass
                     if (iso) {
                         dim3 grid(int((num_layers + 1) / num_blocks) + 1, 1, current_num_cols);
                         dim3 block(num_blocks, 1, 1);
