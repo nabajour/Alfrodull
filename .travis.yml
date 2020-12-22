@@ -41,7 +41,8 @@ before_install:
   - PATH=${CUDA_HOME}/bin:${PATH}
   - PATH=${PATH}:${PWD}
   - mkdir ~/THOR_download
-  - wget https://github.com/exoclime/THOR/archive/dev.zip /tmp/THOR_download/dev.zip
+  - mkdir /tmp/THOR_download/
+  - wget 'https://github.com/exoclime/THOR/archive/dev.zip -O /tmp/THOR_download/dev.zip
   - unzip /tmp/THOR_download/dev.zip -d /tmp/THOR_download/
   - mkdir build
   - cd build
