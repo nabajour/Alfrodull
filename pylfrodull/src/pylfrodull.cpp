@@ -60,7 +60,8 @@ PYBIND11_MODULE(pylfrodull, m) {
 
     m.def("get_opac_data_for_helios", &get_opac_data_for_helios, "get data for helios");
     m.def("set_clouds_data", &set_clouds_data, "set clouds data");
-    m.def("set_surface_temperature", &set_surface_temperature, "set surface temperature");
+    // does not exist in this version anymore
+    // m.def("set_surface_temperature", &set_surface_temperature, "set surface temperature");
    
     m.def("set_callback", &set_callback, "Set function callback");
     m.def("call_callback", &call_callback, "call function callback");

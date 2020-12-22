@@ -45,8 +45,8 @@ before_install:
   - unzip /tmp/THOR_download/master.zip -d /tmp/THOR_download/
   - mkdir build
   - cd build
-  - cmake -DBUILD_TESTS=ON -DTHOR_BASE_FOLDER=/tmp/THOR_download/THOR-dev/ ..
+  - cmake -DTHOR_BASE_FOLDER=/tmp/THOR_download/THOR-dev/ ..
 
 script:
   - make 
-  - ./test_integrate_flux
+

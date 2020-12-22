@@ -38,11 +38,11 @@
 // To check what units are used. Is pretty noisy
 // #warning "Compiling with CGS units"
 // physical constants
-const utype PI         = 3.141592653589793;
-const utype HCONST     = 6.62607004e-27;
-const utype CSPEED     = 29979245800.0;
-const utype KBOLTZMANN = 1.38064852e-16;
-const utype STEFANBOLTZMANN =
+const double PI         = 3.141592653589793;
+const double HCONST     = 6.62607004e-27;
+const double CSPEED     = 29979245800.0;
+const double KBOLTZMANN = 1.38064852e-16;
+const double STEFANBOLTZMANN =
     5.6703669999999995e-5; // yes, it needs to have this exact value to be consistent with astropy
 
 // constants in CGS

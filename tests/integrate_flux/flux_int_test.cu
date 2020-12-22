@@ -47,6 +47,7 @@ int main(int argc, char** argv) {
 
     cuda_device_memory<double> F_down_band;
     cuda_device_memory<double> F_up_band;
+    cuda_device_memory<double> F_up_TOA_band;
     cuda_device_memory<double> F_dir_band;
 
     cuda_device_memory<double> F_down_band_opt;
@@ -58,6 +59,7 @@ int main(int argc, char** argv) {
 
     cuda_device_memory<double> F_down_tot;
     cuda_device_memory<double> F_up_tot;
+    cuda_device_memory<double> F_dir_tot;
     cuda_device_memory<double> F_net;
 
     cuda_device_memory<double> F_down_tot_opt;
@@ -83,8 +85,11 @@ int main(int argc, char** argv) {
     F_up_band.allocate(point_num * ninterface_nbin);
     F_dir_band.allocate(point_num * ninterface_nbin);
 
+    F_up_TOA_band.allocate(point_num * nbin);
+    
     F_down_tot.allocate(point_num * ninterface);
     F_up_tot.allocate(point_num * ninterface);
+    F_dir_tot.allocate(point_num * ninterface);
     F_net.allocate(point_num * ninterface);
 
     F_down_band_opt.allocate(point_num * ninterface_nbin);
@@ -140,6 +145,7 @@ int main(int argc, char** argv) {
                                                      *F_down_band_opt,
                                                      *F_up_band_opt,
                                                      *F_dir_band_opt,
+                                                     *F_up_TOA_band,
                                                      *gauss_weights,
                                                      nbin,
                                                      ninterface,
@@ -155,6 +161,7 @@ int main(int argc, char** argv) {
         integrate_flux_tot<<<gridsize, blocksize>>>(*deltalambda,
                                                     *F_down_tot_opt,
                                                     *F_up_tot_opt,
+                                                    *F_dir_tot,
                                                     *F_net_opt,
                                                     *F_down_band_opt,
                                                     *F_up_band_opt,

@@ -1,5 +1,8 @@
 cmake_minimum_required (VERSION 3.8 FATAL_ERROR)
 
+# to build localy with tests
+# cmake -DBUILD_TESTS=ON -DTHOR_BASE_FOLDER=../ ..  
+
 # check command line args, user can specify SM to override manual setting
 set(SM "0" CACHE STRING "GPU SM value")
 
@@ -177,7 +180,7 @@ if (BUILD_TESTS)
   #include_directories(tests/inc)
   include_directories(${THOR_ROOT_INCLUDES})
 
-
+  include_directories(${THOR_BASE_FOLDER}/src/headers/ )
 
   
   # build as test
@@ -189,7 +192,6 @@ if (BUILD_TESTS)
   set(SRC_TEST_TWO_STREAMS_SOLVE
     tests/integrate_flux/two_streams_solve_test.cu
     src/kernels/integrate_flux.cu
-    src/kernels/atomic_add.cu
     src/kernels/calculate_physics.cu
     src/kernels/math_helpers.cu
     )
@@ -207,13 +209,15 @@ if (BUILD_TESTS)
   target_link_libraries(test_two_streams_solve PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
   
 
-  
-  add_executable(test_integrate_flux ${SRC_TEST_INTEGRATE_FLUX} ${SRC_THOR_UTILS})
-  set_target_properties(test_integrate_flux PROPERTIES 
-    POSITION_INDEPENDENT_CODE ON
-    CUDA_VISIBILITY_PRESET "hidden"
-    CUDA_SEPARABLE_COMPILATION ON
-    )
-  target_link_libraries(test_integrate_flux PRIVATE alfrodull)
-  target_link_libraries(test_integrate_flux PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
+  # Disable integration comparison test, code to compare to is not
+  # supported anymore, so can't be compiled
+  # was used in development when porting code from HELIOS to Alf before making it evolve
+  # add_executable(test_integrate_flux ${SRC_TEST_INTEGRATE_FLUX} ${SRC_THOR_UTILS})
+  # set_target_properties(test_integrate_flux PROPERTIES 
+  #   POSITION_INDEPENDENT_CODE ON
+  #   CUDA_VISIBILITY_PRESET "hidden"
+  #   CUDA_SEPARABLE_COMPILATION ON
+  #   )
+  # target_link_libraries(test_integrate_flux PRIVATE alfrodull)
+  # target_link_libraries(test_integrate_flux PRIVATE ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 endif()
