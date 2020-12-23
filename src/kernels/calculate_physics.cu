@@ -472,7 +472,8 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                              unsigned int* columns_wiggle_request,
                              unsigned int  wiggle_request_iterator,
                              bool          debug,
-                             double        i2s_transition) {
+                             double        i2s_transition,
+                             int           column_idx) {
 
     // wavelength bin
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -671,13 +672,16 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                 hit_G_pm_limit_global[0] = true;
                 // we request that this column is recomputed at next iteration
                 columns_wiggle_request[c] = 1;
+
                 if (debug) {
                     printf(
-                        "Hit G_pm denom limit, wiggle mu_star (%g) angle (%g) by %g degree to "
+                        "Hit G_pm denom limit, column %d, wiggle mu_star (%g) angle (%g) by %g "
+                        "degree to "
                         "(%g) "
                         "angle (%g) "
                         "(c: %d, l: %d, b: %d, w: %d) g_p_u, g_m_u (%g, %g) g_p_l, g_m_l (%g, "
                         "%g)\n",
+                        column_idx + c,
                         mu_star_orig,
                         zenith_angle_loc / M_PI * 180.0,
                         (mu_star_wiggle_factor + 1.0)

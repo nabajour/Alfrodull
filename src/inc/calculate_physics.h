@@ -132,4 +132,5 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                              unsigned int* columns_wiggle_request,
                              unsigned int  wiggle_request_iterator,
                              bool          debug,
-                             double        i2s_transition);
+                             double        i2s_transition,
+                             int           column_idx);

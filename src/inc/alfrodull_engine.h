@@ -98,8 +98,8 @@ public:
     double a             = 0.0;
     bool   dir_beam      = false;
 
-    bool null_planck_function    = false;
-    bool geom_zenith_corr        = false;
+    bool null_planck_function = false;
+    bool geom_zenith_corr     = false;
 
     double f_factor  = 0.0;
     double w_0_limit = 0.0;
@@ -292,8 +292,10 @@ public:
                                     double*     F_dir_band,
                                     double*     F_up_TOA_spectrum,
                                     double*     zenith_angle,
+                                    double*     surface_albedo,
                                     int         num_cols,
-                                    int         current_col_temp);
+                                    int         column_idx,
+                                    bool        surface);
 
     bool prepare_compute_flux(double*       dev_starflux,
                               double*       dev_T_lay,
@@ -360,7 +362,8 @@ public:
                                        double* zenith_angle_cols,
                                        bool    scat,
                                        bool    clouds,
-                                       int     num_cols);
+                                       int     num_cols,
+                                       int     column_idx);
 
     bool direct_beam_flux(double* F_dir_wg,
                           double* Fc_dir_wg,
@@ -376,6 +379,7 @@ public:
                                            double* F_up_wg,   // out
                                            double* F_dir_wg,  // in
                                            double* g_0_tot,   // in
+                                           double* surface_albedo,
                                            bool    singlewalk,
                                            double  Rstar,
                                            double  a,
@@ -384,12 +388,14 @@ public:
                                            double  w_0_limit,
                                            bool    dir_beam,
                                            bool    clouds,
+                                           bool    surface,
                                            int     num_cols);
 
     bool populate_spectral_flux_iso(double* F_down_wg, // out
                                     double* F_up_wg,   // out
                                     double* F_dir_wg,  // in
                                     double* g_0_tot,   // in
+                                    double* surface_albedo,
                                     bool    singlewalk,
                                     double  Rstar,
                                     double  a,
@@ -398,6 +404,7 @@ public:
                                     double  w_0_limit,
                                     bool    dir_beam,
                                     bool    clouds,
+                                    bool    surface,
                                     int     num_cols);
 
     bool populate_spectral_flux_noniso(double* F_down_wg,
@@ -408,6 +415,7 @@ public:
                                        double* Fc_dir_wg,
                                        double* g_0_tot_upper,
                                        double* g_0_tot_lower,
+                                       double* surface_albedo,
                                        bool    singlewalk,
                                        double  Rstar,
                                        double  a,
@@ -417,6 +425,7 @@ public:
                                        double  delta_tau_limit,
                                        bool    dir_beam,
                                        bool    clouds,
+                                       bool    surface,
                                        double* trans_wg_upper,
                                        double* trans_wg_lower,
                                        int     num_cols);
@@ -427,6 +436,7 @@ public:
                                               double* Fc_dir_wg,
                                               double* g_0_tot_upper,
                                               double* g_0_tot_lower,
+                                              double* surface_albedo,
                                               bool    singlewalk,
                                               double  Rstar,
                                               double  a,
@@ -436,6 +446,7 @@ public:
                                               double  delta_tau_limit,
                                               bool    dir_beam,
                                               bool    clouds,
+                                              bool    surface,
                                               double* trans_wg_upper,
                                               double* trans_wg_lower,
                                               int     num_cols);
