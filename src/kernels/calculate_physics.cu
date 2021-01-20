@@ -73,6 +73,10 @@ G_plus_func(double w0, double g0, double epsilon, double epsilon2, double mu_sta
 
     double denom = E * pow(mu_star / epsilon, 2.0) * (E - w0) * (1.0 - w0 * g0) - 1.0;
 
+    if (fabs(denom) < 1e-5) {
+        denom = mu_star / epsilon;
+    }
+
     double second_term = mu_star / epsilon + 1.0 / (E * (1.0 - w0 * g0));
 
     double third_term = epsilon * w0 * g0 / (epsilon2 * E * (1.0 - w0 * g0));
@@ -90,6 +94,10 @@ G_minus_func(double w0, double g0, double epsilon, double epsilon2, double mu_st
     double num = w0 * (E * (1.0 - w0 * g0) + g0 * epsilon / epsilon2);
 
     double denom = E * pow(mu_star / epsilon, 2.0) * (E - w0) * (1.0 - w0 * g0) - 1.0;
+
+    if (fabs(denom) < 1e-5) {
+        denom = mu_star / epsilon;
+    }
 
     double second_term = mu_star / epsilon - 1.0 / (E * (1.0 - w0 * g0));
 
@@ -331,7 +339,7 @@ __global__ void trans_iso(double*       trans_wg,             // out
 
             double g_p = G_plus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
             double g_m = G_minus_func(w0, g0, epsi, epsilon2, mu_star_used, E);
-            if (G_pm_limiter) {
+            /*    if (G_pm_limiter) {
                 G_plus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = G_limiter(g_p, debug);
                 G_minus[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_limiter(g_m, debug);
@@ -374,7 +382,7 @@ __global__ void trans_iso(double*       trans_wg,             // out
                         g_p,
                         g_m);
                 }
-            }
+            } */
             // debug printout when exploring NaN errors
             // if (!isfinite(g_p) || !isfinite(g_m)
             //     || !isfinite(M_term[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
@@ -639,7 +647,7 @@ __global__ void trans_noniso(double*       trans_wg_upper,
 
             double g_m_u = G_minus_func(w_0_up, g0_up, epsi, epsilon2, mu_star_used, E_up);
             double g_m_l = G_minus_func(w_0_low, g0_low, epsi, epsilon2, mu_star_used, E_low);
-            if (G_pm_limiter) {
+            /*if (G_pm_limiter) {
                 G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
                     G_limiter(g_p_u, debug);
                 G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] =
@@ -698,7 +706,7 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                         g_p_l,
                         g_m_l);
                 }
-            }
+            } */
 
             // printf("%d: w0: %g, g0: %g dtau: %g gsc: %g csc: %g gabs: %g, cabs: %g cg0: %g "
             //        "mmm: %g "
