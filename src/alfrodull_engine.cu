@@ -1429,7 +1429,6 @@ void alfrodull_engine::calculate_transmission_noniso(double* trans_wg_upper,
         }
         iteration_counter += 1;
 
-
         if (hit_G_pm_denom_limit_h) {
             if (iteration_counter == wiggle_iteration_max) {
                 printf("Hit maximum iteration of mu_star wiggle, bailing out\n");
