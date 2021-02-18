@@ -117,7 +117,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
                                       const double& R_star_,
                                       const double& a_,
                                       const bool&   dir_beam_,
-                                      const bool&   geom_zenith_corr_,
+                                      //const bool&   geom_zenith_corr_,
                                       const double& f_factor_,
                                       const double& w_0_limit_,
                                       const double& i2s_transition_,
@@ -131,20 +131,21 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
     iso        = iso_;
     T_star     = T_star_;
 
-    real_star        = real_star_;
-    fake_opac        = fake_opac_;
-    g_0              = g_0_;
-    epsi             = epsi_;
-    epsilon2         = epsilon_2_;
-    scat             = scat_;
-    scat_corr        = scat_corr_;
-    R_planet         = R_planet_;
-    R_star           = R_star_;
-    a                = a_;
-    dir_beam         = dir_beam_;
-    geom_zenith_corr = geom_zenith_corr_;
-    f_factor         = f_factor_;
-    w_0_limit        = w_0_limit_;
+    real_star = real_star_;
+    fake_opac = fake_opac_;
+    g_0       = g_0_;
+    epsi      = epsi_;
+    epsilon2  = epsilon_2_;
+    scat      = scat_;
+    scat_corr = scat_corr_;
+    R_planet  = R_planet_;
+    R_star    = R_star_;
+    a         = a_;
+    dir_beam  = dir_beam_;
+    geom_zenith_corr =
+        dir_beam_; // should always be true when dir_beam = true and is irrelevant when dir_beam = false
+    f_factor  = f_factor_;
+    w_0_limit = w_0_limit_;
 
     null_planck_function = null_planck_function_;
 

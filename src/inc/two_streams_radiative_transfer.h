@@ -130,7 +130,7 @@ public:
     double experimental_opacities_offset = 0.0;
 
     bool   dir_beam;
-    bool   geom_zenith_corr;
+    bool   geom_zenith_corr = true;
     double w_0_limit;
 
     double i2s_transition;

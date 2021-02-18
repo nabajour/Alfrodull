@@ -201,7 +201,7 @@ bool two_streams_radiative_transfer::configure(config_file &config_reader) {
     config_reader.append_config_var("Alf_scat_corr", scat_corr, scat_corr);
 
     config_reader.append_config_var("Alf_dir_beam", dir_beam, dir_beam);
-    config_reader.append_config_var("Alf_geom_zenith_corr", geom_zenith_corr, geom_zenith_corr);
+    //config_reader.append_config_var("Alf_geom_zenith_corr", geom_zenith_corr, geom_zenith_corr);
     config_reader.append_config_var("Alf_i2s_transition", i2s_transition, i2s_transition);
 
     config_reader.append_config_var("Alf_opacities_file", opacities_file, opacities_file);
@@ -278,10 +278,10 @@ bool two_streams_radiative_transfer::initialise_memory(
                        R_star_SI,           // const double& R_star_,
                        planet_star_dist_SI, // const double& a_,
                        dir_beam,            // const bool&   dir_beam_,
-                       geom_zenith_corr,    // const bool&   geom_zenith_corr_,
-                       f_factor,            // const double& f_factor_,
-                       w_0_limit,           // const double& w_0_limit_,
-                       i2s_transition,      // const double& i2s_transition_,
+                       //geom_zenith_corr,    // const bool&   geom_zenith_corr_,
+                       f_factor,       // const double& f_factor_,
+                       w_0_limit,      // const double& w_0_limit_,
+                       i2s_transition, // const double& i2s_transition_,
                        mu_star_limit,
                        wiggle_iteration_max,
                        G_pm_limit_on_full_G_pm,

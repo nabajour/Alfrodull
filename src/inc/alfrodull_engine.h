@@ -71,7 +71,7 @@ public:
                         const double& R_star,
                         const double& a,
                         const bool&   dir_beam,
-                        const bool&   geom_zenith_corr,
+                        //const bool&   geom_zenith_corr,
                         const double& f_factor,
                         const double& w_0_limit,
                         const double& i2s_transition,
@@ -99,7 +99,7 @@ public:
     bool   dir_beam      = false;
 
     bool null_planck_function = false;
-    bool geom_zenith_corr     = false;
+    bool geom_zenith_corr     = true;
 
     double f_factor  = 0.0;
     double w_0_limit = 0.0;
