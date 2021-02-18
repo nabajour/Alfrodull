@@ -75,7 +75,7 @@ G_plus_func(double w0, double g0, double epsilon, double epsilon2, double mu_sta
 
     if (fabs(denom) < 1e-5) {
         denom = mu_star / epsilon;
-        printf("small divisor hit in G+\n");
+        // printf("small divisor hit in G+\n");
     }
 
     double second_term = mu_star / epsilon + 1.0 / (E * (1.0 - w0 * g0));
@@ -98,7 +98,7 @@ G_minus_func(double w0, double g0, double epsilon, double epsilon2, double mu_st
 
     if (fabs(denom) < 1e-5) {
         denom = mu_star / epsilon;
-        printf("small divisor hit in G-\n");
+        // printf("small divisor hit in G-\n");
     }
 
     double second_term = mu_star / epsilon - 1.0 / (E * (1.0 - w0 * g0));

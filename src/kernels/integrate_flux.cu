@@ -281,34 +281,36 @@ __global__ void fdir_iso(double* F_dir_wg,       // out
             * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2) + c * nbin * (nlayer + 2)];
 
         double f_out = 0.0;
+        double mu_star_layer_j;
+
         // initialize each flux value
         if (dir_beam) {
             if (mu_star > mu_star_limit)
                 f_out = 0.0;
             else
                 f_out = -mu_star * I_dir;
+
+            for (int j = ninterface - 2; j >= i; j--) {
+                // flux values lower that TOA will now be attenuated depending on their location
+
+                if (geom_zenith_corr) {
+                    mu_star_layer_j =
+                        -sqrt(1.0
+                              - pow((R_planet + z_lay[i]) / (R_planet + z_lay[j]), 2.0)
+                                    * (1.0 - pow(mu_star, 2.0)));
+                }
+                else {
+                    mu_star_layer_j = mu_star;
+                }
+
+                // direct stellar flux
+                f_out *= exp(delta_tau_wg[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
+                             / mu_star_layer_j);
+            }
+            F_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin] = f_out;
         }
         else
-            f_out = 0.0;
-        double mu_star_layer_j;
-
-        // flux values lower that TOA will now be attenuated depending on their location
-        for (int j = ninterface - 2; j >= i; j--) {
-
-            if (geom_zenith_corr) {
-                mu_star_layer_j = -sqrt(1.0
-                                        - pow((R_planet + z_lay[i]) / (R_planet + z_lay[j]), 2.0)
-                                              * (1.0 - pow(mu_star, 2.0)));
-            }
-            else {
-                mu_star_layer_j = mu_star;
-            }
-
-            // direct stellar flux
-            f_out *= exp(delta_tau_wg[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
-                         / mu_star_layer_j);
-        }
-        F_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin] = f_out;
+            F_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin] = 0.0;
     }
 }
 
@@ -351,43 +353,47 @@ __global__ void fdir_noniso(double* F_dir_wg,
             * planckband_lay[(ninterface - 1) + x * (ninterface - 1 + 2) + c * nbin * (nlayer + 2)];
         double f_out  = 0.0;
         double fc_out = 0.0;
+        double mu_star_layer_j;
+
         // initialize each flux value
         if (dir_beam) {
             if (mu_star > mu_star_limit)
                 f_out = 0.0;
             else
                 f_out = -mu_star * I_dir;
-        }
-        else
-            f_out = 0.0;
 
-        double mu_star_layer_j;
+            // flux values lower that TOA will now be attenuated depending on their location
+            for (int j = ninterface - 2; j >= i; j--) {
 
-        // flux values lower that TOA will now be attenuated depending on their location
-        for (int j = ninterface - 2; j >= i; j--) {
+                if (geom_zenith_corr) {
+                    mu_star_layer_j =
+                        -sqrt(1.0
+                              - pow((R_planet + z_lay[i]) / (R_planet + z_lay[j]), 2.0)
+                                    * (1.0 - pow(mu_star, 2.0)));
+                }
+                else {
+                    mu_star_layer_j = mu_star;
+                }
 
-            if (geom_zenith_corr) {
-                mu_star_layer_j = -sqrt(1.0
-                                        - pow((R_planet + z_lay[i]) / (R_planet + z_lay[j]), 2.0)
-                                              * (1.0 - pow(mu_star, 2.0)));
+                double delta_tau =
+                    delta_tau_wg_upper[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
+                    + delta_tau_wg_lower[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin];
+
+                // direct stellar flux
+                fc_out =
+                    f_out
+                    * exp(delta_tau_wg_upper[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
+                          / mu_star_layer_j);
+                f_out *= exp(delta_tau / mu_star_layer_j);
             }
-            else {
-                mu_star_layer_j = mu_star;
-            }
 
-            double delta_tau =
-                delta_tau_wg_upper[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
-                + delta_tau_wg_lower[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin];
-
-            // direct stellar flux
-            fc_out = f_out
-                     * exp(delta_tau_wg_upper[y + ny * x + ny * nbin * j + c * nlayer * ny * nbin]
-                           / mu_star_layer_j);
-            f_out *= exp(delta_tau / mu_star_layer_j);
+            Fc_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin] = fc_out;
+            F_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin]  = f_out;
         }
-
-        Fc_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin] = fc_out;
-        F_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin]  = f_out;
+        else {
+            Fc_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin] = 0.0;
+            F_dir_wg[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin]  = 0.0;
+        }
     }
 }
 
