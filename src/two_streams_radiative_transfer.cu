@@ -140,8 +140,8 @@ void two_streams_radiative_transfer::print_config() {
                 null_planck_function ? "true" : "false");
 
     log::printf("    Direct Beam:                             %s\n", dir_beam ? "true" : "false");
-    log::printf("    Geometrical Zenith Correction:           %s\n",
-                geom_zenith_corr ? "true" : "false");
+    // log::printf("    Geometrical Zenith Correction:           %s\n",
+    //             geom_zenith_corr ? "true" : "false");
     log::printf("    Direct Beam Tangent Angle Limit:         %g°\n", mu_star_limit_degrees);
 
     log::printf("    w0 limit:                                %g\n", w_0_limit);
@@ -150,12 +150,12 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Compute Every N step:                    %d\n", compute_every_n_iteration);
     log::printf("    Number of Parallel Columns:              %d\n", num_parallel_columns);
 
-    log::printf("    Apply G_pm limiter:                      %s\n",
-                G_pm_limiter ? "true" : "false");
-    log::printf("    G_pm limit on full G_pm:                 %g\n", G_pm_limit_on_full_G_pm);
-    log::printf("    G_pm limit:                              %g\n", G_pm_denom_limit);
-    log::printf("    G_pm angle increment:                    %g\n", mu_star_wiggle_increment);
-    log::printf("    mu_star wiggle max iterations:           %d\n", wiggle_iteration_max);
+    // log::printf("    Apply G_pm limiter:                      %s\n",
+    //             G_pm_limiter ? "true" : "false");
+    // log::printf("    G_pm limit on full G_pm:                 %g\n", G_pm_limit_on_full_G_pm);
+    // log::printf("    G_pm limit:                              %g\n", G_pm_denom_limit);
+    // log::printf("    G_pm angle increment:                    %g\n", mu_star_wiggle_increment);
+    // log::printf("    mu_star wiggle max iterations:           %d\n", wiggle_iteration_max);
 
     // spinup-spindown parameters
     log::printf("    Spin up start step:                      %d\n", spinup_start_step);
@@ -187,14 +187,14 @@ bool two_streams_radiative_transfer::configure(config_file &config_reader) {
 
     config_reader.append_config_var("Alf_g_0", g_0, g_0);
     config_reader.append_config_var("Alf_espilon_2", epsilon_2, epsilon_2);
-    config_reader.append_config_var("Alf_G_pm_max_limiter", G_pm_limiter, G_pm_limiter);
-    config_reader.append_config_var("Alf_G_pm_limit", G_pm_denom_limit, G_pm_denom_limit);
-    config_reader.append_config_var(
-        "Alf_G_pm_limit_on_G_pm", G_pm_limit_on_full_G_pm, G_pm_limit_on_full_G_pm);
-    config_reader.append_config_var(
-        "Alf_G_pm_mu_star_increment", mu_star_wiggle_increment, mu_star_wiggle_increment);
-    config_reader.append_config_var(
-        "Alf_mu_star_iteration_max", wiggle_iteration_max, wiggle_iteration_max);
+    // config_reader.append_config_var("Alf_G_pm_max_limiter", G_pm_limiter, G_pm_limiter);
+    // config_reader.append_config_var("Alf_G_pm_limit", G_pm_denom_limit, G_pm_denom_limit);
+    // config_reader.append_config_var(
+    //     "Alf_G_pm_limit_on_G_pm", G_pm_limit_on_full_G_pm, G_pm_limit_on_full_G_pm);
+    // config_reader.append_config_var(
+    //     "Alf_G_pm_mu_star_increment", mu_star_wiggle_increment, mu_star_wiggle_increment);
+    // config_reader.append_config_var(
+    //     "Alf_mu_star_iteration_max", wiggle_iteration_max, wiggle_iteration_max);
     config_reader.append_config_var(
         "Alf_direct_beam_angle_limit", mu_star_limit_degrees, mu_star_limit_degrees);
     config_reader.append_config_var("Alf_scat", scat, scat);
@@ -1405,29 +1405,29 @@ bool two_streams_radiative_transfer::store_init(storage &s) {
 
     s.append_value(i2s_transition, "/alf_i2s_transition", "-", "Alfrodull i2s transition");
 
-    s.append_value(G_pm_limiter ? 1 : 0,
-                   "/G_pm_max_limiter",
-                   "-",
-                   "Alfrodull limiter on abs(G_pm) at 1e8 (HELIOS compatible)");
-    s.append_value(G_pm_denom_limit,
-                   "/G_pm_factor_limit",
-                   "-",
-                   "Alfrodull limiter on abs(G_pm) or G_pm_denominator");
-
-    s.append_value(G_pm_limit_on_full_G_pm ? 1 : 0,
-                   "/G_pm_limit_on_full_G_pm",
-                   "-",
-                   "Alf G_pm limit applies to full G_pm term or only to G_pm denominator");
-
-    s.append_value(mu_star_wiggle_increment,
-                   "/Alf_G_pm_mu_star_increment",
-                   "-",
-                   "Alf increment in degrees applied to incomming angle when hit "
-                   "G_pm limit");
-    s.append_value(wiggle_iteration_max,
-                   "/Alf_mu_star_iteration_max",
-                   "-",
-                   "Alf max number of incoming angle increases on G_pm limit");
+    // s.append_value(G_pm_limiter ? 1 : 0,
+    //                "/G_pm_max_limiter",
+    //                "-",
+    //                "Alfrodull limiter on abs(G_pm) at 1e8 (HELIOS compatible)");
+    // s.append_value(G_pm_denom_limit,
+    //                "/G_pm_factor_limit",
+    //                "-",
+    //                "Alfrodull limiter on abs(G_pm) or G_pm_denominator");
+    //
+    // s.append_value(G_pm_limit_on_full_G_pm ? 1 : 0,
+    //                "/G_pm_limit_on_full_G_pm",
+    //                "-",
+    //                "Alf G_pm limit applies to full G_pm term or only to G_pm denominator");
+    //
+    // s.append_value(mu_star_wiggle_increment,
+    //                "/Alf_G_pm_mu_star_increment",
+    //                "-",
+    //                "Alf increment in degrees applied to incomming angle when hit "
+    //                "G_pm limit");
+    // s.append_value(wiggle_iteration_max,
+    //                "/Alf_mu_star_iteration_max",
+    //                "-",
+    //                "Alf max number of incoming angle increases on G_pm limit");
     s.append_value(mu_star_limit_degrees,
                    "/Alf_direct_beam_angle_limit",
                    "-",
