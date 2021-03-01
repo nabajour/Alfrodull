@@ -285,7 +285,6 @@ __global__ void trans_iso(double*       trans_wg,             // out
                 trans_func(epsi, del_tau, w0, g0, E);
             double trans = trans_wg[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin];
 
-
             double zeta_min = zeta_minus(w0, g0, E);
             double zeta_pl  = zeta_plus(w0, g0, E);
 

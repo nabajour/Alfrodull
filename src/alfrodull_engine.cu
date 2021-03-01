@@ -149,7 +149,7 @@ void alfrodull_engine::set_parameters(const int&    nlayer_,
 
     null_planck_function = null_planck_function_;
 
-    i2s_transition           = i2s_transition;
+    i2s_transition           = i2s_transition_;
     debug                    = debug_;
     mu_star_limit            = mu_star_limit_;
     wiggle_iteration_max     = wiggle_iteration_max_;

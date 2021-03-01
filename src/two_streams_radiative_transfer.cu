@@ -713,6 +713,8 @@ __global__ void initialise_delta_colmass_pressure_iso(double *delta_col_mass_col
         double *pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
         delta_col_mass[layer_idx] =
             (pressure_int[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
+        if (layer_idx == 0)
+            delta_col_mass[layer_idx] = 963.815;
         if (delta_col_mass[layer_idx] < 0.0)
             printf("Negative delta_col_mass (%g), layer: %d, col: %d\n",
                    delta_col_mass[layer_idx],
@@ -1786,7 +1788,8 @@ void two_streams_radiative_transfer::debug_print_columns(ESP &                  
     int nbin = alf.opacities.nbin;
 
     {
-        std::shared_ptr<double[]> temperature_h = temperature_lay.get_host_data();
+        std::shared_ptr<double[]> temperature_h = temperature_int.get_host_data();
+        std::shared_ptr<double[]> pressure_h    = pressure_int.get_host_data();
 
         cuda_check_status_or_exit(string(__FILE__ ":"
                                                   "tpprofile")
@@ -1812,16 +1815,17 @@ void two_streams_radiative_transfer::debug_print_columns(ESP &                  
                              + std::to_string(cmustar[c]) + "]\n";
 
             fprintf(tp_output_file, comment.c_str());
-            fprintf(tp_output_file, "#\tT[K]\n");
+            fprintf(tp_output_file, "#\tP(bar)\tT[K]\n");
 
-            fprintf(tp_output_file,
-                    "BOA\t%#.6g\n",
-                    temperature_h[esp.nv + (column_base_idx + c) * (esp.nv + 1)]);
-            for (int i = 0; i < esp.nv; i++) {
+            // fprintf(tp_output_file,
+            //         "BOA\t%#.6g\n",
+            //         temperature_h[esp.nv + 1 + (column_base_idx + c) * (esp.nv + 2)]);
+            for (int i = 0; i <= esp.nv; i++) {
                 fprintf(tp_output_file,
-                        "%d\t%#.6g\n",
+                        "%d\t%#.6g\t%#.6g\n",
                         i,
-                        temperature_h[i + (column_base_idx + c) * (esp.nv + 1)]);
+                        pressure_h[i + (column_base_idx + c) * (esp.nv + 2)] / 1e5,
+                        temperature_h[i + (column_base_idx + c) * (esp.nv + 2)]);
             }
 
             fclose(tp_output_file);

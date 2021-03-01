@@ -1601,6 +1601,7 @@ __global__ void fband_noniso_thomas(double* F_down_wg_,
                     E_N = E_parameter(w0_N, g0_N, i2s_transition);
                 }
 
+                // printf("%d, %d, %g, %g\n", x, y, w0_N, E_N);
                 F_BOA = (1 - surface_albedo[x]) * PI * (1.0 - w0_N) / (E_N - w0_N)
                         * planckband_lay[numinterfaces + x * (numinterfaces - 1 + 2)];
 
