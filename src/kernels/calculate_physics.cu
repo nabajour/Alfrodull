@@ -536,7 +536,6 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                 cloud_scat_cross_low = 0;
             }
 
-
             if (clouds) {
                 // For use with per altitude bin, need to add i*nbin indices.
                 g0_cloud_up  = (g_0_cloud_lay[x] + g_0_cloud_int[x]) / 2.0;
@@ -552,14 +551,19 @@ __global__ void trans_noniso(double*       trans_wg_upper,
 
             double opac_up =
                 (opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]
-                 + opac_wg_int[y + ny * x + ny * nbin * (i + 1) + c * ninterface * nbin])
+                 + opac_wg_int[y + ny * x + ny * nbin * (i + 1) + c * ninterface * ny * nbin])
                 / 2.0;
-            double opac_low = (opac_wg_int[y + ny * x + ny * nbin * i + c * ninterface * nbin]
+            double opac_low = (opac_wg_int[y + ny * x + ny * nbin * i + c * ninterface * ny * nbin]
                                + opac_wg_lay[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin])
                               / 2.0;
-            double cloud_abs_cross_up  = (cloud_abs_cross_lay[x] + cloud_abs_cross_int[x]) / 2.0;
-            double cloud_abs_cross_low = (cloud_abs_cross_int[x] + cloud_abs_cross_lay[x]) / 2.0;
-
+            double cloud_abs_cross_up  = 0.0; 
+            double cloud_abs_cross_low = 0.0;
+            
+            if (clouds) {
+              cloud_abs_cross_up  = (cloud_abs_cross_lay[x] + cloud_abs_cross_int[x]) / 2.0;
+              cloud_abs_cross_low = (cloud_abs_cross_int[x] + cloud_abs_cross_lay[x]) / 2.0;
+            }
+            
             double meanmolmass_up =
                 (meanmolmass_lay[i + c * nlayer] + meanmolmass_int[i + 1 + c * ninterface]) / 2.0;
             double meanmolmass_low =
@@ -659,10 +663,12 @@ __global__ void trans_noniso(double*       trans_wg_upper,
                     G_limiter(g_m_l, debug);
             }
             else {
+            */
                 G_plus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]  = g_p_u;
                 G_plus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin]  = g_p_l;
                 G_minus_upper[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_u;
                 G_minus_lower[y + ny * x + ny * nbin * i + c * nlayer * ny * nbin] = g_m_l;
+                /*
             }
 
             bool hit_limit = false;

@@ -133,10 +133,10 @@ void two_streams_radiative_transfer::print_config() {
     log::printf("    Store w0 g0 (per band):                  %s\n",
                 store_w0_g0 ? "true" : "false");
 
-    log::printf("    Store dir flux spectrum (per band):                  %s\n",
+    log::printf("    Store dir flux spectrum (per band):      %s\n",
                 store_dir_spectrum ? "true" : "false");
 
-    log::printf("    Null Planck Function:                  %s\n",
+    log::printf("    Null Planck Function:                    %s\n",
                 null_planck_function ? "true" : "false");
 
     log::printf("    Direct Beam:                             %s\n", dir_beam ? "true" : "false");
@@ -713,8 +713,6 @@ __global__ void initialise_delta_colmass_pressure_iso(double *delta_col_mass_col
         double *pressure_int   = &(pressure_int_cols[col_block_idx * (num_layers + 1)]);
         delta_col_mass[layer_idx] =
             (pressure_int[layer_idx] - pressure_int[layer_idx + 1]) / gravit;
-        if (layer_idx == 0)
-            delta_col_mass[layer_idx] = 963.815;
         if (delta_col_mass[layer_idx] < 0.0)
             printf("Negative delta_col_mass (%g), layer: %d, col: %d\n",
                    delta_col_mass[layer_idx],

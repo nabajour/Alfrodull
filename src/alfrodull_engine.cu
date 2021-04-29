@@ -724,16 +724,15 @@ void alfrodull_engine::compute_radiative_transfer(
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
 
-
+        
         BENCH_POINT_I_S(debug_nstep,
                         debug_col_idx,
                         "Alf_prep_flx",
                         (),
                         ("opac_wg_lay",
-                         "opac_wg_int",
                          "meanmolmass_lay",
-                         "meanmolmass_int",
                          "cloud_scat_cross_lay",
+                         "scat_cs_lay",
                          "planckband_lay"));
     }
     double* deltalambda = *opacities.dev_opac_deltawave;
@@ -774,14 +773,23 @@ void alfrodull_engine::compute_radiative_transfer(
                              "w_0",
                              "g_0",
                              "G_plus",
-                             "G_minus"));
+                             "G_minus",
+                             "opac_wg_lay",
+                             "meanmolmass_lay",
+                             "scat_cs_lay",
+                             ));
         }
         else {
             BENCH_POINT_I_S(debug_nstep,
                             debug_col_idx,
                             "Alf_prep_II",
                             (),
-                            ("delta_col_upper", "delta_col_lower", ));
+                            ("delta_col_upper",
+                             "delta_col_lower",
+                             "meanmolmass_int",
+                             "scat_cs_int",
+                             "opac_wg_int"
+                             ));
             calculate_transmission_noniso(*trans_wg_upper,
                                           *trans_wg_lower,
                                           *delta_col_upper,
@@ -825,7 +833,13 @@ void alfrodull_engine::compute_radiative_transfer(
                              "G_minus_upper",
                              "G_minus_lower",
                              "w_0_upper",
-                             "w_0_lower"));
+                             "w_0_lower",
+                             "opac_wg_lay",
+                             "opac_wg_int",
+                             "meanmolmass_lay",
+                             "meanmolmass_int",
+                             "scat_cs_lay",
+                             "scat_cs_int"));
         }
 
         cuda_check_status_or_exit(__FILE__, __LINE__);
